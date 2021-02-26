@@ -37,6 +37,7 @@
 #include "network.h"
 #include "nl.h"
 #include "process_utils.h"
+#include "string_utils.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
 
@@ -52,16 +53,17 @@ typedef int (*netdev_shutdown_server_cb)(struct lxc_handler *, struct lxc_netdev
 
 const struct lxc_network_info {
 	const char *name;
-	const char *template;
+	const char template[IFNAMSIZ];
+	size_t template_len;
 } lxc_network_info[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_EMPTY]		= { "empty",		"emptXXXXXX"	},
-	[LXC_NET_VETH]    	= { "veth",		"vethXXXXXX"	},
-	[LXC_NET_MACVLAN] 	= { "macvlan",		"macvXXXXXX"	},
-	[LXC_NET_IPVLAN]  	= { "ipvlan",		"ipvlXXXXXX"	},
-	[LXC_NET_PHYS]    	= { "phys",		"physXXXXXX"	},
-	[LXC_NET_VLAN]    	= { "vlan",		"vlanXXXXXX"	},
-	[LXC_NET_NONE]    	= { "none",		"noneXXXXXX"	},
-	[LXC_NET_MAXCONFTYPE]	= { NULL,		NULL		}
+	[LXC_NET_EMPTY]		= { "empty",		"emptXXXXXX",  STRLITERALLEN("emptXXXXXX")	},
+	[LXC_NET_VETH]    	= { "veth",		"vethXXXXXX",  STRLITERALLEN("vethXXXXXX")	},
+	[LXC_NET_MACVLAN] 	= { "macvlan",		"macvXXXXXX",  STRLITERALLEN("macvXXXXXX")	},
+	[LXC_NET_IPVLAN]  	= { "ipvlan",		"ipvlXXXXXX",  STRLITERALLEN("ipvlXXXXXX")	},
+	[LXC_NET_PHYS]    	= { "phys",		"physXXXXXX",  STRLITERALLEN("physXXXXXX")	},
+	[LXC_NET_VLAN]    	= { "vlan",		"vlanXXXXXX",  STRLITERALLEN("vlanXXXXXX")	},
+	[LXC_NET_NONE]    	= { "none",		"noneXXXXXX",  STRLITERALLEN("noneXXXXXX")	},
+	[LXC_NET_MAXCONFTYPE]	= { NULL,		"",	       0				}
 };
 
 const char *lxc_net_type_to_str(int type)
@@ -355,11 +357,28 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 	if (err)
 		return log_error_errno(-1, -err, "Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
 
+	/*
+	 * Veth devices are directly created in the container's network
+	 * namespace so the device doesn't need to be moved into the
+	 * container's network namespace. Make this explicit by setting the
+	 * devices ifindex to 0.
+	 */
+	netdev->ifindex = 0;
+
 	strlcpy(netdev->created_name, veth2, IFNAMSIZ);
 
-	/* changing the high byte of the mac address to 0xfe, the bridge interface
+	 /*
+	  * Since the device won't be moved transient name generation won't
+	  * happen. But the transient name is needed for the container to
+	  * retrieve the ifindex for the device.
+	  */
+	strlcpy(netdev->transient_name, veth2, IFNAMSIZ);
+
+	/*
+	 * Changing the high byte of the mac address to 0xfe, the bridge interface
 	 * will always keep the host's mac address and not take the mac address
-	 * of a container */
+	 * of a container.
+	 */
 	err = setup_private_host_hw_addr(veth1);
 	if (err) {
 		errno = -err;
@@ -928,25 +947,24 @@ static int __netdev_configure_container_common(struct lxc_netdev *netdev)
 {
 	char current_ifname[IFNAMSIZ];
 
-	netdev->ifindex = if_nametoindex(netdev->created_name);
+	netdev->ifindex = if_nametoindex(netdev->transient_name);
 	if (!netdev->ifindex)
 		return log_error_errno(-1,
 				       errno, "Failed to retrieve ifindex for network device with name %s",
-				       netdev->created_name);
+				       netdev->transient_name);
 
 	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 
-	if (!strequal(netdev->created_name, netdev->name)) {
+	if (!strequal(netdev->transient_name, netdev->name)) {
 		int ret;
 
-		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);
+		ret = lxc_netdev_rename_by_name(netdev->transient_name, netdev->name);
 		if (ret)
 			return log_error_errno(-1, -ret, "Failed to rename network device \"%s\" to \"%s\"",
-					       netdev->created_name,
-					       netdev->name);
+					       netdev->transient_name, netdev->name);
 
-		TRACE("Renamed network device from \"%s\" to \"%s\"", netdev->created_name, netdev->name);
+		TRACE("Renamed network device from \"%s\" to \"%s\"", netdev->transient_name, netdev->name);
 	}
 
 	/*
@@ -962,6 +980,7 @@ static int __netdev_configure_container_common(struct lxc_netdev *netdev)
 	 * later on send this information back to the parent.
 	 */
 	(void)strlcpy(netdev->name, current_ifname, IFNAMSIZ);
+	netdev->transient_name[0] = '\0';
 
 	return 0;
 }
@@ -2644,12 +2663,15 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath,
 
 	/*
 	 * lxc-user-nic will take care of proper network device naming. So
-	 * netdev->name and netdev->created_name need to be identical to not
+	 * netdev->name and netdev->transient_name need to be identical to not
 	 * trigger another rename later on.
 	 */
 	retlen = strlcpy(netdev->name, token, IFNAMSIZ);
-	if (retlen < IFNAMSIZ)
-		retlen = strlcpy(netdev->created_name, token, IFNAMSIZ);
+	if (retlen < IFNAMSIZ) {
+		retlen = strlcpy(netdev->transient_name, token, IFNAMSIZ);
+		if (retlen < IFNAMSIZ)
+			retlen = strlcpy(netdev->created_name, token, IFNAMSIZ);
+	}
 	if (retlen >= IFNAMSIZ)
 		return log_error_errno(-1, E2BIG,
 				       "Container side veth device name returned by lxc-user-nic is too long");
@@ -3083,6 +3105,78 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
 	return 0;
 }
 
+/*
+ * LXC moves network devices into the target namespace based on their created
+ * name. The created name can either be randomly generated for e.g. veth
+ * devices or it can be the name of the existing device in the server's
+ * namespaces. This is e.g. the case when moving physical devices. However this
+ * can lead to weird clashes. Consider we have a network namespace that has the
+ * following devices:
+
+ * 4: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+ *    link/ether 00:16:3e:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:e7:5d:10
+ *    altname enp7s0
+ * 5: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+ *    link/ether 00:16:3e:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:91:d3:ae
+ *    altname enp8s0
+ *
+ * and the user generates the following network config for their container:
+ *
+ *  lxc.net.0.type = phys
+ *  lxc.net.0.name = eth1
+ *  lxc.net.0.link = eth2
+ *
+ *  lxc.net.1.type = phys
+ *  lxc.net.1.name = eth2
+ *  lxc.net.1.link = eth1
+ *
+ * This would cause LXC to move the devices eth1 and eth2 from the server's
+ * network namespace into the container's network namespace:
+ *
+ * 24: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+ *     link/ether 00:16:3e:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:e7:5d:10
+ *     altname enp7s0
+ * 25: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+ *     link/ether 00:16:3e:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:91:d3:ae
+ *      altname enp8s0
+ *
+ * According to the network config above we now need to rename the network
+ * devices in the container's network namespace. Let's say we start with
+ * renaming eth2 to eth1. This would immediately lead to a clash since the
+ * container's network namespace already contains a network device with that
+ * name. Renaming the other device would have the same problem.
+ *
+ * There are multiple ways to fix this but I'm concerned with keeping the logic
+ * somewhat reasonable which is why we simply start creating transient device
+ * names that are unique which we'll use to move and rename the network device
+ * in the container's network namespace at the same time. And then we rename
+ * based on those random devices names to the target name.
+ *
+ * Note that the transient name is based on the type of network device as
+ * specified in the LXC config. However, that doesn't mean it's correct. LXD
+ * passes veth devices and a range of other network devices (e.g. Infiniband
+ * VFs etc.) via LXC_NET_PHYS even though they're not really "physical" in the
+ * sense we like to think about it so you might see a veth device being
+ * assigned a "physXXXXXX" transient name. That's not a problem.
+ */
+static int create_transient_name(struct lxc_netdev *netdev)
+{
+	const struct lxc_network_info *info;
+
+	if (!is_empty_string(netdev->transient_name))
+		return syserror_set(-EINVAL, "Network device already had a transient name %s",
+				    netdev->transient_name);
+
+	info = &lxc_network_info[netdev->type];
+	strlcpy(netdev->transient_name, info->template, info->template_len + 1);
+
+	if (!lxc_ifname_alnum_case_sensitive(netdev->transient_name))
+		return syserror_set(-EINVAL, "Failed to create transient name for network device %s", netdev->created_name);
+
+	TRACE("Created transient name %s for network device", netdev->transient_name);
+	return 0;
+}
+
 int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 {
 	pid_t pid = handler->pid;
@@ -3097,23 +3191,35 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 		int ret;
 		struct lxc_netdev *netdev = iterator->elem;
 
+		/*
+		* Veth devices are directly created in the container's network
+		* namespace so the device doesn't need to be moved into the
+		* container's network namespace. The transient name will
+		* already have been set above when we created the veth tunnel.
+		*
+		* Other than this special case this also catches all
+		* LXC_NET_EMPTY and LXC_NET_NONE devices.
+		 */
 		if (!netdev->ifindex)
 			continue;
+
+		ret = create_transient_name(netdev);
+		if (ret < 0)
+			return ret;
 
 		if (netdev->type == LXC_NET_PHYS)
 			physname = is_wlan(netdev->link);
 
 		if (physname)
-			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
+			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, netdev->transient_name);
 		else
-			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->transient_name);
 		if (ret)
-			return log_error_errno(-1, -ret, "Failed to move network device \"%s\" with ifindex %d to network namespace %d",
-					       netdev->created_name,
-					       netdev->ifindex, pid);
+			return log_error_errno(-1, -ret, "Failed to move network device \"%s\" with ifindex %d to network namespace %d and rename to %s",
+					       netdev->created_name, netdev->ifindex, pid, netdev->transient_name);
 
-		DEBUG("Moved network device \"%s\" with ifindex %d to network namespace of %d",
-		      netdev->created_name, netdev->ifindex, pid);
+		DEBUG("Moved network device \"%s\" with ifindex %d to network namespace of %d and renamed to %s",
+		      maybe_empty(netdev->created_name), netdev->ifindex, pid, netdev->transient_name);
 	}
 
 	return 0;
@@ -3570,11 +3676,11 @@ int lxc_network_send_to_child(struct lxc_handler *handler)
 		if (ret < 0)
 			return -1;
 
-		ret = lxc_send_nointr(data_sock, netdev->created_name, IFNAMSIZ, MSG_NOSIGNAL);
+		ret = lxc_send_nointr(data_sock, netdev->transient_name, IFNAMSIZ, MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 
-		TRACE("Sent network device name \"%s\" to child", netdev->created_name);
+		TRACE("Sent network device name \"%s\" to child", netdev->transient_name);
 	}
 
 	return 0;
@@ -3597,11 +3703,11 @@ int lxc_network_recv_from_parent(struct lxc_handler *handler)
 		if (ret < 0)
 			return -1;
 
-		ret = lxc_recv_nointr(data_sock, netdev->created_name, IFNAMSIZ, 0);
+		ret = lxc_recv_nointr(data_sock, netdev->transient_name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
 
-		TRACE("Received network device name \"%s\" from parent", netdev->created_name);
+		TRACE("Received network device name \"%s\" from parent", netdev->transient_name);
 	}
 
 	return 0;
