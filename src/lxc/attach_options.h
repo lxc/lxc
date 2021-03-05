@@ -28,7 +28,7 @@ enum {
 	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, /*!< Remount /proc filesystem */
 	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< TODO: currently unused */
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
-	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
+	LXC_ATTACH_NO_NEW_PRIVS          = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
 	LXC_ATTACH_LSM_LABEL             = 0x00100000, /*!< Set custom LSM label specified in @lsm_label. */
 	LXC_ATTACH_SETGROUPS             = 0x00200000, /*!< Set additional group ids specified in @groups. */
