@@ -1714,7 +1714,26 @@ static int lxc_spawn(struct lxc_handler *handler)
 		/* Kernel might be too old for clone3(). */
 		if (handler->pid < 0) {
 			SYSTRACE("Failed to spawn container via clone3()");
+
+		/*
+		 * In contrast to all other architectures arm64 verifies that
+		 * the argument we use to retrieve the pidfd with is
+		 * initialized to 0. But we need to be able to initialize it to
+		 * a negative value such as our customary -EBADF so we can
+		 * detect whether this kernel supports pidfds. If the syscall
+		 * returns and the pidfd variable is set to something >= 0 then
+		 * we know this is a kernel supporting pidfds. But if we can't
+		 * set it to -EBADF then this won't work since 0 is a valid
+		 * file descriptor too. And since legacy clone silently ignores
+		 * unknown flags we are left without any way to detect support
+		 * for pidfds. So let's special-case arm64 to not fail starting
+		 * containers.
+		 */
+		#if defined(__aarch64__)
+			handler->pid = lxc_raw_legacy_clone(handler->clone_flags & ~CLONE_PIDFD, NULL);
+		#else
 			handler->pid = lxc_raw_legacy_clone(handler->clone_flags, &handler->pidfd);
+		#endif
 		}
 
 		if (handler->pid < 0) {
