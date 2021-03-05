@@ -14,30 +14,54 @@ extern "C" {
  */
 typedef enum lxc_attach_env_policy_t {
 	LXC_ATTACH_KEEP_ENV     = 0, /*!< Retain the environment */
+#define LXC_ATTACH_KEEP_ENV     LXC_ATTACH_KEEP_ENV
+
 	LXC_ATTACH_CLEAR_ENV    = 1, /*!< Clear the environment */
+#define LXC_ATTACH_CLEAR_ENV    LXC_ATTACH_CLEAR_ENV
 } lxc_attach_env_policy_t;
 
 enum {
 	/* The following are on by default: */
 	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001, /*!< Move to cgroup */
+#define LXC_ATTACH_MOVE_TO_CGROUP        LXC_ATTACH_MOVE_TO_CGROUP
+
 	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002, /*!< Drop capabilities */
+#define LXC_ATTACH_DROP_CAPABILITIES     LXC_ATTACH_DROP_CAPABILITIES
+
 	LXC_ATTACH_SET_PERSONALITY       = 0x00000004, /*!< Set personality */
+#define LXC_ATTACH_SET_PERSONALITY       LXC_ATTACH_SET_PERSONALITY
+
 	LXC_ATTACH_LSM_EXEC              = 0x00000008, /*!< Execute under a Linux Security Module */
+#define LXC_ATTACH_LSM_EXEC              LXC_ATTACH_LSM_EXEC
+
 
 	/* The following are off by default: */
 	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, /*!< Remount /proc filesystem */
+#define LXC_ATTACH_REMOUNT_PROC_SYS      LXC_ATTACH_REMOUNT_PROC_SYS
+
 	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< TODO: currently unused */
+#define LXC_ATTACH_LSM_NOW               LXC_ATTACH_LSM_NOW
+
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
 	LXC_ATTACH_NO_NEW_PRIVS          = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
+#define LXC_ATTACH_NO_NEW_PRIVS          LXC_ATTACH_NO_NEW_PRIVS
+
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
+#define LXC_ATTACH_TERMINAL              LXC_ATTACH_TERMINAL
+
 	LXC_ATTACH_LSM_LABEL             = 0x00100000, /*!< Set custom LSM label specified in @lsm_label. */
+#define LXC_ATTACH_LSM_LABEL             LXC_ATTACH_LSM_LABEL
+
 	LXC_ATTACH_SETGROUPS             = 0x00200000, /*!< Set additional group ids specified in @groups. */
+#define LXC_ATTACH_SETGROUPS             LXC_ATTACH_SETGROUPS
+
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary
 	 * compatibility for a while
 	 */
 	LXC_ATTACH_DEFAULT               = 0x0000FFFF  /*!< Mask of flags to apply by default */
+#define LXC_ATTACH_DEFAULT               LXC_ATTACH_DEFAULT
 };
 
 /*! All Linux Security Module flags */
