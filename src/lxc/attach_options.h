@@ -13,8 +13,8 @@ extern "C" {
  * LXC environment policy.
  */
 typedef enum lxc_attach_env_policy_t {
-	LXC_ATTACH_KEEP_ENV,   /*!< Retain the environment */
-	LXC_ATTACH_CLEAR_ENV   /*!< Clear the environment */
+	LXC_ATTACH_KEEP_ENV     = 0, /*!< Retain the environment */
+	LXC_ATTACH_CLEAR_ENV    = 1, /*!< Clear the environment */
 } lxc_attach_env_policy_t;
 
 enum {
