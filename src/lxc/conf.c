@@ -647,7 +647,6 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
         for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
-		int saved_errno;
 		unsigned long mflags;
 		if ((flags & default_mounts[i].match_mask) != default_mounts[i].match_flag)
 			continue;
@@ -656,11 +655,11 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 			/* will act like strdup if %r is not present */
 			source = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].source);
 			if (!source)
-				return -1;
+				return syserror_set(-ENOMEM, "Failed to create source path");
 		}
 
 		if (!default_mounts[i].destination)
-			return log_error(-1, "BUG: auto mounts destination %d was NULL", i);
+			return syserror_set(-EINVAL, "BUG: auto mounts destination %d was NULL", i);
 
 		if (!has_cap_net_admin && default_mounts[i].requires_cap_net_admin) {
 			TRACE("Container does not have CAP_NET_ADMIN. Skipping \"%s\" mount", default_mounts[i].source ?: "(null)");
@@ -670,25 +669,21 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		/* will act like strdup if %r is not present */
 		destination = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].destination);
 		if (!destination)
-			return -1;
+			return syserror_set(-ENOMEM, "Failed to create target path");
 
 		mflags = add_required_remount_flags(source, destination,
 						    default_mounts[i].flags);
 		ret = safe_mount(source, destination, default_mounts[i].fstype,
-				mflags, default_mounts[i].options,
-				rootfs->path ? rootfs->mount : NULL);
-		saved_errno = errno;
-		if (ret < 0 && errno == ENOENT) {
-			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
-			ret = 0;
-		} else if (ret < 0) {
-			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
-		}
-
+				 mflags, default_mounts[i].options,
+				 rootfs->path ? rootfs->mount : NULL);
 		if (ret < 0) {
-			errno = saved_errno;
-			return -1;
+			if (errno != ENOENT)
+				return syserror("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
+
+			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
+			continue;
 		}
+		TRACE("Mounted automount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 	}
 
 	if (flags & LXC_AUTO_CGROUP_MASK) {
