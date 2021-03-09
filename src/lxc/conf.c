@@ -646,6 +646,7 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
         for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
 		unsigned long mflags;
+
 		if ((flags & default_mounts[i].match_mask) != default_mounts[i].match_flag)
 			continue;
 
