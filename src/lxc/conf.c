@@ -624,8 +624,7 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 
 		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno,
-					       "Failed to create proc mountpoint under %d", rootfs->dfd_mnt);
+			return syserror("Failed to create procfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
@@ -640,8 +639,7 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 
 		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno,
-					       "Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
+			return syserror("Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
