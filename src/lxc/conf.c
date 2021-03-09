@@ -3111,7 +3111,7 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 }
 
 /* Walk /proc/mounts and change any shared entries to dependent mounts. */
-void turn_into_dependent_mounts(void)
+static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
@@ -3120,9 +3120,10 @@ void turn_into_dependent_mounts(void)
 	ssize_t copied;
 	int ret;
 
-	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
+	mntinfo_fd = open_at(rootfs->dfd_host, "proc/self/mountinfo", PROTECT_OPEN,
+			     (PROTECT_LOOKUP_BENEATH_XDEV & ~RESOLVE_NO_SYMLINKS), 0);
 	if (mntinfo_fd < 0) {
-		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
+		SYSERROR("Failed to open %d/proc/self/mountinfo", rootfs->dfd_host);
 		return;
 	}
 
@@ -3187,7 +3188,6 @@ void turn_into_dependent_mounts(void)
 			SYSERROR("Failed to recursively turn old root mount tree into dependent mount. Continuing...");
 			continue;
 		}
-		TRACE("Recursively turned old root mount tree into dependent mount");
 	}
 	TRACE("Turned all mount table entries into dependent mount");
 }
@@ -3256,10 +3256,13 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 	if (conf->rootfs.dfd_host < 0)
 		return log_error_errno(-errno, errno, "Failed to open \"/\"");
 
+	turn_into_dependent_mounts(&conf->rootfs);
+
 	if (conf->rootfs_setup) {
 		const char *path = conf->rootfs.mount;
 
-		/* The rootfs was set up in another namespace. bind-mount it to
+		/*
+		 * The rootfs was set up in another namespace. bind-mount it to
 		 * give us a mount in our own ns so we can pivot_root to it
 		 */
 		ret = mount(path, path, "rootfs", MS_BIND, NULL);
@@ -3272,8 +3275,6 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 
 		return log_trace(0, "Bind mounted container / onto itself");
 	}
-
-	turn_into_dependent_mounts();
 
 	ret = run_lxc_hooks(name, "pre-mount", conf, NULL);
 	if (ret < 0)
