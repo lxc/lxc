@@ -613,24 +613,40 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
         bool has_cap_net_admin;
 
         if (flags & LXC_AUTO_PROC_MASK) {
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc",
+				 rootfs->path ? rootfs->mount : "");
+		if (ret < 0)
+			return ret_errno(EIO);
+
+		ret = umount2(rootfs->buf, MNT_DETACH);
+		if (ret)
+			SYSDEBUG("Tried to ensure procfs is unmounted");
+
 		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno,
-					       "Failed to create proc mountpoint under %d", rootfs->dfd_mnt);
+			return syserror("Failed to create procfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/sys",
+				 rootfs->path ? rootfs->mount : "");
+		if (ret < 0)
+			return ret_errno(EIO);
+
+		ret = umount2(rootfs->buf, MNT_DETACH);
+		if (ret)
+			SYSDEBUG("Tried to ensure sysfs is unmounted");
+
 		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno,
-					       "Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
+			return syserror("Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
         for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
-		int saved_errno;
 		unsigned long mflags;
+
 		if ((flags & default_mounts[i].match_mask) != default_mounts[i].match_flag)
 			continue;
 
@@ -638,11 +654,11 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 			/* will act like strdup if %r is not present */
 			source = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].source);
 			if (!source)
-				return -1;
+				return syserror_set(-ENOMEM, "Failed to create source path");
 		}
 
 		if (!default_mounts[i].destination)
-			return log_error(-1, "BUG: auto mounts destination %d was NULL", i);
+			return syserror_set(-EINVAL, "BUG: auto mounts destination %d was NULL", i);
 
 		if (!has_cap_net_admin && default_mounts[i].requires_cap_net_admin) {
 			TRACE("Container does not have CAP_NET_ADMIN. Skipping \"%s\" mount", default_mounts[i].source ?: "(null)");
@@ -652,25 +668,21 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		/* will act like strdup if %r is not present */
 		destination = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].destination);
 		if (!destination)
-			return -1;
+			return syserror_set(-ENOMEM, "Failed to create target path");
 
 		mflags = add_required_remount_flags(source, destination,
 						    default_mounts[i].flags);
 		ret = safe_mount(source, destination, default_mounts[i].fstype,
-				mflags, default_mounts[i].options,
-				rootfs->path ? rootfs->mount : NULL);
-		saved_errno = errno;
-		if (ret < 0 && errno == ENOENT) {
-			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
-			ret = 0;
-		} else if (ret < 0) {
-			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
-		}
-
+				 mflags, default_mounts[i].options,
+				 rootfs->path ? rootfs->mount : NULL);
 		if (ret < 0) {
-			errno = saved_errno;
-			return -1;
+			if (errno != ENOENT)
+				return syserror("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
+
+			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
+			continue;
 		}
+		TRACE("Mounted automount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 	}
 
 	if (flags & LXC_AUTO_CGROUP_MASK) {
@@ -3111,7 +3123,7 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 }
 
 /* Walk /proc/mounts and change any shared entries to dependent mounts. */
-void turn_into_dependent_mounts(void)
+static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
@@ -3120,9 +3132,10 @@ void turn_into_dependent_mounts(void)
 	ssize_t copied;
 	int ret;
 
-	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
+	mntinfo_fd = open_at(rootfs->dfd_host, "proc/self/mountinfo", PROTECT_OPEN,
+			     (PROTECT_LOOKUP_BENEATH_XDEV & ~RESOLVE_NO_SYMLINKS), 0);
 	if (mntinfo_fd < 0) {
-		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
+		SYSERROR("Failed to open %d/proc/self/mountinfo", rootfs->dfd_host);
 		return;
 	}
 
@@ -3187,7 +3200,6 @@ void turn_into_dependent_mounts(void)
 			SYSERROR("Failed to recursively turn old root mount tree into dependent mount. Continuing...");
 			continue;
 		}
-		TRACE("Recursively turned old root mount tree into dependent mount");
 	}
 	TRACE("Turned all mount table entries into dependent mount");
 }
@@ -3256,10 +3268,13 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 	if (conf->rootfs.dfd_host < 0)
 		return log_error_errno(-errno, errno, "Failed to open \"/\"");
 
+	turn_into_dependent_mounts(&conf->rootfs);
+
 	if (conf->rootfs_setup) {
 		const char *path = conf->rootfs.mount;
 
-		/* The rootfs was set up in another namespace. bind-mount it to
+		/*
+		 * The rootfs was set up in another namespace. bind-mount it to
 		 * give us a mount in our own ns so we can pivot_root to it
 		 */
 		ret = mount(path, path, "rootfs", MS_BIND, NULL);
@@ -3272,8 +3287,6 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 
 		return log_trace(0, "Bind mounted container / onto itself");
 	}
-
-	turn_into_dependent_mounts();
 
 	ret = run_lxc_hooks(name, "pre-mount", conf, NULL);
 	if (ret < 0)
@@ -3521,7 +3534,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	ret = lxc_create_tmp_proc_mount(lxc_conf);
 	if (ret < 0)
-		return log_error(-1, "Failed to \"/proc\" LSMs");
+		return log_error(-1, "Failed to mount transient procfs instance for LSMs");
 
 	ret = lxc_setup_console(handler, &lxc_conf->rootfs, &lxc_conf->console,
 				lxc_conf->ttys.dir);
