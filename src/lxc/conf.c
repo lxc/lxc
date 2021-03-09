@@ -3521,7 +3521,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	ret = lxc_create_tmp_proc_mount(lxc_conf);
 	if (ret < 0)
-		return log_error(-1, "Failed to \"/proc\" LSMs");
+		return log_error(-1, "Failed to mount transient procfs instance for LSMs");
 
 	ret = lxc_setup_console(handler, &lxc_conf->rootfs, &lxc_conf->console,
 				lxc_conf->ttys.dir);
