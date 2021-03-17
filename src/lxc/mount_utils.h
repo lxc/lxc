@@ -189,6 +189,13 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
 				  __u64 o_flags_to, __u64 resolve_flags_to,
 				  unsigned int attr_flags, bool recursive);
 
+__hidden extern int fd_mount_idmapped(int dfd_from, const char *path_from,
+				      __u64 o_flags_from, __u64 resolve_flags_from,
+				      int dfd_to, const char *path_to,
+				      __u64 o_flags_to, __u64 resolve_flags_to,
+				      unsigned int attr_flags, int userns_fd,
+				      bool recursive);
+
 __hidden extern int calc_remount_flags_new(int dfd_from, const char *path_from,
 					   __u64 o_flags_from,
 					   __u64 resolve_flags_from,

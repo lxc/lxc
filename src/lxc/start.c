@@ -1645,16 +1645,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	/* If the rootfs is not a blockdev, prevent the container from marking
-	 * it readonly.
-	 * If the container is unprivileged then skip rootfs pinning.
-	 */
-	ret = lxc_rootfs_prepare(&conf->rootfs, wants_to_map_ids);
-	if (ret) {
-		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
-		goto out_delete_net;
-	}
-
 	/* Create a process in a new set of namespaces. */
 	if (share_ns) {
 		pid_t attacher_pid;
@@ -2040,9 +2030,20 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 		goto out_abort;
 	}
 
+	/* If the rootfs is not a blockdev, prevent the container from marking
+	 * it readonly.
+	 * If the container is unprivileged then skip rootfs pinning.
+	 */
+	ret = lxc_rootfs_prepare(&conf->rootfs, !lxc_list_empty(&conf->id_map));
+	if (ret) {
+		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
+		ret = -1;
+		goto out_abort;
+	}
+
 	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
 		/* If the backing store is a device, mount it here and now. */
-		if (rootfs_is_blockdev(conf)) {
+		if (idmapped_rootfs_mnt(&conf->rootfs) || rootfs_is_blockdev(conf)) {
 			ret = unshare(CLONE_NEWNS);
 			if (ret < 0) {
 				ERROR("Failed to unshare CLONE_NEWNS");

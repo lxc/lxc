@@ -236,12 +236,15 @@ int fs_attach(int fd_fs,
 	return 0;
 }
 
-int fd_bind_mount(int dfd_from, const char *path_from,
-		  __u64 o_flags_from, __u64 resolve_flags_from,
-		  int dfd_to, const char *path_to,
-		  __u64 o_flags_to, __u64 resolve_flags_to,
-		  unsigned int attr_flags, bool recursive)
+static int __fd_bind_mount(int dfd_from, const char *path_from,
+			   __u64 o_flags_from, __u64 resolve_flags_from,
+			   int dfd_to, const char *path_to, __u64 o_flags_to,
+			   __u64 resolve_flags_to, unsigned int attr_flags,
+			   int userns_fd, bool recursive)
 {
+	struct lxc_mount_attr attr = {
+		.attr_set = attr_flags,
+	};
 	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
 	__do_close int fd_tree_from = -EBADF;
 	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
@@ -266,7 +269,20 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 
 	fd_tree_from = open_tree(fd_from, "", open_tree_flags);
 	if (fd_tree_from < 0)
-		return log_error_errno(-errno, errno, "Failed to create detached mount");
+		return syserror("Failed to create detached mount");
+
+	if (userns_fd >= 0) {
+		attr.attr_set	|= MOUNT_ATTR_IDMAP;
+		attr.userns_fd	= userns_fd;
+	}
+
+	if (attr.attr_set) {
+		ret = mount_setattr(fd_tree_from, "",
+				    AT_EMPTY_PATH | AT_RECURSIVE,
+				    &attr, sizeof(attr));
+		if (ret < 0)
+			return syserror("Failed to change mount attributes");
+	}
 
 	if (!is_empty_string(path_to)) {
 		struct lxc_open_how how = {
@@ -284,10 +300,32 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 
 	ret = move_mount(fd_tree_from, "", fd_to, "", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
 	if (ret)
-		return log_error_errno(-errno, errno, "Failed to attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
+		return syserror("Failed to attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
 
 	TRACE("Attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
 	return 0;
+}
+
+int fd_mount_idmapped(int dfd_from, const char *path_from,
+		      __u64 o_flags_from, __u64 resolve_flags_from,
+		      int dfd_to, const char *path_to,
+		      __u64 o_flags_to, __u64 resolve_flags_to,
+		      unsigned int attr_flags, int userns_fd, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, userns_fd, recursive);
+}
+
+int fd_bind_mount(int dfd_from, const char *path_from,
+		  __u64 o_flags_from, __u64 resolve_flags_from,
+		  int dfd_to, const char *path_to,
+		  __u64 o_flags_to, __u64 resolve_flags_to,
+		  unsigned int attr_flags, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, -EBADF, recursive);
 }
 
 int calc_remount_flags_new(int dfd_from, const char *path_from,
