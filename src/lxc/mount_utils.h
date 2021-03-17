@@ -206,5 +206,6 @@ __hidden extern unsigned long add_required_remount_flags(const char *s,
 							 unsigned long flags);
 
 __hidden extern bool can_use_mount_api(void);
+__hidden extern bool can_use_bind_mounts(void);
 
 #endif /* __LXC_MOUNT_UTILS_H */
