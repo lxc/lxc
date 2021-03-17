@@ -494,6 +494,12 @@ int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 	struct statfs stfs;
 
 	if (!is_empty_string(rootfs->mnt_opts.userns_path)) {
+		if (!rootfs->path)
+			return syserror_set(-EINVAL, "Idmapped rootfs currently only supported with separate rootfs for container");
+
+		if (rootfs->bdev_type && !strequal(rootfs->bdev_type, "dir"))
+			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
+
 		fd_userns = open_at(-EBADF, rootfs->mnt_opts.userns_path,
 				    PROTECT_OPEN_WITH_TRAILING_SYMLINKS, 0, 0);
 		if (fd_userns < 0)
