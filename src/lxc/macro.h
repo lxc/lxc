@@ -733,4 +733,8 @@ enum {
 #define hweight32(w) __const_hweight32(w)
 #define hweight64(w) __const_hweight64(w)
 
+#ifndef HAVE___ALIGNED_U64
+#define __aligned_u64 __u64 __attribute__((aligned(8)))
+#endif
+
 #endif /* __LXC_MACRO_H */
