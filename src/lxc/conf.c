@@ -98,6 +98,10 @@
 #include <../include/prlimit.h>
 #endif
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(conf, lxc);
 
 /*
@@ -2095,6 +2099,7 @@ const char *lxc_mount_options_info[LXC_MOUNT_MAX] = {
 	"create=file",
 	"optional",
 	"relative",
+	"idmap=",
 };
 
 /* Remove "optional", "create=dir", and "create=file" from mntopt */
@@ -2103,7 +2108,8 @@ void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 
 	for (size_t i = LXC_MOUNT_CREATE_DIR; i < LXC_MOUNT_MAX; i++) {
 		const char *opt_name = lxc_mount_options_info[i];
-		char *p, *p2;
+		size_t len;
+		char *idmap_path, *p, *p2;
 
 		p = strstr(mnt_opts, opt_name);
 		if (!p)
@@ -2122,9 +2128,20 @@ void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 		case LXC_MOUNT_RELATIVE:
 			opts->relative = 1;
 			break;
+		case LXC_MOUNT_IDMAP:
+			p2 = p;
+			p2 += STRLITERALLEN("idmap=");
+			idmap_path = strchrnul(p2, ',');
+
+			len = strlcpy(opts->userns_path, p2, idmap_path - p2 + 1);
+			if (len >= sizeof(opts->userns_path))
+				WARN("Excessive idmap path length for \"idmap=<path>\" LXC specific mount option");
+			else
+				TRACE("Parse LXC specific mount option \"idmap=%s\"", opts->userns_path);
+			break;
 		default:
 			WARN("Unknown LXC specific mount option");
-			continue;
+			break;
 		}
 
 		p2 = strchr(p, ',');
