@@ -529,7 +529,7 @@ __hidden extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), v
 				     const char *fn_name);
 __hidden extern int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata);
 __hidden extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
-__hidden extern void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts);
+__hidden extern int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts);
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);

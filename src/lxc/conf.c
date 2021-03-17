@@ -2103,7 +2103,7 @@ const char *lxc_mount_options_info[LXC_MOUNT_MAX] = {
 };
 
 /* Remove "optional", "create=dir", and "create=file" from mntopt */
-void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
+int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 {
 
 	for (size_t i = LXC_MOUNT_CREATE_DIR; i < LXC_MOUNT_MAX; i++) {
@@ -2135,13 +2135,15 @@ void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 
 			len = strlcpy(opts->userns_path, p2, idmap_path - p2 + 1);
 			if (len >= sizeof(opts->userns_path))
-				WARN("Excessive idmap path length for \"idmap=<path>\" LXC specific mount option");
-			else
-				TRACE("Parse LXC specific mount option \"idmap=%s\"", opts->userns_path);
+				return syserror_set(-EIO, "Excessive idmap path length for \"idmap=<path>\" LXC specific mount option");
+
+			if (is_empty_string(opts->userns_path))
+				return syserror_set(-EINVAL, "Missing idmap path for \"idmap=<path>\" LXC specific mount option");
+
+			TRACE("Parse LXC specific mount option \"idmap=%s\"", opts->userns_path);
 			break;
 		default:
-			WARN("Unknown LXC specific mount option");
-			break;
+			return syserror_set(-EINVAL, "Unknown LXC specific mount option");
 		}
 
 		p2 = strchr(p, ',');
@@ -2150,6 +2152,8 @@ void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 		else
 			memmove(p, p2 + 1, strlen(p2 + 1) + 1);
 	}
+
+	return 0;
 }
 
 static int mount_entry_create_dir_file(const struct mntent *mntent,
@@ -2227,7 +2231,10 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 		return -1;
 	}
-	parse_lxc_mntopts(&opts, mntent->mnt_opts);
+
+	ret = parse_lxc_mntopts(&opts, mntent->mnt_opts);
+	if (ret < 0)
+		return ret;
 
 	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
 	if (ret < 0)
