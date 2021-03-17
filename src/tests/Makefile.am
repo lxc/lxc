@@ -788,8 +788,7 @@ EXTRA_DIST = basic.c \
 	     snapshot.c \
 	     startone.c \
 	     state_server.c \
-	     share_ns.c \
-	     travis.sh
+	     share_ns.c
 
 clean-local:
 	rm -f lxc-test-utils-*
