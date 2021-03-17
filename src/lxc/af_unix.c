@@ -282,7 +282,7 @@ again:
 				ret_fds->flags |= UNIX_FDS_RECEIVED_EXACT;
 			}
 
-			if (hweight32((ret_fds->flags & ~UNIX_FDS_ACCEPT_MASK)) > 1) {
+			if (hweight32((ret_fds->flags & ~UNIX_FDS_ACCEPT_NONE)) > 1) {
 				for (idx = 0; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
