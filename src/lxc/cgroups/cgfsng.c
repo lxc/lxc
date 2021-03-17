@@ -2363,9 +2363,17 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 		}
 
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->controllers[0]);
-		/* not running */
-		if (!path)
-			return false;
+		if (!path) {
+			/*
+			 * Someone might have created a name=<controller>
+			 * controller after the container has started and so
+			 * the container doesn't make use of this controller.
+			 *
+			 * Link: https://github.com/lxc/lxd/issues/8577
+			 */
+			TRACE("Skipping unused %s controller", maybe_empty(h->controllers[0]));
+			continue;
+		}
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
 		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
