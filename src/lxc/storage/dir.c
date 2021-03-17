@@ -148,23 +148,46 @@ int dir_mount(struct lxc_storage *bdev)
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 
-	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags | pflags, mntdata);
-	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
+	if (can_use_bind_mounts()) {
+		__do_close int fd_source = -EBADF, fd_target = -EBADF;
 
-	if (ret == 0 && (mntflags & MS_RDONLY)) {
-		mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | pflags | MS_REMOUNT);
-		ret = mount(src, bdev->dest, "bind", mflags, mntdata);
+		fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		if (fd_source < 0)
+			return syserror("Failed to open \"%s\"", src);
+
+		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		if (fd_target < 0)
+			return syserror("Failed to open \"%s\"", bdev->dest);
+
+		ret = fd_mount_idmapped(fd_source, "", PROTECT_OPATH_DIRECTORY,
+					PROTECT_LOOKUP_BENEATH, fd_target, "",
+					PROTECT_OPATH_DIRECTORY,
+					PROTECT_LOOKUP_BENEATH, 0,
+					bdev->rootfs->mnt_opts.userns_fd, true);
 		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-					       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
-		else
-			DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-			      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+			return syserror("Failed to mount \"%s\" onto \"%s\"", src, bdev->dest);
+	} else {
+		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags | pflags, mntdata);
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
+
+		if (ret == 0 && (mntflags & MS_RDONLY)) {
+			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | pflags | MS_REMOUNT);
+
+			ret = mount(src, bdev->dest, "bind", mflags, mntdata);
+			if (ret < 0)
+				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
+						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+			else
+				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
+				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+		}
+
+		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
+		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
 	}
 
-	TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-	      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+	TRACE("Mounted \"%s\" onto \"%s\"", src, bdev->dest);
 	return 0;
 }
 

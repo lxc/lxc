@@ -488,10 +488,17 @@ int run_script(const char *name, const char *section, const char *script, ...)
  */
 int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 {
-	__do_close int dfd_path = -EBADF, fd_pin = -EBADF;
+	__do_close int dfd_path = -EBADF, fd_pin = -EBADF, fd_userns = -EBADF;
 	int ret;
 	struct stat st;
 	struct statfs stfs;
+
+	if (!is_empty_string(rootfs->mnt_opts.userns_path)) {
+		fd_userns = open_at(-EBADF, rootfs->mnt_opts.userns_path,
+				    PROTECT_OPEN_WITH_TRAILING_SYMLINKS, 0, 0);
+		if (fd_userns < 0)
+			return syserror("Failed to open user namespace");
+	}
 
 	if (rootfs->path) {
 		if (rootfs->bdev_type &&
@@ -504,13 +511,17 @@ int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 		dfd_path = open_at(-EBADF, "/", PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE, 0);
 	}
 	if (dfd_path < 0)
-		return log_error_errno(-errno, errno, "Failed to open \"%s\"", rootfs->path);
+		return syserror("Failed to open \"%s\"", rootfs->path);
 
-	if (!rootfs->path)
-		return log_trace(0, "Not pinning because container does not have a rootfs");
+	if (!rootfs->path) {
+		TRACE("Not pinning because container does not have a rootfs");
+		goto out;
+	}
 
-	if (userns)
-		return log_trace(0, "Not pinning because container runs in user namespace");
+	if (userns) {
+		TRACE("Not pinning because container runs in user namespace");
+		goto out;
+	}
 
 	ret = fstat(dfd_path, &st);
 	if (ret < 0)
@@ -524,7 +535,7 @@ int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 			 PROTECT_LOOKUP_BENEATH,
 			 S_IWUSR | S_IRUSR);
 	if (fd_pin < 0)
-		return log_error_errno(-errno, errno, "Failed to pin rootfs");
+		return syserror("Failed to pin rootfs");
 
 	TRACE("Pinned rootfs %d(.lxc_keep)", fd_pin);
 
@@ -546,6 +557,7 @@ int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 
 out:
 	rootfs->fd_path_pin = move_fd(fd_pin);
+	rootfs->mnt_opts.userns_fd = move_fd(fd_userns);
 	return 0;
 }
 
@@ -2105,6 +2117,7 @@ const char *lxc_mount_options_info[LXC_MOUNT_MAX] = {
 /* Remove "optional", "create=dir", and "create=file" from mntopt */
 int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 {
+	__do_close int fd_userns = -EBADF;
 
 	for (size_t i = LXC_MOUNT_CREATE_DIR; i < LXC_MOUNT_MAX; i++) {
 		const char *opt_name = lxc_mount_options_info[i];
@@ -2140,7 +2153,12 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			if (is_empty_string(opts->userns_path))
 				return syserror_set(-EINVAL, "Missing idmap path for \"idmap=<path>\" LXC specific mount option");
 
-			TRACE("Parse LXC specific mount option \"idmap=%s\"", opts->userns_path);
+			close_prot_errno_disarm(fd_userns);
+			fd_userns = open(opts->userns_path, O_RDONLY | O_NOCTTY | O_CLOEXEC);
+			if (fd_userns < 0)
+				return syserror("Failed to open user namespace");
+
+			TRACE("Parse LXC specific mount option %d->\"idmap=%s\"", fd_userns, opts->userns_path);
 			break;
 		default:
 			return syserror_set(-EINVAL, "Unknown LXC specific mount option");
@@ -2726,6 +2744,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.dfd_dev = -EBADF;
 	new->rootfs.dfd_host = -EBADF;
 	new->rootfs.fd_path_pin = -EBADF;
+	new->rootfs.mnt_opts.userns_fd = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
