@@ -488,3 +488,28 @@ bool can_use_mount_api(void)
 
 	return supported == 1;
 }
+
+bool can_use_bind_mounts(void)
+{
+	static int supported = -1;
+
+	if (supported == -1) {
+		int ret;
+
+		if (!can_use_mount_api()) {
+			supported = 0;
+			return false;
+		}
+
+		ret = mount_setattr(-EBADF, NULL, 0, NULL, 0);
+		if (!ret || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		supported = 1;
+		TRACE("Kernel supports bind mounts in the new mount api");
+	}
+
+	return supported == 1;
+}
