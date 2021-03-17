@@ -186,7 +186,8 @@ typedef enum lxc_mount_options_t {
 	LXC_MOUNT_CREATE_FILE	= 1,
 	LXC_MOUNT_OPTIONAL	= 2,
 	LXC_MOUNT_RELATIVE	= 3,
-	LXC_MOUNT_MAX		= 4,
+	LXC_MOUNT_IDMAP		= 4,
+	LXC_MOUNT_MAX		= 5,
 } lxc_mount_options_t;
 
 __hidden extern const char *lxc_mount_options_info[LXC_MOUNT_MAX];
@@ -196,6 +197,7 @@ struct lxc_mount_options {
 	int create_file : 1;
 	int optional : 1;
 	int relative : 1;
+	char userns_path[PATH_MAX];
 };
 
 /* Defines a structure to store the rootfs location, the
