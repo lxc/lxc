@@ -2090,33 +2090,48 @@ skipremount:
 	return 0;
 }
 
-/* Remove "optional", "create=dir", and "create=file" from mntopt */
-static void cull_mntent_opt(struct mntent *mntent)
-{
-	int i;
-	char *list[] = {
-		"create=dir",
-		"create=file",
-		"optional",
-		"relative",
-		NULL
-	};
+const char *lxc_mount_options_info[LXC_MOUNT_MAX] = {
+	"create=dir",
+	"create=file",
+	"optional",
+	"relative",
+};
 
-	for (i = 0; list[i]; i++) {
+/* Remove "optional", "create=dir", and "create=file" from mntopt */
+void parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
+{
+
+	for (size_t i = LXC_MOUNT_CREATE_DIR; i < LXC_MOUNT_MAX; i++) {
+		const char *opt_name = lxc_mount_options_info[i];
 		char *p, *p2;
 
-		p = strstr(mntent->mnt_opts, list[i]);
+		p = strstr(mnt_opts, opt_name);
 		if (!p)
 			continue;
 
-		p2 = strchr(p, ',');
-		if (!p2) {
-			/* no more mntopts, so just chop it here */
-			*p = '\0';
+		switch (i) {
+		case LXC_MOUNT_CREATE_DIR:
+			opts->create_dir = 1;
+			break;
+		case LXC_MOUNT_CREATE_FILE:
+			opts->create_file = 1;
+			break;
+		case LXC_MOUNT_OPTIONAL:
+			opts->optional = 1;
+			break;
+		case LXC_MOUNT_RELATIVE:
+			opts->relative = 1;
+			break;
+		default:
+			WARN("Unknown LXC specific mount option");
 			continue;
 		}
 
-		memmove(p, p2 + 1, strlen(p2 + 1) + 1);
+		p2 = strchr(p, ',');
+		if (!p2)
+			*p = '\0'; /* no more mntopts, so just chop it here */
+		else
+			memmove(p, p2 + 1, strlen(p2 + 1) + 1);
 	}
 }
 
@@ -2178,6 +2193,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	char *rootfs_path = NULL;
 	int ret;
 	bool dev, optional, relative;
+	struct lxc_mount_options opts = {};
 
 	optional = hasmntopt(mntent, "optional") != NULL;
 	dev = hasmntopt(mntent, "dev") != NULL;
@@ -2194,7 +2210,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 		return -1;
 	}
-	cull_mntent_opt(mntent);
+	parse_lxc_mntopts(&opts, mntent->mnt_opts);
 
 	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
 	if (ret < 0)
