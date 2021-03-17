@@ -152,6 +152,10 @@
 #define MOUNT_ATTR_NODIRATIME 0x00000080 /* Do not update directory access times */
 #endif
 
+#ifndef MOUNT_ATTR_IDMAP
+#define MOUNT_ATTR_IDMAP 0x00100000
+#endif
+
 __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new_flags);
 
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
