@@ -2123,9 +2123,8 @@ const char *lxc_mount_options_info[LXC_MOUNT_MAX] = {
 /* Remove "optional", "create=dir", and "create=file" from mntopt */
 int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 {
-	__do_close int fd_userns = -EBADF;
-
 	for (size_t i = LXC_MOUNT_CREATE_DIR; i < LXC_MOUNT_MAX; i++) {
+		__do_close int fd_userns = -EBADF;
 		const char *opt_name = lxc_mount_options_info[i];
 		size_t len;
 		char *idmap_path, *p, *p2;
@@ -2159,7 +2158,6 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			if (is_empty_string(opts->userns_path))
 				return syserror_set(-EINVAL, "Missing idmap path for \"idmap=<path>\" LXC specific mount option");
 
-			close_prot_errno_disarm(fd_userns);
 			fd_userns = open(opts->userns_path, O_RDONLY | O_NOCTTY | O_CLOEXEC);
 			if (fd_userns < 0)
 				return syserror("Failed to open user namespace");
