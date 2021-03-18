@@ -194,7 +194,7 @@ static struct attach_context *alloc_attach_context(void)
 	ctx->target_host_uid	= LXC_INVALID_UID;
 	ctx->target_host_gid	= LXC_INVALID_GID;
 
-	for (int i = 0; i < LXC_NS_MAX; i++)
+	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
 
 	return ctx;
@@ -438,7 +438,7 @@ static int get_attach_context(struct attach_context *ctx,
 		if (options->namespaces == -1)
 			return log_error_errno(-EINVAL, EINVAL, "Failed to automatically determine the namespaces which the container uses");
 
-		for (int i = 0; i < LXC_NS_MAX; i++) {
+		for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
 			if (ns_info[i].clone_flag & CLONE_NEWCGROUP)
 				if (!(options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) ||
 				    !cgns_supported())
@@ -533,7 +533,7 @@ static int same_ns(int dfd_pid1, int dfd_pid2, const char *ns_path)
 
 static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 {
-	for (int i = 0; i < LXC_NS_MAX; i++) {
+	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
 
 		ret = same_nsfd(ctx->dfd_self_pid,
@@ -561,8 +561,8 @@ static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 static int __prepare_namespaces_nsfd(struct attach_context *ctx,
 				     lxc_attach_options_t *options)
 {
-	for (int i = 0; i < LXC_NS_MAX; i++) {
-		int j;
+	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
+		lxc_namespace_t j;
 
 		if (options->namespaces & ns_info[i].clone_flag)
 			ctx->ns_fd[i] = open_at(ctx->dfd_init_pid,
@@ -644,7 +644,7 @@ static int __attach_namespaces_nsfd(struct attach_context *ctx,
 {
 	int fret = 0;
 
-	for (int i = 0; i < LXC_NS_MAX; i++) {
+	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
 
 		if (ctx->ns_fd[i] < 0)
@@ -672,7 +672,7 @@ static int attach_namespaces(struct attach_context *ctx,
 			     lxc_attach_options_t *options)
 {
 	if (lxc_log_trace()) {
-		for (int i = 0; i < LXC_NS_MAX; i++) {
+		for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
 			if (ns_info[i].clone_flag & options->namespaces) {
 				TRACE("Attaching to %s namespace", ns_info[i].proc_name);
 				continue;
