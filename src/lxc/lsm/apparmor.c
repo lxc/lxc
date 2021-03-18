@@ -1165,15 +1165,15 @@ static int apparmor_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on
 
 static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec)
 {
+	__do_free char *command = NULL;
 	int ret = -1;
 	size_t len;
-	__do_free char *command = NULL;
 
 	if (on_exec)
-		log_trace(0, "Changing AppArmor profile on exec not supported");
+		TRACE("Changing AppArmor profile on exec not supported");
 
 	len = strlen(label) + strlen("changeprofile ") + 1;
-	command = malloc(len);
+	command = zalloc(len);
 	if (!command)
 		return ret_errno(ENOMEM);
 
