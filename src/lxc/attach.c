@@ -181,10 +181,12 @@ static struct attach_context *alloc_attach_context(void)
 	if (!ctx)
 		return ret_set_errno(NULL, ENOMEM);
 
+	ctx->init_pid		= -ESRCH;
+
 	ctx->dfd_self_pid	= -EBADF;
 	ctx->dfd_init_pid	= -EBADF;
 	ctx->init_pidfd		= -EBADF;
-	ctx->init_pid		= -ESRCH;
+
 	ctx->setup_ns_uid	= LXC_INVALID_UID;
 	ctx->setup_ns_gid	= LXC_INVALID_GID;
 	ctx->target_ns_uid	= LXC_INVALID_UID;
