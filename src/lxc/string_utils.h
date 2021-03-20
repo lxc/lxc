@@ -14,6 +14,10 @@
 #include "include/strlcat.h"
 #endif
 
+#ifndef HAVE_STRCHRNUL
+#include "include/strchrnul.h"
+#endif
+
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 __hidden extern char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
 __hidden extern const char **lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);
