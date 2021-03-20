@@ -2258,6 +2258,9 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	if (ret < 0)
 		return ret;
 
+	if (!is_empty_string(opts.userns_path))
+		return syserror_set(-EINVAL, "Idmapped mount entries not yet supported");
+
 	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
 	if (ret < 0)
 		return -1;
