@@ -640,7 +640,7 @@ AC_CHECK_HEADER([ifaddrs.h],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount, openat2, close_range, statvfs, strchrnul])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount, openat2, close_range, statvfs])
 AC_CHECK_TYPES([__aligned_u64], [], [], [[#include <linux/types.h>]])
 AC_CHECK_TYPES([struct open_how], [], [], [[#include <linux/openat2.h>]])
 AC_CHECK_TYPES([struct clone_args], [], [], [[#include <linux/sched.h>]])
@@ -727,6 +727,10 @@ AC_CHECK_FUNCS([strlcat],
 	AM_CONDITIONAL(HAVE_STRLCAT, true)
 	AC_DEFINE(HAVE_STRLCAT,1,[Have strlcat]),
 	AM_CONDITIONAL(HAVE_STRLCAT, false))
+AC_CHECK_FUNCS([strchrnul],
+	AM_CONDITIONAL(HAVE_STRCHRNUL, true)
+	AC_DEFINE(HAVE_STRCHRNUL,1,[Have strchnul]),
+	AM_CONDITIONAL(HAVE_STRCHRNUL, false))
 AC_CHECK_FUNCS([fmemopen],
 	AM_CONDITIONAL(HAVE_FMEMOPEN, true)
 	AC_DEFINE(HAVE_FMEMOPEN,1,[Have fmemopen]),

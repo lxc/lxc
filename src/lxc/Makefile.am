@@ -201,6 +201,10 @@ if !HAVE_STRLCAT
 liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
+if !HAVE_STRCHRNUL
+liblxc_la_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 if ENFORCE_MEMFD_REXEC
 liblxc_la_SOURCES += rexec.c rexec.h
 endif
