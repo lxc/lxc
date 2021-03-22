@@ -31,6 +31,9 @@ char *strchrnul(const char *s, int c_in)
 	unsigned long int longword, magic_bits, charmask;
 	unsigned char c;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+		for (rta = __NLMSG_RTA(h, sizeof(*ifi)); __NLMSG_RTAOK(rta, h);
 	c = (unsigned char)c_in;
 
 	/* Handle the first few characters by reading one character at a time.
@@ -45,6 +48,7 @@ char *strchrnul(const char *s, int c_in)
 	   but the theory applies equally well to 8-byte longwords.  */
 
 	longword_ptr = (unsigned long int *)char_ptr;
+#pragma GCC diagnostic pop
 
 	/* Bits 31, 24, 16, and 8 of this number are zero.  Call these bits
 	   the "holes."  Note that there is a hole just to the left of
