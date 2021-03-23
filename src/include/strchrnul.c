@@ -33,7 +33,6 @@ char *strchrnul(const char *s, int c_in)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
-		for (rta = __NLMSG_RTA(h, sizeof(*ifi)); __NLMSG_RTAOK(rta, h);
 	c = (unsigned char)c_in;
 
 	/* Handle the first few characters by reading one character at a time.
