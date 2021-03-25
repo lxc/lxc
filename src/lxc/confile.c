@@ -1836,35 +1836,36 @@ static int set_config_sysctl(const char *key, const char *value,
 		return -1;
 
 	key += STRLITERALLEN("lxc.sysctl.");
+	if (is_empty_string(key))
+		return ret_errno(-EINVAL);
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
 		__do_free char *replace_value = NULL;
+		struct lxc_sysctl *cur = iter->elem;
 
-		sysctl_elem = iter->elem;
-
-		if (!strequal(key, sysctl_elem->key))
+		if (!strequal(key, cur->key))
 			continue;
 
 		replace_value = strdup(value);
 		if (!replace_value)
 			return ret_errno(EINVAL);
 
-		free(sysctl_elem->value);
-		sysctl_elem->value = move_ptr(replace_value);
+		free(cur->value);
+		cur->value = move_ptr(replace_value);
 
 		return 0;
 	}
 
 	/* allocate list element */
-	sysctl_list = malloc(sizeof(*sysctl_list));
+	sysctl_list = zalloc(sizeof(*sysctl_list));
 	if (!sysctl_list)
 		return ret_errno(ENOMEM);
+	lxc_list_init(sysctl_list);
 
-	sysctl_elem = malloc(sizeof(*sysctl_elem));
+	sysctl_elem = zalloc(sizeof(*sysctl_elem));
 	if (!sysctl_elem)
 		return ret_errno(ENOMEM);
-	memset(sysctl_elem, 0, sizeof(*sysctl_elem));
 
 	sysctl_elem->key = strdup(key);
 	if (!sysctl_elem->key)
