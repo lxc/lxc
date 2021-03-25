@@ -3773,7 +3773,7 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe (it, &c->sysctls, next) {
+	lxc_list_for_each_safe(it, &c->sysctls, next) {
 		struct lxc_sysctl *elem = it->elem;
 
 		if (!all && !strequal(elem->key, k))
@@ -3785,6 +3785,9 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 		free(elem);
 		free(it);
 	}
+
+	if (all)
+		lxc_list_init(&c->sysctls);
 
 	return 0;
 }
