@@ -746,6 +746,12 @@ AC_SEARCH_LIBS(clock_gettime, [rt])
 # See if we support thread-local storage.
 LXC_CHECK_TLS
 
+# Build with ASAN commands
+AC_ARG_ENABLE([fuzz],
+	[AS_HELP_STRING([--enable-fuzz], [fuzzer build [default=no]])],
+	[enable_fuzz=$enableval], [enable_fuzz=no])
+AM_CONDITIONAL([ENABLE_FUZZ], [test "x$enable_fuzz" = "xyes"])
+
 # Hardening flags
 CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 	-fPIE \
@@ -792,15 +798,21 @@ CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 	-Wstringop-overflow])
 AC_SUBST(AM_CFLAGS)
 
-CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[ \
+CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[\
 	-Wl,--as-needed \
-        -Wl,--no-undefined \
-        -Wl,--gc-sections \
-        -Wl,-z,relro \
-        -Wl,-z,now \
-        -pie \
-        -Wl,-fuse-ld=gold])
+	-Wl,--gc-sections \
+	-Wl,-z,relro \
+	-Wl,-z,now \
+	-pie \
+	-Wl,-fuse-ld=gold])
 AC_SUBST(AM_LDFLAGS)
+
+if test "x$enable_fuzz" = "xno"; then
+	CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[-Wl,--no-undefined])
+	AC_SUBST(AM_LDFLAGS)
+fi
+
+CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],["$CHECK_LD_FLAGS"])
 
 CFLAGS="$CFLAGS -Wvla -std=gnu11 -fms-extensions"
 if test "x$enable_werror" = "xyes"; then
