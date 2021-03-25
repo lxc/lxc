@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include "memory_utils.h"
+
 struct lxc_list {
 	void *elem;
 	struct lxc_list *next;
@@ -141,6 +143,16 @@ static inline size_t lxc_list_len(struct lxc_list *list)
 	}
 
 	return i;
+}
+
+static inline struct lxc_list *lxc_list_new(void)
+{
+	struct lxc_list *l;
+
+	l = zalloc(sizeof(struct lxc_list));
+	if (l)
+		lxc_list_init(l);
+	return l;
 }
 
 #endif /* __LXC_LIST_H */

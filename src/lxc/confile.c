@@ -560,11 +560,10 @@ static int set_config_net_veth_vlan_tagged_id(const char *key, const char *value
 	if (vlan_id > BRIDGE_VLAN_ID_MAX)
 		ret_errno(EINVAL);
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
 
-	lxc_list_init(list);
 	list->elem = UINT_TO_PTR(vlan_id);
 
 	lxc_list_add_tail(&netdev->priv.veth_attr.vlan_tagged_ids, move_ptr(list));
@@ -703,16 +702,13 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	inetdev = malloc(sizeof(*inetdev));
+	inetdev = zalloc(sizeof(*inetdev));
 	if (!inetdev)
 		return ret_errno(ENOMEM);
-	memset(inetdev, 0, sizeof(*inetdev));
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
-
-	lxc_list_init(list);
 
 	addr = strdup(value);
 	if (!addr)
@@ -790,7 +786,7 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 		__do_free struct in_addr *gw = NULL;
 		int ret;
 
-		gw = malloc(sizeof(*gw));
+		gw = zalloc(sizeof(*gw));
 		if (!gw)
 			return ret_errno(ENOMEM);
 
@@ -826,16 +822,14 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 				       EINVAL, "Invalid ipv4 route \"%s\", can only be used with veth network",
 				       value);
 
-	inetdev = malloc(sizeof(*inetdev));
+	inetdev = zalloc(sizeof(*inetdev));
 	if (!inetdev)
 		return ret_errno(ENOMEM);
-	memset(inetdev, 0, sizeof(*inetdev));
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
 
-	lxc_list_init(list);
 	list->elem = inetdev;
 
 	valdup = strdup(value);
@@ -884,16 +878,13 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	inet6dev = malloc(sizeof(*inet6dev));
+	inet6dev = zalloc(sizeof(*inet6dev));
 	if (!inet6dev)
 		return ret_errno(ENOMEM);
-	memset(inet6dev, 0, sizeof(*inet6dev));
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
-
-	lxc_list_init(list);
 
 	valdup = strdup(value);
 	if (!valdup)
@@ -946,7 +937,7 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 		int ret;
 		__do_free struct in6_addr *gw = NULL;
 
-		gw = malloc(sizeof(*gw));
+		gw = zalloc(sizeof(*gw));
 		if (!gw)
 			return ret_errno(ENOMEM);
 
@@ -983,16 +974,13 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 				       EINVAL, "Invalid ipv6 route \"%s\", can only be used with veth network",
 				       value);
 
-	inet6dev = malloc(sizeof(*inet6dev));
+	inet6dev = zalloc(sizeof(*inet6dev));
 	if (!inet6dev)
 		return ret_errno(ENOMEM);
-	memset(inet6dev, 0, sizeof(*inet6dev));
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
-
-	lxc_list_init(list);
 
 	valdup = strdup(value);
 	if (!valdup)
@@ -1058,7 +1046,7 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, __owns char *hook)
 	__do_free char *val = hook;
 	struct lxc_list *hooklist;
 
-	hooklist = malloc(sizeof(*hooklist));
+	hooklist = lxc_list_new();
 	if (!hooklist)
 		return ret_errno(ENOMEM);
 
@@ -1434,7 +1422,7 @@ static int set_config_group(const char *key, const char *value,
 	lxc_iterate_parts(token, groups, " \t") {
 		__do_free struct lxc_list *grouplist = NULL;
 
-		grouplist = malloc(sizeof(*grouplist));
+		grouplist = lxc_list_new();
 		if (!grouplist)
 			return ret_errno(ENOMEM);
 
@@ -1456,7 +1444,7 @@ static int set_config_environment(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
-	list_item = malloc(sizeof(*list_item));
+	list_item = lxc_list_new();
 	if (!list_item)
 		return ret_errno(ENOMEM);
 
@@ -1570,7 +1558,7 @@ static int set_config_apparmor_raw(const char *key,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_apparmor_raw(lxc_conf);
 
-	list = malloc(sizeof(*list));
+	list = lxc_list_new();
 	if (!list)
 		return ret_errno(ENOMEM);
 
@@ -1771,14 +1759,13 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	cglist = malloc(sizeof(*cglist));
+	cglist = lxc_list_new();
 	if (!cglist)
 		return ret_errno(ENOMEM);
 
-	cgelem = malloc(sizeof(*cgelem));
+	cgelem = zalloc(sizeof(*cgelem));
 	if (!cgelem)
 		return ret_errno(ENOMEM);
-	memset(cgelem, 0, sizeof(*cgelem));
 
 	cgelem->subsystem = strdup(subkey);
 	if (!cgelem->subsystem)
@@ -2005,14 +1992,13 @@ static int set_config_prlimit(const char *key, const char *value,
 	}
 
 	/* allocate list element */
-	limlist = malloc(sizeof(*limlist));
+	limlist = lxc_list_new();
 	if (!limlist)
 		return ret_errno(ENOMEM);
 
-	limelem = malloc(sizeof(*limelem));
+	limelem = zalloc(sizeof(*limelem));
 	if (!limelem)
 		return ret_errno(ENOMEM);
-	memset(limelem, 0, sizeof(*limelem));
 
 	limelem->resource = strdup(key);
 	if (!limelem->resource)
@@ -2039,35 +2025,35 @@ static int set_config_sysctl(const char *key, const char *value,
 		return -1;
 
 	key += STRLITERALLEN("lxc.sysctl.");
+	if (is_empty_string(key))
+		return ret_errno(-EINVAL);
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
 		__do_free char *replace_value = NULL;
+		struct lxc_sysctl *cur = iter->elem;
 
-		sysctl_elem = iter->elem;
-
-		if (!strequal(key, sysctl_elem->key))
+		if (!strequal(key, cur->key))
 			continue;
 
 		replace_value = strdup(value);
 		if (!replace_value)
 			return ret_errno(EINVAL);
 
-		free(sysctl_elem->value);
-		sysctl_elem->value = move_ptr(replace_value);
+		free(cur->value);
+		cur->value = move_ptr(replace_value);
 
 		return 0;
 	}
 
 	/* allocate list element */
-	sysctl_list = malloc(sizeof(*sysctl_list));
+	sysctl_list = lxc_list_new();
 	if (!sysctl_list)
 		return ret_errno(ENOMEM);
 
-	sysctl_elem = malloc(sizeof(*sysctl_elem));
+	sysctl_elem = zalloc(sizeof(*sysctl_elem));
 	if (!sysctl_elem)
 		return ret_errno(ENOMEM);
-	memset(sysctl_elem, 0, sizeof(*sysctl_elem));
 
 	sysctl_elem->key = strdup(key);
 	if (!sysctl_elem->key)
@@ -2100,14 +2086,13 @@ static int set_config_proc(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	proclist = malloc(sizeof(*proclist));
+	proclist = lxc_list_new();
 	if (!proclist)
 		return ret_errno(ENOMEM);
 
-	procelem = malloc(sizeof(*procelem));
+	procelem = zalloc(sizeof(*procelem));
 	if (!procelem)
 		return ret_errno(ENOMEM);
-	memset(procelem, 0, sizeof(*procelem));
 
 	procelem->filename = strdup(subkey);
 	if (!procelem->filename)
@@ -2135,14 +2120,13 @@ static int set_config_idmaps(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
-	idmaplist = malloc(sizeof(*idmaplist));
+	idmaplist = lxc_list_new();
 	if (!idmaplist)
 		return ret_errno(ENOMEM);
 
-	idmap = malloc(sizeof(*idmap));
+	idmap = zalloc(sizeof(*idmap));
 	if (!idmap)
 		return ret_errno(ENOMEM);
-	memset(idmap, 0, sizeof(*idmap));
 
 	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
 	if (ret < 0)
@@ -2298,7 +2282,7 @@ static int set_config_mount(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
-	mntlist = malloc(sizeof(*mntlist));
+	mntlist = lxc_list_new();
 	if (!mntlist)
 		return ret_errno(ENOMEM);
 
@@ -2337,7 +2321,7 @@ static int set_config_cap_keep(const char *key, const char *value,
 		if (strequal(token, "none"))
 			lxc_clear_config_keepcaps(lxc_conf);
 
-		keeplist = malloc(sizeof(*keeplist));
+		keeplist = lxc_list_new();
 		if (!keeplist)
 			return ret_errno(ENOMEM);
 
@@ -2369,7 +2353,7 @@ static int set_config_cap_drop(const char *key, const char *value,
 	 * split these caps in a single element for the list.
 	 */
 	lxc_iterate_parts(token, dropcaps, " \t") {
-		droplist = malloc(sizeof(*droplist));
+		droplist = lxc_list_new();
 		if (!droplist)
 			return ret_errno(ENOMEM);
 
@@ -2709,7 +2693,7 @@ static int set_config_uts_name(const char *key, const char *value,
 		return 0;
 	}
 
-	utsname = malloc(sizeof(*utsname));
+	utsname = zalloc(sizeof(*utsname));
 	if (!utsname)
 		return ret_errno(ENOMEM);
 
@@ -2993,7 +2977,7 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 		}
 	}
 
-	new = malloc(sizeof(struct new_config_item));
+	new = zalloc(sizeof(struct new_config_item));
 	if (!new)
 		return NULL;
 
@@ -3028,7 +3012,7 @@ int lxc_config_define_add(struct lxc_list *defines, char *arg)
 {
 	__do_free struct lxc_list *dent = NULL;
 
-	dent = malloc(sizeof(struct lxc_list));
+	dent = lxc_list_new();
 	if (!dent)
 		return ret_errno(ENOMEM);
 

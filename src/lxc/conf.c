@@ -286,7 +286,7 @@ static int run_buffer(char *buffer)
 	if (!f)
 		return log_error_errno(-1, errno, "Failed to popen() %s", buffer);
 
-	output = malloc(LXC_LOG_BUFFER_SIZE);
+	output = zalloc(LXC_LOG_BUFFER_SIZE);
 	if (!output)
 		return log_error_errno(-1, ENOMEM, "Failed to allocate memory for %s", buffer);
 
@@ -357,7 +357,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 			return -EFBIG;
 	}
 
-	buffer = malloc(size);
+	buffer = zalloc(size);
 	if (!buffer)
 		return -ENOMEM;
 
@@ -797,7 +797,7 @@ static bool append_ttyname(char **pp, char *name)
 	size_t size;
 
 	if (!*pp) {
-		*pp = malloc(strlen(name) + strlen("container_ttys=") + 1);
+		*pp = zalloc(strlen(name) + strlen("container_ttys=") + 1);
 		if (!*pp)
 			return false;
 
@@ -2655,10 +2655,9 @@ struct lxc_conf *lxc_conf_init(void)
 	int i;
 	struct lxc_conf *new;
 
-	new = malloc(sizeof(*new));
+	new = zalloc(sizeof(*new));
 	if (!new)
 		return NULL;
-	memset(new, 0, sizeof(*new));
 
 	new->loglevel = LXC_LOG_LEVEL_NOTSET;
 	new->personality = -1;
@@ -3773,7 +3772,7 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe (it, &c->sysctls, next) {
+	lxc_list_for_each_safe(it, &c->sysctls, next) {
 		struct lxc_sysctl *elem = it->elem;
 
 		if (!all && !strequal(elem->key, k))
@@ -3785,6 +3784,9 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 		free(elem);
 		free(it);
 	}
+
+	if (all)
+		lxc_list_init(&c->sysctls);
 
 	return 0;
 }
@@ -4033,7 +4035,7 @@ static struct id_map *mapped_nsid_add(const struct lxc_conf *conf, unsigned id,
 	if (!map)
 		return NULL;
 
-	retmap = malloc(sizeof(*retmap));
+	retmap = zalloc(sizeof(*retmap));
 	if (!retmap)
 		return NULL;
 
@@ -4072,7 +4074,7 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 	int hostid_mapped;
 	struct id_map *tmp = NULL;
 
-	entry = malloc(sizeof(*entry));
+	entry = zalloc(sizeof(*entry));
 	if (!entry)
 		return NULL;
 
@@ -4136,13 +4138,12 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 		return log_debug(NULL, "Failed to find mapping for gid %d", egid);
 
 	/* Allocate new {g,u}id map list. */
-	idmap = malloc(sizeof(*idmap));
+	idmap = lxc_list_new();
 	if (!idmap)
 		return NULL;
-	lxc_list_init(idmap);
 
 	/* Add container root to the map. */
-	tmplist = malloc(sizeof(*tmplist));
+	tmplist = lxc_list_new();
 	if (!tmplist)
 		return NULL;
 	/* idmap will now keep track of that memory. */
@@ -4151,7 +4152,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 
 	if (container_root_uid) {
 		/* Add container root to the map. */
-		tmplist = malloc(sizeof(*tmplist));
+		tmplist = lxc_list_new();
 		if (!tmplist)
 			return NULL;
 		/* idmap will now keep track of that memory. */
@@ -4159,7 +4160,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 		lxc_list_add_tail(idmap, tmplist);
 	}
 
-	tmplist = malloc(sizeof(*tmplist));
+	tmplist = lxc_list_new();
 	if (!tmplist)
 		return NULL;
 	/* idmap will now keep track of that memory. */
@@ -4167,7 +4168,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (container_root_gid) {
-		tmplist = malloc(sizeof(*tmplist));
+		tmplist = lxc_list_new();
 		if (!tmplist)
 			return NULL;
 		/* idmap will now keep track of that memory. */
@@ -4437,20 +4438,19 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	egid = getegid();
 
 	/* Allocate new {g,u}id map list. */
-	idmap = malloc(sizeof(*idmap));
+	idmap = lxc_list_new();
 	if (!idmap)
 		goto on_error;
-	lxc_list_init(idmap);
 
 	/* Find container root. */
 	lxc_list_for_each (cur, &conf->id_map) {
 		struct id_map *tmpmap;
 
-		tmplist = malloc(sizeof(*tmplist));
+		tmplist = lxc_list_new();
 		if (!tmplist)
 			goto on_error;
 
-		tmpmap = malloc(sizeof(*tmpmap));
+		tmpmap = zalloc(sizeof(*tmpmap));
 		if (!tmpmap) {
 			free(tmplist);
 			goto on_error;
@@ -4512,7 +4512,7 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	if (host_uid_map && (host_uid_map != container_root_uid)) {
 		/* Add container root to the map. */
-		tmplist = malloc(sizeof(*tmplist));
+		tmplist = lxc_list_new();
 		if (!tmplist)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_uid_map);
@@ -4522,7 +4522,7 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	host_uid_map = NULL;
 
 	if (host_gid_map && (host_gid_map != container_root_gid)) {
-		tmplist = malloc(sizeof(*tmplist));
+		tmplist = lxc_list_new();
 		if (!tmplist)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_gid_map);
@@ -4672,10 +4672,9 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		TRACE("Chowned %d(%s) to -1:%d", target_fd, path, hostgid);
 	}
 
-	idmap = malloc(sizeof(*idmap));
+	idmap = lxc_list_new();
 	if (!idmap)
 		return -ENOMEM;
-	lxc_list_init(idmap);
 
 	/* "u:0:rootuid:1" */
 	ret = add_idmap_entry(idmap, ID_TYPE_UID, 0, container_host_uid, 1);
@@ -4807,7 +4806,7 @@ static char *getuname(void)
 	if (bufsize == -1)
 		bufsize = 1024;
 
-	buf = malloc(bufsize);
+	buf = zalloc(bufsize);
 	if (!buf)
 		return NULL;
 
@@ -4835,7 +4834,7 @@ static char *getgname(void)
 	if (bufsize == -1)
 		bufsize = 1024;
 
-	buf = malloc(bufsize);
+	buf = zalloc(bufsize);
 	if (!buf)
 		return NULL;
 
@@ -4974,14 +4973,14 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings)
 	struct lxc_cgroup *cg = NULL;
 	struct lxc_list *it = NULL, *item = NULL, *memsw_limit = NULL;
 
-	result = malloc(sizeof(*result));
+	result = lxc_list_new();
 	if (!result)
 		return NULL;
 	lxc_list_init(result);
 
 	/* Iterate over the cgroup settings and copy them to the output list. */
 	lxc_list_for_each (it, cgroup_settings) {
-		item = malloc(sizeof(*item));
+		item = zalloc(sizeof(*item));
 		if (!item) {
 			free_cgroup_settings(result);
 			return NULL;
