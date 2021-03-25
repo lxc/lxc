@@ -3962,6 +3962,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_aa_profile_computed);
 	free(conf->lsm_se_context);
+	free(conf->lsm_se_keyring_context);
 	lxc_seccomp_free(&conf->seccomp);
 	lxc_clear_config_caps(conf);
 	lxc_clear_config_keepcaps(conf);
