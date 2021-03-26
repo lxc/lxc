@@ -502,7 +502,11 @@ static int build_dir(const char *name)
 			continue;
 		*p = '\0';
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		ret = lxc_unpriv(mkdir(n, 0755));
+#else
+		ret = errno = EEXIST;
+#endif /*!FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 		*p = '/';
 		if (ret && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", n);
