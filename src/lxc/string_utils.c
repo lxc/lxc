@@ -906,7 +906,7 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	char dup[INTTYPE_TO_STRLEN(int64_t)];
 	char suffix[3] = {0};
 
-	if (!s || strequal(s, ""))
+	if (is_empty_string(s))
 		return ret_errno(EINVAL);
 
 	end = stpncpy(dup, s, sizeof(dup) - 1);
@@ -920,17 +920,26 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	else
 		return ret_errno(EINVAL);
 
-	if (suffix_len > 0 && (end - 2) == dup && !isdigit(*(end - 2)))
-		return ret_errno(EINVAL);
-
-	if (suffix_len > 0 && isalpha(*(end - 2)))
-		suffix_len++;
-
 	if (suffix_len > 0) {
+		if ((end - 1) == dup)
+			return ret_errno(EINVAL);
+
+		if ((end - 2) == dup) {
+			if (isalpha(*(end - 2)))
+				return ret_errno(EINVAL);
+			/* 1B */
+		} else {
+			if (isalpha(*(end - 2))) /* 12MB */
+				suffix_len++;
+
+			/* 12B */
+		}
+
 		memcpy(suffix, end - suffix_len, suffix_len);
 		*(suffix + suffix_len) = '\0';
 		*(end - suffix_len) = '\0';
 	}
+
 	dup[lxc_char_right_gc(dup, strlen(dup))] = '\0';
 
 	ret = lxc_safe_long_long(dup, &conv);
