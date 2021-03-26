@@ -884,6 +884,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (c->set_config_item(c, "lxc.log.file=", "./")) {
+		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.log.file\" to \"./\"");
+		return -1;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
