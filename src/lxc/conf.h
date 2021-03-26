@@ -104,7 +104,7 @@ struct lxc_limit {
 static void free_lxc_limit(struct lxc_limit *ptr)
 {
 	if (ptr) {
-		free(ptr->resource);
+		free_disarm(ptr->resource);
 		free_disarm(ptr);
 	}
 }
