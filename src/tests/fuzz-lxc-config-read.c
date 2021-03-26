@@ -10,7 +10,7 @@
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	int fd = -1;
-	char tmpf[] = "fuzz-lxc-config-read-XXXXXX";
+	char tmpf[] = "/tmp/fuzz-lxc-config-read-XXXXXX";
 	struct lxc_conf *conf = NULL;
 
 	fd = lxc_make_tmpfile(tmpf, false);
