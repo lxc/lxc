@@ -3612,6 +3612,10 @@ static bool lxc_delete_network_priv(struct lxc_handler *handler)
 		}
 
 		if (netdev->type == LXC_NET_PHYS) {
+			/* Physical interfaces are initially returned to the parent namespace
+			 * with their transient name to avoid collisions
+			 */
+			netdev->ifindex = if_nametoindex(netdev->transient_name);
 			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);
 			if (ret < 0)
 				WARN("Failed to rename interface with index %d "
@@ -3683,6 +3687,12 @@ clear_ifindices:
 		} else if (netdev->type == LXC_NET_VETH) {
 			netdev->priv.veth_attr.veth1[0] = '\0';
 			netdev->priv.veth_attr.ifindex = 0;
+		}
+
+		/* Clear transient name */
+		if (!is_empty_string (netdev->transient_name))
+		{
+			netdev->transient_name[0] = '\0';
 		}
 	}
 
@@ -3761,7 +3771,10 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 			continue;
 		}
 
-		ret = lxc_netdev_move_by_index_fd(netdev->ifindex, oldfd, netdev->link);
+		/* Restore physical interfaces to host's network namespace with its transient name
+		 * to avoid collisions with the host's other interfaces.
+		 */
+		ret = lxc_netdev_move_by_index_fd(netdev->ifindex, oldfd, netdev->transient_name);
 		if (ret < 0)
 			WARN("Error moving network device \"%s\" back to network namespace", ifname);
 		else
