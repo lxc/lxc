@@ -513,8 +513,9 @@ static int build_dir(const char *name)
 
 static int log_open(const char *name)
 {
+	int newfd = -EBADF;
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	__do_close int fd = -EBADF;
-	int newfd;
 
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
 	if (fd < 0)
@@ -526,7 +527,7 @@ static int log_open(const char *name)
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO);
 	if (newfd < 0)
 		return log_error_errno(-errno, errno, "Failed to dup log fd %d", fd);
-
+#endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	return newfd;
 }
 
@@ -821,7 +822,6 @@ int lxc_log_set_file(int *fd, const char *fname)
 	*fd = log_open(fname);
 	if (*fd < 0)
 		return -errno;
-
 	return 0;
 }
 
