@@ -1458,9 +1458,6 @@ static int set_config_log_file(const char *key, const char *value,
 		return 0;
 	}
 
-	if (!abspath(value))
-		return ret_errno(EINVAL);
-
 	/*
 	 * Store these values in the lxc_conf, and then try to set for actual
 	 * current logging.
