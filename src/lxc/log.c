@@ -492,9 +492,6 @@ static int build_dir(const char *name)
 	if (is_empty_string(name))
 		return ret_errno(EINVAL);
 
-	if (!abspath(name))
-		return ret_errno(EINVAL);
-
 	/* Make copy of the string since we'll be modifying it. */
 	n = strdup(name);
 	if (!n)

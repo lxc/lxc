@@ -626,8 +626,8 @@ static int set_config_net_ipvlan_isolation(const char *key, const char *value,
 static int set_config_net_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *new_value = NULL;
 	struct lxc_netdev *netdev = data;
-	char *new_value;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_hwaddr(key, lxc_conf, data);
@@ -641,13 +641,10 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 
 	rand_complete_hwaddr(new_value);
 
-	if (lxc_config_value_empty(new_value)) {
-		free(new_value);
-		netdev->hwaddr = NULL;
-		return 0;
-	}
-
-	netdev->hwaddr = new_value;
+	if (lxc_config_value_empty(new_value))
+		free_disarm(netdev->hwaddr);
+	else
+		netdev->hwaddr = move_ptr(new_value);
 
 	return 0;
 }
@@ -1599,9 +1596,6 @@ static int set_config_log_file(const char *key, const char *value,
 		free_disarm(c->logfile);
 		return 0;
 	}
-
-	if (!abspath(value))
-		return ret_errno(EINVAL);
 
 	/*
 	 * Store these values in the lxc_conf, and then try to set for actual
