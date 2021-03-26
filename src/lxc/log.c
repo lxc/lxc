@@ -489,6 +489,12 @@ static int build_dir(const char *name)
 	__do_free char *n = NULL;
 	char *e, *p;
 
+	if (is_empty_string(name))
+		return ret_errno(EINVAL);
+
+	if (!abspath(name))
+		return ret_errno(EINVAL);
+
 	/* Make copy of the string since we'll be modifying it. */
 	n = strdup(name);
 	if (!n)
@@ -604,7 +610,7 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 	if (lxc_log_fd >= 0)
 		lxc_log_close();
 
-	if (!fname)
+	if (is_empty_string(fname))
 		return ret_errno(EINVAL);
 
 	if (strlen(fname) == 0) {
@@ -819,6 +825,9 @@ int lxc_log_set_file(int *fd, const char *fname)
 {
 	if (*fd >= 0)
 		close_prot_errno_disarm(*fd);
+
+	if (is_empty_string(fname))
+		return ret_errno(EINVAL);
 
 	if (build_dir(fname))
 		return -errno;
