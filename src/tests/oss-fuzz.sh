@@ -43,4 +43,6 @@ make -j$(nproc)
 $CC -c -o fuzz-lxc-config-read.o $CFLAGS -Isrc -Isrc/lxc src/tests/fuzz-lxc-config-read.c
 $CXX $CXXFLAGS $LIB_FUZZING_ENGINE fuzz-lxc-config-read.o src/lxc/.libs/liblxc.a -o $OUT/fuzz-lxc-config-read
 
+perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >doc/examples/all-keys.conf
+[[ -s doc/examples/all-keys.conf ]]
 zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip doc/examples
