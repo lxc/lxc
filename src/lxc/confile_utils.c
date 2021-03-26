@@ -1024,17 +1024,31 @@ static int sig_num(const char *sig)
 
 static int rt_sig_num(const char *signame)
 {
-	int rtmax = 0, sig_n = 0;
+	bool rtmax;
+	int sig_n = 0;
 
-	if (strncasecmp(signame, "max-", 4) == 0)
-		rtmax = 1;
+	if (is_empty_string(signame))
+		return ret_errno(EINVAL);
 
-	signame += 4;
-	if (!isdigit(*signame))
+	if (strncasecmp(signame, "max-", STRLITERALLEN("max-")) == 0) {
+		rtmax = true;
+		signame += STRLITERALLEN("max-");
+	} else if (strncasecmp(signame, "min+", STRLITERALLEN("min+")) == 0) {
+		rtmax = false;
+		signame += STRLITERALLEN("min+");
+	} else {
+		return ret_errno(EINVAL);
+	}
+
+	if (is_empty_string(signame) || !isdigit(*signame))
 		return ret_errno(EINVAL);
 
 	sig_n = sig_num(signame);
-	sig_n = rtmax ? SIGRTMAX - sig_n : SIGRTMIN + sig_n;
+	if (rtmax)
+		sig_n = SIGRTMAX - sig_n;
+	else
+		sig_n = SIGRTMIN + sig_n;
+
 	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
 		return ret_errno(EINVAL);
 
@@ -1043,16 +1057,15 @@ static int rt_sig_num(const char *signame)
 
 int sig_parse(const char *signame)
 {
-	size_t n;
-
-	if (isdigit(*signame)) {
+	if (isdigit(*signame))
 		return sig_num(signame);
-	} else if (strncasecmp(signame, "sig", 3) == 0) {
-		signame += 3;
-		if (strncasecmp(signame, "rt", 2) == 0)
-			return rt_sig_num(signame + 2);
 
-		for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++)
+	if (strncasecmp(signame, "sig", STRLITERALLEN("sig")) == 0) {
+		signame += STRLITERALLEN("sig");
+		if (strncasecmp(signame, "rt", STRLITERALLEN("rt")) == 0)
+			return rt_sig_num(signame + STRLITERALLEN("rt"));
+
+		for (size_t n = 0; n < ARRAY_SIZE(signames); n++)
 			if (strcasecmp(signames[n].name, signame) == 0)
 				return signames[n].num;
 	}
