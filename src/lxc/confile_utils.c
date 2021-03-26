@@ -169,7 +169,6 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	if (!netdev)
 		return ret_set_errno(NULL, ENOMEM);
 
-	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
 
@@ -177,11 +176,9 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	netdev->idx = idx;
 
 	/* prepare new list */
-	newlist = zalloc(sizeof(*newlist));
+	newlist = lxc_list_new();
 	if (!newlist)
 		return ret_set_errno(NULL, ENOMEM);
-
-	lxc_list_init(newlist);
 	newlist->elem = netdev;
 
 	if (tail)
@@ -199,25 +196,27 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 					 unsigned int idx, bool allocate)
 {
-	struct lxc_netdev *netdev = NULL;
 	struct lxc_list *networks = &conf->network;
 	struct lxc_list *insert = networks;
 
 	/* lookup network */
 	if (!lxc_list_empty(networks)) {
 		lxc_list_for_each(insert, networks) {
-			netdev = insert->elem;
+			struct lxc_netdev *netdev = insert->elem;
+
+			/* found network device */
 			if (netdev->idx == idx)
 				return netdev;
-			else if (netdev->idx > idx)
+
+			if (netdev->idx > idx)
 				break;
 		}
 	}
 
-	if (!allocate)
-		return ret_set_errno(NULL, EINVAL);
+	if (allocate)
+		return lxc_network_add(insert, idx, true);
 
-	return lxc_network_add(insert, idx, true);
+	return NULL;
 }
 
 void lxc_log_configured_netdevs(const struct lxc_conf *conf)
@@ -452,19 +451,21 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 	free(netdev);
 }
 
-define_cleanup_function(struct lxc_netdev *, lxc_free_netdev);
-
 bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 {
-	call_cleaner(lxc_free_netdev) struct lxc_netdev *netdev = NULL;
 	struct lxc_list *cur, *next;
 
+	if (lxc_list_empty(&conf->network))
+		return false;
+
 	lxc_list_for_each_safe(cur, &conf->network, next) {
-		netdev = cur->elem;
+		struct lxc_netdev *netdev = cur->elem;
+
 		if (netdev->idx != idx)
 			continue;
 
 		lxc_list_del(cur);
+		lxc_free_netdev(netdev);
 		return true;
 	}
 
