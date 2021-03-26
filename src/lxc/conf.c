@@ -3754,6 +3754,7 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 
 		free_disarm(lim->resource);
 		free(lim);
+		free(it);
 	}
 
 	if (all)
