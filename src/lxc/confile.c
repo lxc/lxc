@@ -2598,6 +2598,9 @@ static int parse_line(char *buffer, void *data)
 	char *dup = buffer;
 	struct parse_line_conf *plc = data;
 
+	if (!plc->conf)
+		return syserror_set(-EINVAL, "Missing config");
+
 	/* If there are newlines in the config file we should keep them. */
 	empty_line = lxc_is_line_empty(dup);
 	if (empty_line)
@@ -2667,6 +2670,9 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 	char *dup = buffer;
 	char *dot, *key, *line, *value;
 
+	if (is_empty_string(buffer))
+		return log_error_errno(NULL, EINVAL, "Empty configuration line");
+
 	linep = line = strdup(dup);
 	if (!line)
 		return NULL;
@@ -2719,16 +2725,19 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 
 int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 {
-	struct parse_line_conf c;
+	struct parse_line_conf plc;
 
-	c.conf = conf;
-	c.from_include = from_include;
+	if (!conf)
+		return syserror_set(-EINVAL, "Missing config");
+
+	plc.conf = conf;
+	plc.from_include = from_include;
 
 	/* Catch only the top level config file name in the structure. */
 	if (!conf->rcfile)
 		conf->rcfile = strdup(file);
 
-	return lxc_file_for_each_line_mmap(file, parse_line, &c);
+	return lxc_file_for_each_line_mmap(file, parse_line, &plc);
 }
 
 int lxc_config_define_add(struct lxc_list *defines, char *arg)
