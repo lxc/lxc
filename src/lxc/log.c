@@ -489,6 +489,12 @@ static int build_dir(const char *name)
 	__do_free char *n = NULL;
 	char *e, *p;
 
+	if (is_empty_string(name))
+		return ret_errno(EINVAL);
+
+	if (!abspath(name))
+		return ret_errno(EINVAL);
+
 	/* Make copy of the string since we'll be modifying it. */
 	n = strdup(name);
 	if (!n)
@@ -502,7 +508,11 @@ static int build_dir(const char *name)
 			continue;
 		*p = '\0';
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		ret = lxc_unpriv(mkdir(n, 0755));
+#else
+		ret = errno = EEXIST;
+#endif /*!FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 		*p = '/';
 		if (ret && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", n);
@@ -513,8 +523,9 @@ static int build_dir(const char *name)
 
 static int log_open(const char *name)
 {
+	int newfd = -EBADF;
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	__do_close int fd = -EBADF;
-	int newfd;
 
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
 	if (fd < 0)
@@ -526,7 +537,7 @@ static int log_open(const char *name)
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO);
 	if (newfd < 0)
 		return log_error_errno(-errno, errno, "Failed to dup log fd %d", fd);
-
+#endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	return newfd;
 }
 
@@ -599,7 +610,7 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 	if (lxc_log_fd >= 0)
 		lxc_log_close();
 
-	if (!fname)
+	if (is_empty_string(fname))
 		return ret_errno(EINVAL);
 
 	if (strlen(fname) == 0) {
@@ -815,13 +826,15 @@ int lxc_log_set_file(int *fd, const char *fname)
 	if (*fd >= 0)
 		close_prot_errno_disarm(*fd);
 
+	if (is_empty_string(fname))
+		return ret_errno(EINVAL);
+
 	if (build_dir(fname))
 		return -errno;
 
 	*fd = log_open(fname);
 	if (*fd < 0)
 		return -errno;
-
 	return 0;
 }
 
