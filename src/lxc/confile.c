@@ -525,6 +525,7 @@ static int set_config_net_veth_vlan_id(const char *key, const char *value,
 		netdev->priv.veth_attr.vlan_id = BRIDGE_VLAN_NONE;
 	} else {
 		unsigned short vlan_id;
+
 		ret = get_u16(&vlan_id, value, 0);
 		if (ret < 0)
 			return ret_errno(EINVAL);
@@ -555,10 +556,10 @@ static int set_config_net_veth_vlan_tagged_id(const char *key, const char *value
 
 	ret = get_u16(&vlan_id, value, 0);
 	if (ret < 0)
-		ret_errno(EINVAL);
+		return ret_errno(EINVAL);
 
 	if (vlan_id > BRIDGE_VLAN_ID_MAX)
-		ret_errno(EINVAL);
+		return ret_errno(EINVAL);
 
 	list = lxc_list_new();
 	if (!list)
