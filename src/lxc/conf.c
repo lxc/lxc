@@ -3742,7 +3742,7 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	else if (strnequal(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")))
 		k = key + STRLITERALLEN("lxc.prlimit.");
 	else
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each_safe (it, &c->limits, next) {
 		struct lxc_limit *lim = it->elem;
@@ -3751,10 +3751,13 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 			continue;
 
 		lxc_list_del(it);
-		free(lim->resource);
+
+		free_disarm(lim->resource);
 		free(lim);
-		free(it);
 	}
+
+	if (all)
+		lxc_list_init(&c->limits);
 
 	return 0;
 }
