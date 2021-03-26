@@ -525,6 +525,7 @@ static int set_config_net_veth_vlan_id(const char *key, const char *value,
 		netdev->priv.veth_attr.vlan_id = BRIDGE_VLAN_NONE;
 	} else {
 		unsigned short vlan_id;
+
 		ret = get_u16(&vlan_id, value, 0);
 		if (ret < 0)
 			return ret_errno(EINVAL);
@@ -555,10 +556,10 @@ static int set_config_net_veth_vlan_tagged_id(const char *key, const char *value
 
 	ret = get_u16(&vlan_id, value, 0);
 	if (ret < 0)
-		ret_errno(EINVAL);
+		return ret_errno(EINVAL);
 
 	if (vlan_id > BRIDGE_VLAN_ID_MAX)
-		ret_errno(EINVAL);
+		return ret_errno(EINVAL);
 
 	list = lxc_list_new();
 	if (!list)
@@ -1929,8 +1930,8 @@ static bool parse_limit_value(const char **value, rlim_t *res)
 static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *limlist = NULL;
-	call_cleaner(free_lxc_limit) struct lxc_limit *limelem = NULL;
+	__do_free struct lxc_list *list = NULL;
+	call_cleaner(free_lxc_limit) struct lxc_limit *elem = NULL;
 	struct lxc_list *iter;
 	struct rlimit limit;
 	rlim_t limit_value;
@@ -1981,29 +1982,31 @@ static int set_config_prlimit(const char *key, const char *value,
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->limits) {
-		limelem = iter->elem;
-		if (strequal(key, limelem->resource)) {
-			limelem->limit = limit;
-			return 0;
-		}
+		struct lxc_limit *cur = iter->elem;
+
+		if (!strequal(key, cur->resource))
+			continue;
+
+		cur->limit = limit;
+		return 0;
 	}
 
 	/* allocate list element */
-	limlist = lxc_list_new();
-	if (!limlist)
+	list = lxc_list_new();
+	if (!list)
 		return ret_errno(ENOMEM);
 
-	limelem = zalloc(sizeof(*limelem));
-	if (!limelem)
+	elem = zalloc(sizeof(*elem));
+	if (!elem)
 		return ret_errno(ENOMEM);
 
-	limelem->resource = strdup(key);
-	if (!limelem->resource)
+	elem->resource = strdup(key);
+	if (!elem->resource)
 		return ret_errno(ENOMEM);
 
-	limelem->limit = limit;
-	lxc_list_add_elem(limlist, move_ptr(limelem));;
-	lxc_list_add_tail(&lxc_conf->limits, move_ptr(limlist));
+	elem->limit = limit;
+	lxc_list_add_elem(list, move_ptr(elem));;
+	lxc_list_add_tail(&lxc_conf->limits, move_ptr(list));
 
 	return 0;
 }
