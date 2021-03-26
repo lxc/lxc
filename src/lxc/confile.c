@@ -2667,6 +2667,10 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
 	int ret;
 
+	clr_config_rootfs_options(key, lxc_conf, data);
+	if (lxc_config_value_empty(value))
+		return 0;
+
 	ret = parse_mntopts(value, &mflags, &mdata);
 	if (ret < 0)
 		return ret_errno(EINVAL);
@@ -2679,9 +2683,9 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (ret < 0)
 		return ret_errno(ENOMEM);
 
-	rootfs->mountflags = mflags | pflags;
-	rootfs->options = move_ptr(opts);
-	rootfs->data = move_ptr(mdata);
+	rootfs->mountflags	= mflags | pflags;
+	rootfs->options		= move_ptr(opts);
+	rootfs->data		= move_ptr(mdata);
 
 	return 0;
 }
