@@ -2070,7 +2070,10 @@ static int set_config_mount_auto(const char *key, const char *value,
 			if(!container_path)
 				return log_error_errno(-EINVAL, EINVAL, "Failed to copy shmounts container path");
 
+			free_disarm(lxc_conf->shmount.path_host);
 			lxc_conf->shmount.path_host = move_ptr(host_path);
+
+			free_disarm(lxc_conf->shmount.path_cont);
 			lxc_conf->shmount.path_cont = move_ptr(container_path);
 		}
 	}
