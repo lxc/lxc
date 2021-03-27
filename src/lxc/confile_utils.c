@@ -481,6 +481,7 @@ void lxc_free_networks(struct lxc_list *networks)
 
 		lxc_list_del(cur);
 		lxc_free_netdev(netdev);
+		free(cur);
 	}
 
 	/* prevent segfaults */
