@@ -5171,7 +5171,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	char *idx_start, *idx_end;
 
 	/* check that this is a sensible network key */
-	if (!strnequal("lxc.net.", key, 8))
+	if (!strnequal("lxc.net.", key, STRLITERALLEN("lxc.net.")))
 		return log_error_errno(NULL, EINVAL, "Invalid network configuration key \"%s\"", key);
 
 	copy = strdup(key);
@@ -5179,15 +5179,15 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		return log_error_errno(NULL, ENOMEM, "Failed to duplicate string \"%s\"", key);
 
 	/* lxc.net.<n> */
-	if (!isdigit(*(key + 8)))
+	if (!isdigit(*(key + STRLITERALLEN("lxc.net."))))
 		return log_error_errno(NULL, EINVAL, "Failed to detect digit in string \"%s\"", key + 8);
 
 	/* beginning of index string */
-	idx_start = (copy + 7);
+	idx_start = copy + (STRLITERALLEN("lxc.net.") - 1);
 	*idx_start = '\0';
 
 	/* end of index string */
-	idx_end = strchr((copy + 8), '.');
+	idx_end = strchr((copy + STRLITERALLEN("lxc.net.")), '.');
 	if (idx_end)
 		*idx_end = '\0';
 
@@ -5217,7 +5217,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		if (strlen(idx_end + 1) == 0)
 			return log_error_errno(NULL, EINVAL, "No subkey in network configuration key \"%s\"", key);
 
-		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
+		memmove(copy + STRLITERALLEN("lxc.net."), idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - (numstrlen + 1)] = '\0';
 
 		config = lxc_get_config(copy);
