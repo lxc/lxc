@@ -4759,6 +4759,8 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		*idx_end = '.';
 		if (strlen(idx_end + 1) == 0)
 			return log_error_errno(NULL, EINVAL, "No subkey in network configuration key \"%s\"", key);
+		if (isdigit(*(idx_end + 1)))
+			return log_error_errno(NULL, EINVAL, "Key can't contain more than one index");
 
 		memmove(copy + STRLITERALLEN("lxc.net."), idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - (numstrlen + 1)] = '\0';
