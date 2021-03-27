@@ -671,6 +671,8 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	} else {
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
 	}
+	if (inetdev->prefix > 32)
+		return ret_errno(EINVAL);
 
 	/* If no broadcast address, let compute one from the
 	 * prefix and address.
