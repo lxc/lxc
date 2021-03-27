@@ -466,6 +466,7 @@ bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 
 		lxc_list_del(cur);
 		lxc_free_netdev(netdev);
+		free(cur);
 		return true;
 	}
 
