@@ -677,6 +677,8 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 	if (!residual && residual_len != 0)
 		return ret_errno(EINVAL);
 
+	memset(residual, 0, residual_len);
+
 	while (isspace(*numstr))
 		numstr++;
 
@@ -691,10 +693,8 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 	if (residual) {
 		size_t len = 0;
 
-		if (*remaining == '\0') {
-			memset(residual, 0, residual_len);
+		if (*remaining == '\0')
 			goto out;
-		}
 
 		len = strlen(remaining);
 		if (len >= residual_len)
