@@ -3674,11 +3674,9 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 
 int lxc_clear_namespace(struct lxc_conf *c)
 {
-	int i;
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		free(c->ns_share[i]);
-		c->ns_share[i] = NULL;
-	}
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		free_disarm(c->ns_share[i]);
+
 	return 0;
 }
 
@@ -3711,7 +3709,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe (it, list, next) {
+	lxc_list_for_each_safe(it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
 
 		if (!all && !strequal(cg->subsystem, k))
@@ -3814,7 +3812,7 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe (it, &c->procs, next) {
+	lxc_list_for_each_safe(it, &c->procs, next) {
 		struct lxc_proc *proc = it->elem;
 
 		if (!all && !strequal(proc->filename, k))
@@ -3883,7 +3881,6 @@ int lxc_clear_automounts(struct lxc_conf *c)
 
 int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
-	int i;
 	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false, done = false;
@@ -3895,7 +3892,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	for (i = 0; i < NUM_LXC_HOOKS; i++) {
+	for (int i = 0; i < NUM_LXC_HOOKS; i++) {
 		if (all || strequal(k, lxchook_names[i])) {
 			lxc_list_for_each_safe (it, &c->hooks[i], next) {
 				lxc_list_del(it);
@@ -3931,7 +3928,7 @@ void lxc_clear_includes(struct lxc_conf *conf)
 {
 	struct lxc_list *it, *next;
 
-	lxc_list_for_each_safe (it, &conf->includes, next) {
+	lxc_list_for_each_safe(it, &conf->includes, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
