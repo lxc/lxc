@@ -3627,6 +3627,7 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->caps);
 	return 0;
 }
 
@@ -3640,6 +3641,7 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 		free(it);
 	}
 
+	lxc_list_init(id_map);
 	return 0;
 }
 
@@ -3666,6 +3668,7 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->keepcaps);
 	return 0;
 }
 
@@ -3720,6 +3723,9 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 		free(cg);
 		free(it);
 	}
+
+	if (all)
+		lxc_list_init(list);
 
 	return 0;
 }
@@ -3821,6 +3827,9 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 		free(it);
 	}
 
+	if (all)
+		lxc_list_init(&c->procs);
+
 	return 0;
 }
 
@@ -3834,6 +3843,7 @@ int lxc_clear_groups(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->groups);
 	return 0;
 }
 
@@ -3847,6 +3857,7 @@ int lxc_clear_environment(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->environment);
 	return 0;
 }
 
@@ -3860,6 +3871,7 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->mount_list);
 	return 0;
 }
 
@@ -3890,6 +3902,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 				free(it->elem);
 				free(it);
 			}
+			lxc_list_init(&c->hooks[i]);
 
 			done = true;
 		}
@@ -3910,6 +3923,8 @@ static inline void lxc_clear_aliens(struct lxc_conf *conf)
 		free(it->elem);
 		free(it);
 	}
+
+	lxc_list_init(&conf->aliens);
 }
 
 void lxc_clear_includes(struct lxc_conf *conf)
@@ -3921,6 +3936,8 @@ void lxc_clear_includes(struct lxc_conf *conf)
 		free(it->elem);
 		free(it);
 	}
+
+	lxc_list_init(&conf->includes);
 }
 
 int lxc_clear_apparmor_raw(struct lxc_conf *c)
@@ -3933,6 +3950,7 @@ int lxc_clear_apparmor_raw(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->lsm_aa_raw);
 	return 0;
 }
 
