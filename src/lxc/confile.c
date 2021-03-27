@@ -657,9 +657,8 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 
 	rand_complete_hwaddr(new_value);
 
-	if (lxc_config_value_empty(new_value))
-		free_disarm(netdev->hwaddr);
-	else
+	free_disarm(netdev->hwaddr);
+	if (!lxc_config_value_empty(new_value))
 		netdev->hwaddr = move_ptr(new_value);
 
 	return 0;
