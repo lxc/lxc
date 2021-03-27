@@ -4739,7 +4739,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	 * better safe than sorry.
 	 * (Checking for INT_MAX here is intentional.)
 	 */
-	if (tmpidx == INT_MAX)
+	if (tmpidx >= INT_MAX)
 		return log_error_errno(NULL, ERANGE, "Number of configured networks would overflow the counter");
 	*idx = tmpidx;
 
