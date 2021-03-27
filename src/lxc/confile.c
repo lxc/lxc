@@ -2421,7 +2421,7 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 					  struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	int64_t size;
+	long long int size;
 	uint64_t buffer_size, pgsz;
 
 	if (lxc_config_value_empty(value)) {
@@ -2445,7 +2445,7 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 	/* must be at least a page size */
 	pgsz = lxc_getpagesize();
 	if ((uint64_t)size < pgsz) {
-		NOTICE("Requested ringbuffer size for the console is %" PRId64 " but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		NOTICE("Requested ringbuffer size for the console is %lld but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
 		       size, pgsz, pgsz);
 		size = pgsz;
 	}
@@ -2466,7 +2466,7 @@ static int set_config_console_size(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	int64_t size;
+	long long int size;
 	uint64_t log_size, pgsz;
 
 	if (lxc_config_value_empty(value)) {
@@ -2490,7 +2490,7 @@ static int set_config_console_size(const char *key, const char *value,
 	/* must be at least a page size */
 	pgsz = lxc_getpagesize();
 	if ((uint64_t)size < pgsz) {
-		NOTICE("Requested ringbuffer size for the console is %" PRId64 " but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		NOTICE("Requested ringbuffer size for the console is %lld but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
 		       size, pgsz, pgsz);
 		size = pgsz;
 	}

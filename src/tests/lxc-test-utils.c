@@ -403,7 +403,7 @@ void test_lxc_string_in_array(void)
 void test_parse_byte_size_string(void)
 {
 	int ret;
-	int64_t n;
+	long long int n;
 
 	ret = parse_byte_size_string("0", &n);
 	if (ret < 0) {

@@ -897,13 +897,12 @@ void *must_realloc(void *orig, size_t sz)
 	return ret;
 }
 
-int parse_byte_size_string(const char *s, int64_t *converted)
+int parse_byte_size_string(const char *s, long long int *converted)
 {
 	int ret, suffix_len;
-	long long int conv;
-	int64_t mltpl, overflow;
+	long long int conv, mltpl;
 	char *end;
-	char dup[INTTYPE_TO_STRLEN(int64_t)];
+	char dup[INTTYPE_TO_STRLEN(long long int)];
 	char suffix[3] = {0};
 
 	if (is_empty_string(s))
@@ -960,11 +959,9 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	else
 		return ret_errno(EINVAL);
 
-	overflow = conv * mltpl;
-	if (conv != 0 && (overflow / conv) != mltpl)
+	if (check_mul_overflow(conv, mltpl, converted))
 		return ret_errno(ERANGE);
 
-	*converted = overflow;
 	return 0;
 }
 
