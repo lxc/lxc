@@ -21,7 +21,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	conf = lxc_conf_init();
 	lxc_test_assert_abort(conf);
 	lxc_config_read(tmpf, conf, false);
-	lxc_conf_free(conf);
 
 	(void) unlink(tmpf);
 	return 0;
