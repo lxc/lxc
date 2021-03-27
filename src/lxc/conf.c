@@ -3627,6 +3627,7 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->caps);
 	return 0;
 }
 
@@ -3640,6 +3641,7 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 		free(it);
 	}
 
+	lxc_list_init(id_map);
 	return 0;
 }
 
@@ -3666,16 +3668,15 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->keepcaps);
 	return 0;
 }
 
 int lxc_clear_namespace(struct lxc_conf *c)
 {
-	int i;
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		free(c->ns_share[i]);
-		c->ns_share[i] = NULL;
-	}
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		free_disarm(c->ns_share[i]);
+
 	return 0;
 }
 
@@ -3708,7 +3709,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe (it, list, next) {
+	lxc_list_for_each_safe(it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
 
 		if (!all && !strequal(cg->subsystem, k))
@@ -3720,6 +3721,9 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 		free(cg);
 		free(it);
 	}
+
+	if (all)
+		lxc_list_init(list);
 
 	return 0;
 }
@@ -3808,7 +3812,7 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe (it, &c->procs, next) {
+	lxc_list_for_each_safe(it, &c->procs, next) {
 		struct lxc_proc *proc = it->elem;
 
 		if (!all && !strequal(proc->filename, k))
@@ -3820,6 +3824,9 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 		free(proc);
 		free(it);
 	}
+
+	if (all)
+		lxc_list_init(&c->procs);
 
 	return 0;
 }
@@ -3834,6 +3841,7 @@ int lxc_clear_groups(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->groups);
 	return 0;
 }
 
@@ -3847,6 +3855,7 @@ int lxc_clear_environment(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->environment);
 	return 0;
 }
 
@@ -3860,6 +3869,7 @@ int lxc_clear_mount_entries(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->mount_list);
 	return 0;
 }
 
@@ -3871,7 +3881,6 @@ int lxc_clear_automounts(struct lxc_conf *c)
 
 int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
-	int i;
 	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false, done = false;
@@ -3883,13 +3892,14 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	for (i = 0; i < NUM_LXC_HOOKS; i++) {
+	for (int i = 0; i < NUM_LXC_HOOKS; i++) {
 		if (all || strequal(k, lxchook_names[i])) {
 			lxc_list_for_each_safe (it, &c->hooks[i], next) {
 				lxc_list_del(it);
 				free(it->elem);
 				free(it);
 			}
+			lxc_list_init(&c->hooks[i]);
 
 			done = true;
 		}
@@ -3910,17 +3920,21 @@ static inline void lxc_clear_aliens(struct lxc_conf *conf)
 		free(it->elem);
 		free(it);
 	}
+
+	lxc_list_init(&conf->aliens);
 }
 
 void lxc_clear_includes(struct lxc_conf *conf)
 {
 	struct lxc_list *it, *next;
 
-	lxc_list_for_each_safe (it, &conf->includes, next) {
+	lxc_list_for_each_safe(it, &conf->includes, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
 	}
+
+	lxc_list_init(&conf->includes);
 }
 
 int lxc_clear_apparmor_raw(struct lxc_conf *c)
@@ -3933,6 +3947,7 @@ int lxc_clear_apparmor_raw(struct lxc_conf *c)
 		free(it);
 	}
 
+	lxc_list_init(&c->lsm_aa_raw);
 	return 0;
 }
 
