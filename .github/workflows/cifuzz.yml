@@ -29,7 +29,7 @@ jobs:
         with:
           oss-fuzz-project-name: 'lxc'
           fuzz-seconds: 180
-          dry-run: ${{ matrix.sanitizer != 'address' }}
+          dry-run: ${{ matrix.sanitizer == 'memory' }}
           sanitizer: ${{ matrix.sanitizer }}
       - name: Upload Crash
         uses: actions/upload-artifact@v1
