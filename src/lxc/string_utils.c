@@ -902,7 +902,7 @@ int parse_byte_size_string(const char *s, long long int *converted)
 	int ret, suffix_len;
 	long long int conv, mltpl;
 	char *end;
-	char dup[INTTYPE_TO_STRLEN(long long int)];
+	char dup[INTTYPE_TO_STRLEN(long long int)] = {0};
 	char suffix[3] = {0};
 
 	if (is_empty_string(s))
