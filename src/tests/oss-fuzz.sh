@@ -4,8 +4,14 @@ set -ex
 
 export SANITIZER=${SANITIZER:-address}
 flags="-O1 -fno-omit-frame-pointer -gline-tables-only -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION"
-sanitizer_flags="-fsanitize=address -fsanitize-address-use-after-scope"
 coverage_flags="-fsanitize=fuzzer-no-link"
+
+sanitizer_flags="-fsanitize=address -fsanitize-address-use-after-scope"
+if [[ "$SANITIZER" == "undefined" ]]; then
+    sanitizer_flags="-fsanitize=undefined"
+elif [[ "$SANITIZER" == "memory" ]]; then
+    sanitizer_flags="-fsanitize=memory -fsanitize-memory-track-origins"
+fi
 
 export CC=${CC:-clang}
 export CFLAGS=${CFLAGS:-$flags $sanitizer_flags $coverage_flags}
