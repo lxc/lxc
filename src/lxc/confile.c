@@ -698,10 +698,9 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
+	clr_config_net_ipv4_gateway(key, lxc_conf, data);
 	if (lxc_config_value_empty(value))
-		return clr_config_net_ipv4_gateway(key, lxc_conf, data);
-
-	free(netdev->ipv4_gateway);
+		return 0;
 
 	if (strequal(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
