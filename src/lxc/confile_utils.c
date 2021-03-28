@@ -1047,13 +1047,13 @@ static int rt_sig_num(const char *signame)
 		return ret_errno(EINVAL);
 
 	sig_n = sig_num(signame);
+	if (sig_n < 0 || sig_n > SIGRTMAX - SIGRTMIN)
+		return ret_errno(EINVAL);
+
 	if (rtmax)
 		sig_n = SIGRTMAX - sig_n;
 	else
 		sig_n = SIGRTMIN + sig_n;
-
-	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
-		return ret_errno(EINVAL);
 
 	return sig_n;
 }
