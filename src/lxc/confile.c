@@ -760,6 +760,8 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	} else {
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
 	}
+	if (inetdev->prefix > 32)
+		return ret_errno(EINVAL);
 
 	/* If no broadcast address, let compute one from the
 	 * prefix and address.
@@ -2278,7 +2280,10 @@ static int set_config_mount_auto(const char *key, const char *value,
 			if(!container_path)
 				return log_error_errno(-EINVAL, EINVAL, "Failed to copy shmounts container path");
 
+			free_disarm(lxc_conf->shmount.path_host);
 			lxc_conf->shmount.path_host = move_ptr(host_path);
+
+			free_disarm(lxc_conf->shmount.path_cont);
 			lxc_conf->shmount.path_cont = move_ptr(container_path);
 		}
 	}
@@ -2416,7 +2421,7 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 					  struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	int64_t size;
+	long long int size;
 	uint64_t buffer_size, pgsz;
 
 	if (lxc_config_value_empty(value)) {
@@ -2440,7 +2445,7 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 	/* must be at least a page size */
 	pgsz = lxc_getpagesize();
 	if ((uint64_t)size < pgsz) {
-		NOTICE("Requested ringbuffer size for the console is %" PRId64 " but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		NOTICE("Requested ringbuffer size for the console is %lld but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
 		       size, pgsz, pgsz);
 		size = pgsz;
 	}
@@ -2461,7 +2466,7 @@ static int set_config_console_size(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	int64_t size;
+	long long int size;
 	uint64_t log_size, pgsz;
 
 	if (lxc_config_value_empty(value)) {
@@ -2485,7 +2490,7 @@ static int set_config_console_size(const char *key, const char *value,
 	/* must be at least a page size */
 	pgsz = lxc_getpagesize();
 	if ((uint64_t)size < pgsz) {
-		NOTICE("Requested ringbuffer size for the console is %" PRId64 " but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		NOTICE("Requested ringbuffer size for the console is %lld but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
 		       size, pgsz, pgsz);
 		size = pgsz;
 	}
