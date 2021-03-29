@@ -37,6 +37,7 @@ __hidden extern struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf, 
 __hidden extern void lxc_log_configured_netdevs(const struct lxc_conf *conf);
 __hidden extern bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx);
 __hidden extern void lxc_free_networks(struct lxc_list *networks);
+__hidden extern void lxc_clear_netdev(struct lxc_netdev *netdev);
 __hidden extern int lxc_veth_mode_to_flag(int *mode, const char *value);
 __hidden extern char *lxc_veth_flag_to_mode(int mode);
 __hidden extern int lxc_macvlan_mode_to_flag(int *mode, const char *value);

@@ -403,26 +403,29 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 	}
 }
 
-static void lxc_free_netdev(struct lxc_netdev *netdev)
+void lxc_clear_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
+	ssize_t idx;
 
 	if (!netdev)
 		return;
 
-	free(netdev->upscript);
-	free(netdev->downscript);
-	free(netdev->hwaddr);
-	free(netdev->mtu);
+	idx = netdev->idx;
 
-	free(netdev->ipv4_gateway);
+	free_disarm(netdev->upscript);
+	free_disarm(netdev->downscript);
+	free_disarm(netdev->hwaddr);
+	free_disarm(netdev->mtu);
+
+	free_disarm(netdev->ipv4_gateway);
 	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
 		lxc_list_del(cur);
 		free(cur->elem);
 		free(cur);
 	}
 
-	free(netdev->ipv6_gateway);
+	free_disarm(netdev->ipv6_gateway);
 	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
 		lxc_list_del(cur);
 		free(cur->elem);
@@ -448,7 +451,19 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 		}
 	}
 
-	free(netdev);
+	memset(netdev, 0, sizeof(struct lxc_netdev));
+	lxc_list_init(&netdev->ipv4);
+	lxc_list_init(&netdev->ipv6);
+	netdev->type = -1;
+	netdev->idx = idx;
+}
+
+static void lxc_free_netdev(struct lxc_netdev *netdev)
+{
+	if (netdev) {
+		lxc_clear_netdev(netdev);
+		free(netdev);
+	}
 }
 
 bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
