@@ -12,14 +12,23 @@
 
 #include "config.h"
 
-#ifndef thread_local
-#if __STDC_VERSION__ >= 201112L &&    \
-    !(defined(__STDC_NO_THREADS__) || \
-      (defined(__GNU_LIBRARY__) && __GLIBC__ == 2 && __GLIBC_MINOR__ < 16))
-#define thread_local _Thread_local
+#if defined(HAVE_THREADS_H)
+	#include <threads.h>
+	#define THREAD_LOCAL_STORAGE_SUPPORTED
+#elif defined(thread_local)
+	#define THREAD_LOCAL_STORAGE_SUPPORTED
 #else
-#define thread_local __thread
-#endif
+	#if __STDC_VERSION__ >= 201112L &&    \
+	    !(defined(__STDC_NO_THREADS__) || \
+	      (defined(__GNU_LIBRARY__) && __GLIBC__ == 2 && __GLIBC_MINOR__ < 16))
+		#define thread_local _Thread_local
+
+		#define THREAD_LOCAL_STORAGE_SUPPORTED
+	#else
+		#define thread_local __thread
+
+		#define THREAD_LOCAL_STORAGE_SUPPORTED
+	#endif
 #endif
 
 #if __GNUC__ >= 7
