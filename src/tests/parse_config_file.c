@@ -902,6 +902,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (c->set_config_item(c, "lxc.hook.versionasdfsadfsadf", "1")) {
+		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.hook.versionasdfsadfsadf\" to \"2\"");
+		goto non_test_error;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
