@@ -34,6 +34,7 @@ typedef int (*config_clr_cb)(const char *key, struct lxc_conf *conf,
 
 struct lxc_config_t {
 	char *name;
+	bool strict;
 	config_set_cb set;
 	config_get_cb get;
 	config_clr_cb clr;
