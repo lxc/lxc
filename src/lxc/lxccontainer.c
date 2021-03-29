@@ -2315,6 +2315,9 @@ static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 
 static char** get_from_array(char ***names, char *cname, int size)
 {
+	if (!*names)
+		return NULL;
+
 	return (char **)bsearch(&cname, *names, size, sizeof(char *), (int (*)(const void *, const void *))string_cmp);
 }
 
