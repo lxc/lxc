@@ -452,17 +452,24 @@ AC_ARG_ENABLE([static-binaries],
 	[enable_static_binaries=$enableval], [enable_static_binaries=no])
 AM_CONDITIONAL([ENABLE_STATIC_BINARIES], [test "x$enable_static_binaries" = "xyes"])
 
-# Build with ASAN commands
-AC_ARG_ENABLE([asan],
-	[AS_HELP_STRING([--enable-asan], [build with address sanitizer enabled [default=no]])],
-	[enable_asan=$enableval], [enable_asan=no])
-AM_CONDITIONAL([ENABLE_ASAN], [test "x$enable_asan" = "xyes"])
+AC_ARG_ENABLE([sanitizers],
+	[AS_HELP_STRING([--enable-sanitizers], [build with sanitizers enabled [default=no]])],
+	[enable_sanitizers=$enableval], [enable_sanitizers=no])
+AM_CONDITIONAL([ENABLE_SANITIZERS], [test "x$enable_sanitizers" = "xyes"])
+if test "x$enable_sanitizers" = "xyes"; then
+	AC_DEFINE([ENABLE_SANITIZERS], 1, [build with sanitizers enabled])
 
-# Build with UBSAN commands
-AC_ARG_ENABLE([ubsan],
-	[AS_HELP_STRING([--enable-ubsan], [build with ubsan sanitizer enabled [default=no]])],
-	[enable_asan=$enableval], [enable_ubsan=no])
-AM_CONDITIONAL([ENABLE_UBSAN], [test "x$enable_ubsan" = "xyes"])
+	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
+		-fsanitize=address \
+		-fsanitize=undefined \
+		-fsanitize=memory \
+		-fno-omit-frame-pointer])
+	AC_SUBST(AM_CFLAGS)
+
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
@@ -1103,7 +1110,7 @@ Documentation:
  - user documentation: $enable_doc
 
 Debugging:
- - ASAN: $enable_asan
+ - Sanitizers: $enable_sanitizers
  - Coverity: $enable_coverity_build
  - mutex debugging: $enable_mutex_debugging
  - tests: $enable_tests
