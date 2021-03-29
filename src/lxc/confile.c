@@ -316,8 +316,9 @@ static int set_config_net_type(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
+	clr_config_net_type(key, lxc_conf, data);
 	if (lxc_config_value_empty(value))
-		return clr_config_net_type(key, lxc_conf, data);
+		return 0;
 
 	if (strequal(value, "veth")) {
 		netdev->type = LXC_NET_VETH;
@@ -4871,7 +4872,7 @@ static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	netdev->type = -1;
+	lxc_clear_netdev(netdev);
 
 	return 0;
 }
