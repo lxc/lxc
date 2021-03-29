@@ -862,15 +862,13 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	ret = set_get_compare_clear_save_load(c, "lxc.hook.version", "2", tmpf, true);
-	if (ret == 0) {
-		lxc_error("%s\n", "lxc.hook.version");
+	if (c->set_config_item(c, "lxc.hook.version", "2")) {
+		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.hook.version\" to \"2\"");
 		goto non_test_error;
 	}
 
-	ret = set_get_compare_clear_save_load(c, "lxc.monitor.signal.pdeath", "SIGKILL", tmpf, true);
-	if (ret == 0) {
-		lxc_error("%s\n", "lxc.hook.version");
+	if (!c->set_config_item(c, "lxc.monitor.signal.pdeath", "SIGKILL")) {
+		lxc_error("%s\n", "Failed to set to set invalid config item \"lxc.monitor.signal.pdeath\" to \"SIGKILL\"");
 		goto non_test_error;
 	}
 
