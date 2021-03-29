@@ -54,13 +54,7 @@ const char *lxc_global_config_value(const char *option_name)
 	};
 
 	/* placed in the thread local storage pool for non-bionic targets */
-#if defined(THREAD_LOCAL_STORAGE_SUPPORTED)
 	static thread_local const char *values[sizeof(options) / sizeof(options[0])] = {0};
-#elif defined(ENFORCE_THREAD_SAFETY)
-	#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed due to missing TLS
-#else
-	static const char *values[sizeof(options) / sizeof(options[0])] = {0};
-#endif
 
 	/* user_config_path is freed as soon as it is used */
 	char *user_config_path = NULL;

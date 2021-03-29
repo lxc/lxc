@@ -474,13 +474,7 @@ struct lxc_conf {
 __hidden extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf, size_t buf_size)
     __access_r(3, 4);
 
-#if defined(THREAD_LOCAL_STORAGE_SUPPORTED)
 extern thread_local struct lxc_conf *current_config;
-#elif defined(ENFORCE_THREAD_SAFETY)
-#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed due to missing TLS
-#else
-struct lxc_conf *current_config;
-#endif
 
 __hidden extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
 __hidden extern struct lxc_conf *lxc_conf_init(void);
