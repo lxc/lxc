@@ -36,6 +36,7 @@
 #include "af_unix.h"
 #include "caps.h"
 #include "cgroups/cgroup.h"
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
@@ -99,11 +100,14 @@
 
 lxc_log_define(conf, lxc);
 
-/* The lxc_conf of the container currently being worked on in an API call.
+/*
+ * The lxc_conf of the container currently being worked on in an API call.
  * This is used in the error calls.
  */
-#ifdef HAVE_TLS
+#if defined(THREAD_LOCAL_STORAGE_SUPPORTED)
 thread_local struct lxc_conf *current_config;
+#elif defined(ENFORCE_THREAD_SAFETY)
+#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed due to missing TLS
 #else
 struct lxc_conf *current_config;
 #endif
