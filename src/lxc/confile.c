@@ -955,8 +955,9 @@ static int set_config_net_script_up(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
+	clr_config_net_script_up(key, lxc_conf, data);
 	if (lxc_config_value_empty(value))
-		return clr_config_net_script_up(key, lxc_conf, data);
+		return 0;
 
 	return set_config_string_item(&netdev->upscript, value);
 }
