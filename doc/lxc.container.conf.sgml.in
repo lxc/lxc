@@ -412,6 +412,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               specify what kind of network virtualization to be used
               for the container.
+              Must be specified before any other option(s) on the net device.
               Multiple networks can be specified by using an additional index
               <option>i</option>
               after all <option>lxc.net.*</option> keys. For example,
