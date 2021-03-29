@@ -260,14 +260,6 @@ liblxc_la_CFLAGS = -fPIC \
 		   $(AM_CFLAGS) \
 		   $(LIBLXC_SANITIZER) \
 		   -pthread
-if ENABLE_ASAN
-liblxc_la_CFLAGS += -fsanitize=address \
-		    -fno-omit-frame-pointer
-endif
-
-if ENABLE_UBSAN
-liblxc_la_CFLAGS += -fsanitize=undefined
-endif
 
 liblxc_la_LDFLAGS = -pthread \
 		    -Wl,-no-undefined \
