@@ -970,8 +970,9 @@ static int set_config_net_script_down(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
+	clr_config_net_script_down(key, lxc_conf, data);
 	if (lxc_config_value_empty(value))
-		return clr_config_net_script_down(key, lxc_conf, data);
+		return 0;
 
 	return set_config_string_item(&netdev->downscript, value);
 }
