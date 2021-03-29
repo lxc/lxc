@@ -571,16 +571,15 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
+	clr_config_net_hwaddr(key, lxc_conf, data);
 	if (lxc_config_value_empty(value))
-		return clr_config_net_hwaddr(key, lxc_conf, data);
+		return 0;
 
 	new_value = strdup(value);
 	if (!new_value)
 		return ret_errno(ENOMEM);
 
 	rand_complete_hwaddr(new_value);
-
-	free_disarm(netdev->hwaddr);
 	if (!lxc_config_value_empty(new_value))
 		netdev->hwaddr = move_ptr(new_value);
 
