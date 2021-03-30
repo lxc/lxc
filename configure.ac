@@ -200,6 +200,11 @@ AC_ARG_ENABLE([werror],
 	[AS_HELP_STRING([--disable-werror], [do not treat warnings as errors])],
 	[enable_werror=$enableval], [enable_werror=yes])
 
+AC_ARG_ENABLE([no_undefined],
+	[AS_HELP_STRING([--disable-no-undefined], [do not pass -Wl,--no-undefined])],
+	[enable_no_undefined=$enableval], [enable_no_undefined=yes])
+AM_CONDITIONAL([ENABLE_NO_UNDEFINED], [test "x$enable_no_undefined" = "xyes"])
+
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AS_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
@@ -801,12 +806,15 @@ AC_SUBST(AM_CFLAGS)
 
 CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[ \
 	-Wl,--as-needed \
-        -Wl,--no-undefined \
         -Wl,--gc-sections \
         -Wl,-z,relro \
         -Wl,-z,now \
         -pie \
         -Wl,-fuse-ld=gold])
+
+AM_COND_IF([ENABLE_NO_UNDEFINED],
+	[CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[-Wl,--no-undefined])])
+
 AC_SUBST(AM_LDFLAGS)
 
 CFLAGS="$CFLAGS -Wvla -std=gnu11 -fms-extensions"
