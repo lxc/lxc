@@ -229,29 +229,6 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.namespace.share",            true,  set_config_namespace_share,            get_config_namespace_share,            clr_config_namespace_share,            },
 	{ "lxc.time.offset.boot",           true,  set_config_time_offset_boot,	   get_config_time_offset_boot,           clr_config_time_offset_boot,           },
 	{ "lxc.time.offset.monotonic",      true,  set_config_time_offset_monotonic,      get_config_time_offset_monotonic,      clr_config_time_offset_monotonic,      },
-	{ "lxc.net.flags",                  true,  set_config_net_flags,                  get_config_net_flags,                  clr_config_net_flags,                  },
-	{ "lxc.net.hwaddr",                 true,  set_config_net_hwaddr,                 get_config_net_hwaddr,                 clr_config_net_hwaddr,                 },
-	{ "lxc.net.ipv4.address",           true,  set_config_net_ipv4_address,           get_config_net_ipv4_address,           clr_config_net_ipv4_address,           },
-	{ "lxc.net.ipv4.gateway",           true,  set_config_net_ipv4_gateway,           get_config_net_ipv4_gateway,           clr_config_net_ipv4_gateway,           },
-	{ "lxc.net.ipv6.address",           true,  set_config_net_ipv6_address,           get_config_net_ipv6_address,           clr_config_net_ipv6_address,           },
-	{ "lxc.net.ipv6.gateway",           true,  set_config_net_ipv6_gateway,           get_config_net_ipv6_gateway,           clr_config_net_ipv6_gateway,           },
-	{ "lxc.net.link",                   true,  set_config_net_link,                   get_config_net_link,                   clr_config_net_link,                   },
-	{ "lxc.net.l2proxy",                true,  set_config_net_l2proxy,                get_config_net_l2proxy,                clr_config_net_l2proxy,                },
-	{ "lxc.net.macvlan.mode",           true,  set_config_net_macvlan_mode,           get_config_net_macvlan_mode,           clr_config_net_macvlan_mode,           },
-	{ "lxc.net.ipvlan.mode",            true,  set_config_net_ipvlan_mode,            get_config_net_ipvlan_mode,            clr_config_net_ipvlan_mode,            },
-	{ "lxc.net.ipvlan.isolation",       true,  set_config_net_ipvlan_isolation,       get_config_net_ipvlan_isolation,       clr_config_net_ipvlan_isolation,       },
-	{ "lxc.net.mtu",                    true,  set_config_net_mtu,                    get_config_net_mtu,                    clr_config_net_mtu,                    },
-	{ "lxc.net.name",                   true,  set_config_net_name,                   get_config_net_name,                   clr_config_net_name,                   },
-	{ "lxc.net.script.down",            true,  set_config_net_script_down,            get_config_net_script_down,            clr_config_net_script_down,            },
-	{ "lxc.net.script.up",              true,  set_config_net_script_up,              get_config_net_script_up,              clr_config_net_script_up,              },
-	{ "lxc.net.type",                   true,  set_config_net_type,                   get_config_net_type,                   clr_config_net_type,                   },
-	{ "lxc.net.vlan.id",                true,  set_config_net_vlan_id,                get_config_net_vlan_id,                clr_config_net_vlan_id,                },
-	{ "lxc.net.veth.mode",              true,  set_config_net_veth_mode,              get_config_net_veth_mode,              clr_config_net_veth_mode,              },
-	{ "lxc.net.veth.pair",              true,  set_config_net_veth_pair,              get_config_net_veth_pair,              clr_config_net_veth_pair,              },
-	{ "lxc.net.veth.ipv4.route",        true,  set_config_net_veth_ipv4_route,        get_config_net_veth_ipv4_route,        clr_config_net_veth_ipv4_route,        },
-	{ "lxc.net.veth.ipv6.route",        true,  set_config_net_veth_ipv6_route,        get_config_net_veth_ipv6_route,        clr_config_net_veth_ipv6_route,        },
-	{ "lxc.net.veth.vlan.id",           true,  set_config_net_veth_vlan_id,           get_config_net_veth_vlan_id,           clr_config_net_veth_vlan_id,           },
-	{ "lxc.net.veth.vlan.tagged.id",    true,  set_config_net_veth_vlan_tagged_id,    get_config_net_veth_vlan_tagged_id,    clr_config_net_veth_vlan_tagged_id,    },
 	{ "lxc.net.",                       false, set_config_net_nic,                    get_config_net_nic,                    clr_config_net_nic,                    },
 	{ "lxc.net",                        true,  set_config_net,                        get_config_net,                        clr_config_net,                        },
 	{ "lxc.no_new_privs",	            true,  set_config_no_new_privs,               get_config_no_new_privs,               clr_config_no_new_privs,               },
@@ -280,34 +257,73 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.proc",                       false, set_config_proc,                       get_config_proc,                       clr_config_proc,                       },
 };
 
-static const size_t config_jump_table_size = sizeof(config_jump_table) / sizeof(struct lxc_config_t);
+static struct lxc_config_t config_jump_table_net[] = {
+	/* If a longer key is added please update. */
+	#define NETWORK_SUBKEY_SIZE_MAX (STRLITERALLEN("veth.vlan.tagged.id") * 2)
+	{ "flags",                  true,  set_config_net_flags,                  get_config_net_flags,                  clr_config_net_flags,                  },
+	{ "hwaddr",                 true,  set_config_net_hwaddr,                 get_config_net_hwaddr,                 clr_config_net_hwaddr,                 },
+	{ "ipv4.address",           true,  set_config_net_ipv4_address,           get_config_net_ipv4_address,           clr_config_net_ipv4_address,           },
+	{ "ipv4.gateway",           true,  set_config_net_ipv4_gateway,           get_config_net_ipv4_gateway,           clr_config_net_ipv4_gateway,           },
+	{ "ipv6.address",           true,  set_config_net_ipv6_address,           get_config_net_ipv6_address,           clr_config_net_ipv6_address,           },
+	{ "ipv6.gateway",           true,  set_config_net_ipv6_gateway,           get_config_net_ipv6_gateway,           clr_config_net_ipv6_gateway,           },
+	{ "link",                   true,  set_config_net_link,                   get_config_net_link,                   clr_config_net_link,                   },
+	{ "l2proxy",                true,  set_config_net_l2proxy,                get_config_net_l2proxy,                clr_config_net_l2proxy,                },
+	{ "macvlan.mode",           true,  set_config_net_macvlan_mode,           get_config_net_macvlan_mode,           clr_config_net_macvlan_mode,           },
+	{ "ipvlan.mode",            true,  set_config_net_ipvlan_mode,            get_config_net_ipvlan_mode,            clr_config_net_ipvlan_mode,            },
+	{ "ipvlan.isolation",       true,  set_config_net_ipvlan_isolation,       get_config_net_ipvlan_isolation,       clr_config_net_ipvlan_isolation,       },
+	{ "mtu",                    true,  set_config_net_mtu,                    get_config_net_mtu,                    clr_config_net_mtu,                    },
+	{ "name",                   true,  set_config_net_name,                   get_config_net_name,                   clr_config_net_name,                   },
+	{ "script.down",            true,  set_config_net_script_down,            get_config_net_script_down,            clr_config_net_script_down,            },
+	{ "script.up",              true,  set_config_net_script_up,              get_config_net_script_up,              clr_config_net_script_up,              },
+	{ "type",                   true,  set_config_net_type,                   get_config_net_type,                   clr_config_net_type,                   },
+	{ "vlan.id",                true,  set_config_net_vlan_id,                get_config_net_vlan_id,                clr_config_net_vlan_id,                },
+	{ "veth.mode",              true,  set_config_net_veth_mode,              get_config_net_veth_mode,              clr_config_net_veth_mode,              },
+	{ "veth.pair",              true,  set_config_net_veth_pair,              get_config_net_veth_pair,              clr_config_net_veth_pair,              },
+	{ "veth.ipv4.route",        true,  set_config_net_veth_ipv4_route,        get_config_net_veth_ipv4_route,        clr_config_net_veth_ipv4_route,        },
+	{ "veth.ipv6.route",        true,  set_config_net_veth_ipv6_route,        get_config_net_veth_ipv6_route,        clr_config_net_veth_ipv6_route,        },
+	{ "veth.vlan.id",           true,  set_config_net_veth_vlan_id,           get_config_net_veth_vlan_id,           clr_config_net_veth_vlan_id,           },
+	{ "veth.vlan.tagged.id",    true,  set_config_net_veth_vlan_tagged_id,    get_config_net_veth_vlan_tagged_id,    clr_config_net_veth_vlan_tagged_id,    },
+};
 
 struct lxc_config_t *lxc_get_config_exact(const char *key)
 {
 	size_t i;
 
-	for (i = 0; i < config_jump_table_size; i++)
+	for (i = 0; i < ARRAY_SIZE(config_jump_table); i++)
 		if (strequal(config_jump_table[i].name, key))
 			return &config_jump_table[i];
 
 	return NULL;
 }
 
+static inline bool match_config_item(const struct lxc_config_t *entry,
+				     const char *key)
+{
+	if (entry->strict)
+		return strequal(entry->name, key);
+	return strnequal(entry->name, key, strlen(entry->name));
+}
 
 struct lxc_config_t *lxc_get_config(const char *key)
 {
-	size_t i;
-
-	for (i = 0; i < config_jump_table_size; i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table); i++) {
 		struct lxc_config_t *cur = &config_jump_table[i];
-		bool match;
 
-		if (cur->strict)
-			match = strequal(cur->name, key);
-		else
-			match = strnequal(config_jump_table[i].name, key,
-					  strlen(config_jump_table[i].name));
-		if (!match)
+		if (!match_config_item(cur, key))
+			continue;
+
+		return cur;
+	}
+
+	return NULL;
+}
+
+static struct lxc_config_t *lxc_get_config_net(const char *key)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table_net); i++) {
+		struct lxc_config_t *cur = &config_jump_table_net[i];
+
+		if (!match_config_item(cur, key))
 			continue;
 
 		return cur;
@@ -5191,74 +5207,50 @@ static int get_config_includefiles(const char *key, char *retv, int inlen,
 static struct lxc_config_t *get_network_config_ops(const char *key,
 						   struct lxc_conf *lxc_conf,
 						   ssize_t *idx,
-						   char **deindexed_key)
+						   const char **const subkey)
 {
-	__do_free char *copy = NULL;
 	struct lxc_config_t *config = NULL;
 	int ret;
-	unsigned int tmpidx;
-	size_t numstrlen;
-	char *idx_start, *idx_end;
+	int64_t tmpidx;
+	const char *idx_start, *subkey_start;
+	char buf[NETWORK_SUBKEY_SIZE_MAX];
+
+	if (!idx)
+		return ret_set_errno(NULL, EINVAL);
+
+	if (is_empty_string(key))
+		return ret_set_errno(NULL, EINVAL);
 
 	/* check that this is a sensible network key */
 	if (!strnequal("lxc.net.", key, STRLITERALLEN("lxc.net.")))
 		return log_error_errno(NULL, EINVAL, "Invalid network configuration key \"%s\"", key);
 
-	copy = strdup(key);
-	if (!copy)
-		return log_error_errno(NULL, ENOMEM, "Failed to duplicate string \"%s\"", key);
-
 	/* lxc.net.<n> */
-	if (!isdigit(*(key + STRLITERALLEN("lxc.net."))))
+	/* beginning of index string */
+	idx_start = key + STRLITERALLEN("lxc.net.");
+	if (!isdigit(*idx_start))
 		return log_error_errno(NULL, EINVAL, "Failed to detect digit in string \"%s\"", key + 8);
 
-	/* beginning of index string */
-	idx_start = copy + (STRLITERALLEN("lxc.net.") - 1);
-	*idx_start = '\0';
+	ret = lxc_safe_int64_residual(idx_start, &tmpidx, 10, buf, sizeof(buf));
+	if (ret)
+		return log_error_errno(NULL, -ret, "Failed to parse network index");
 
-	/* end of index string */
-	idx_end = strchr((copy + STRLITERALLEN("lxc.net.")), '.');
-	if (idx_end)
-		*idx_end = '\0';
-
-	/* parse current index */
-	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
-	if (ret < 0) {
-		*idx = ret;
-		return log_error_errno(NULL, -ret, "Failed to parse unsigned integer from string \"%s\"", idx_start + 1);
-	}
-
-	/* This, of course is utterly nonsensical on so many levels, but
-	 * better safe than sorry.
-	 * (Checking for INT_MAX here is intentional.)
-	 */
-	if (tmpidx >= INT_MAX)
+	if (tmpidx < 0 || tmpidx >= INT_MAX)
 		return log_error_errno(NULL, ERANGE, "Number of configured networks would overflow the counter");
-	*idx = tmpidx;
+	*idx = (ssize_t)tmpidx;
 
-	numstrlen = strlen((idx_start + 1));
+	if (!subkey)
+		return NULL;
 
-	/* repair configuration key */
-	*idx_start = '.';
+	subkey_start = &buf[1];
+	if (is_empty_string(subkey_start))
+		return log_error_errno(NULL, EINVAL, "No network subkey specified");
 
 	/* lxc.net.<idx>.<subkey> */
-	if (idx_end) {
-		*idx_end = '.';
-		if (strlen(idx_end + 1) == 0)
-			return log_error_errno(NULL, EINVAL, "No subkey in network configuration key \"%s\"", key);
-		if (isdigit(*(idx_end + 1)))
-			return log_error_errno(NULL, EINVAL, "Key can't contain more than one index");
-
-		memmove(copy + STRLITERALLEN("lxc.net."), idx_end + 1, strlen(idx_end + 1));
-		copy[strlen(key) - (numstrlen + 1)] = '\0';
-
-		config = lxc_get_config(copy);
-		if (!config)
-			return log_error_errno(NULL, ENOENT, "Unknown network configuration key \"%s\"", key);
-	}
-
-	if (deindexed_key)
-		*deindexed_key = move_ptr(copy);
+	*subkey = subkey_start;
+	config = lxc_get_config_net(*subkey);
+	if (!config)
+		return log_error_errno(NULL, ENOENT, "Unknown network configuration key \"%s\"", key);
 
 	return config;
 }
@@ -5270,20 +5262,20 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 static int set_config_net_nic(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *deindexed_key = NULL;
+	const char *subkey = NULL;
 	ssize_t idx = -1;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 
-	idxstring = key + 8;
+	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
 		return ret_errno(EINVAL);
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_nic(key, lxc_conf, data);
 
-	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
+	config = get_network_config_ops(key, lxc_conf, &idx, &subkey);
 	if (!config || idx < 0)
 		return -errno;
 
@@ -5291,13 +5283,13 @@ static int set_config_net_nic(const char *key, const char *value,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	return config->set(deindexed_key, value, lxc_conf, netdev);
+	return config->set(subkey, value, lxc_conf, netdev);
 }
 
 static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 			      void *data)
 {
-	__do_free char *deindexed_key = NULL;
+	const char *subkey = NULL;
 	ssize_t idx = -1;
 	int ret;
 	const char *idxstring;
@@ -5325,7 +5317,7 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 		return 0;
 	}
 
-	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
+	config = get_network_config_ops(key, lxc_conf, &idx, &subkey);
 	if (!config || idx < 0)
 		return -errno;
 
@@ -5333,7 +5325,7 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	return config->clr(deindexed_key, lxc_conf, netdev);
+	return config->clr(subkey, lxc_conf, netdev);
 }
 
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
@@ -5694,17 +5686,17 @@ static int clr_config_net_veth_ipv6_route(const char *key,
 static int get_config_net_nic(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
-	__do_free char *deindexed_key = NULL;
+	const char *subkey = NULL;
 	ssize_t idx = -1;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 
-	idxstring = key + 8;
+	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
 		return ret_errno(EINVAL);
 
-	config = get_network_config_ops(key, c, &idx, &deindexed_key);
+	config = get_network_config_ops(key, c, &idx, &subkey);
 	if (!config || idx < 0)
 		return -errno;
 
@@ -5712,7 +5704,7 @@ static int get_config_net_nic(const char *key, char *retv, int inlen,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	return config->get(deindexed_key, retv, inlen, c, netdev);
+	return config->get(subkey, retv, inlen, c, netdev);
 }
 
 static int get_config_net_type(const char *key, char *retv, int inlen,
@@ -6351,7 +6343,7 @@ int lxc_list_config_items(char *retv, int inlen)
 	else
 		memset(retv, 0, inlen);
 
-	for (i = 0; i < config_jump_table_size; i++) {
+	for (i = 0; i < ARRAY_SIZE(config_jump_table); i++) {
 		char *s = config_jump_table[i].name;
 
 		if (s[strlen(s) - 1] == '.')
@@ -6441,9 +6433,9 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 	int fulllen = 0;
 	ssize_t idx = -1;
 
-	idxstring = key + 8;
+	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
-		return -1;
+		return ret_errno(EINVAL);
 
 	(void)get_network_config_ops(key, c, &idx, NULL);
 	if (idx < 0)
