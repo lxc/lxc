@@ -45,10 +45,16 @@ jobs:
           ./autogen.sh
 
           BUILD="$(pwd)/build"
-          mkdir -p "${BUILD}"
+          SAN_BUILD="$(pwd)/san_build"
+          mkdir -p "${BUILD}" "${SAN_BUILD}"
           cd "${BUILD}"
           ../configure --enable-tests --with-distro=unknown
 
           # Build
           make -j4
           make DESTDIR="${BUILD}/install" install
+
+          cd "${SAN_BUILD}"
+          CFLAGS="$CFLAGS -fsanitize=address,undefined" ../configure --disable-no-undefined --enable-tests --with-distro=unknown
+          make -j4
+          make DESTDIR="${SAN_BUILD}/install" install
