@@ -47,11 +47,7 @@ jobs:
           BUILD="$(pwd)/build"
           mkdir -p "${BUILD}"
           cd "${BUILD}"
-          if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            ../configure --enable-tests --enable-ubsan --with-distro=unknown
-          else
-            ../configure --enable-tests --with-distro=unknown
-          fi
+          ../configure --enable-tests --with-distro=unknown
 
           # Build
           make -j4
