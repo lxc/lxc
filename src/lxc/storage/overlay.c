@@ -192,11 +192,11 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 * don't need to record a dependency. If we would restore would
 		 * also fail.
 		 */
-		clean_old_path = lxc_deslashify(oldpath);
+		clean_old_path = path_simplify(oldpath);
 		if (!clean_old_path)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to create clean path for \"%s\"", oldpath);
 
-		clean_new_path = lxc_deslashify(lxcpath);
+		clean_new_path = path_simplify(lxcpath);
 		if (!clean_new_path)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to create clean path for \"%s\"", lxcpath);
 

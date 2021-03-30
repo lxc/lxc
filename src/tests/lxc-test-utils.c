@@ -43,12 +43,12 @@
 #include "macro.h"
 #include "utils.h"
 
-void test_lxc_deslashify(void)
+void test_path_simplify(void)
 {
 	char *s = "/A///B//C/D/E/";
 	char *t;
 
-	t = lxc_deslashify(s);
+	t = path_simplify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
 
@@ -57,7 +57,7 @@ void test_lxc_deslashify(void)
 
 	s = "/A";
 
-	t = lxc_deslashify(s);
+	t = path_simplify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
 
@@ -65,7 +65,7 @@ void test_lxc_deslashify(void)
 	free(t);
 
 	s = "";
-	t = lxc_deslashify(s);
+	t = path_simplify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
 
@@ -74,7 +74,7 @@ void test_lxc_deslashify(void)
 
 	s = "//";
 
-	t = lxc_deslashify(s);
+	t = path_simplify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
 
@@ -598,7 +598,7 @@ int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
 	test_lxc_string_in_array();
-	test_lxc_deslashify();
+	test_path_simplify();
 	test_detect_ramfs_rootfs();
 	test_lxc_safe_uint();
 	test_lxc_safe_int();
