@@ -319,7 +319,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate limit cgroup path");
 		}
 
-		tmp = lxc_deslashify(cgroup_base_path);
+		tmp = path_simplify(cgroup_base_path);
 		if (!tmp)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to remove extraneous slashes from \"%s\"", tmp);
 		free_move_ptr(cgroup_base_path, tmp);

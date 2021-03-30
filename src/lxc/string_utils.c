@@ -195,16 +195,12 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 char **lxc_normalize_path(const char *path)
 {
 	char **components;
-	char **p;
 	size_t components_len = 0;
 	size_t pos = 0;
 
 	components = lxc_string_split(path, '/');
 	if (!components)
 		return NULL;
-
-	for (p = components; *p; p++)
-		components_len++;
 
 	/* resolve '.' and '..' */
 	for (pos = 0; pos < components_len;) {
@@ -231,47 +227,58 @@ char **lxc_normalize_path(const char *path)
 	return components;
 }
 
-char *lxc_deslashify(const char *path)
+/* taken from systemd */
+char *path_simplify(const char *path)
 {
-	char *dup, *p;
-	char **parts = NULL;
-	size_t n, len;
+	__do_free char *path_new = NULL;
+	char *f, *t;
+	bool slash = false, ignore_slash = false, absolute;
 
-	dup = strdup(path);
-	if (!dup)
+	path_new = strdup(path);
+	if (!path_new)
 		return NULL;
 
-	parts = lxc_normalize_path(dup);
-	if (!parts) {
-		free(dup);
-		return NULL;
+	if (is_empty_string(path_new))
+		return move_ptr(path_new);
+
+	absolute = abspath(path_new);
+
+	f = path_new;
+	if (*f == '.' && IN_SET(f[1], 0, '/')) {
+		ignore_slash = true;
+		f++;
 	}
 
-	/* We'll end up here if path == "///" or path == "". */
-	if (!*parts) {
-		len = strlen(dup);
-		if (!len) {
-			lxc_free_array((void **)parts, free);
-			return dup;
+	for (t = path_new; *f; f++) {
+
+		if (*f == '/') {
+			slash = true;
+			continue;
 		}
 
-		n = strcspn(dup, "/");
-		if (n == len) {
-			free(dup);
-			lxc_free_array((void **)parts, free);
+		if (slash) {
+			if (*f == '.' && IN_SET(f[1], 0, '/'))
+				continue;
 
-			p = strdup("/");
-			if (!p)
-				return NULL;
-
-			return p;
+			slash = false;
+			if (ignore_slash)
+				ignore_slash = false;
+			else
+				*(t++) = '/';
 		}
+
+		*(t++) = *f;
 	}
 
-	p = lxc_string_join("/", (const char **)parts, *dup == '/');
-	free(dup);
-	lxc_free_array((void **)parts, free);
-	return p;
+	if (t == path_new) {
+		if (absolute)
+			*(t++) = '/';
+		else
+			*(t++) = '.';
+	}
+
+	*t = 0;
+	return move_ptr(path_new);
 }
 
 char *lxc_append_paths(const char *first, const char *second)
