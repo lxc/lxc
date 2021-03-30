@@ -750,9 +750,6 @@ AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]
 AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])
 
-# See if we support thread-local storage.
-LXC_CHECK_TLS
-
 # Hardening flags
 CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 	-fPIE \
