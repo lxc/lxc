@@ -24,10 +24,6 @@ mkdir -p $OUT
 
 export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 
-# -fsanitize=... isn't compatible with -Wl,-no-undefined
-# https://github.com/google/sanitizers/issues/380
-sed -i 's/-Wl,-no-undefined *\\/\\/' src/lxc/Makefile.am
-
 # AFL++ and hoggfuzz are both incompatible with lto=thin apparently
 sed -i '/-flto=thin/d' configure.ac
 
@@ -42,7 +38,8 @@ sed -i 's/^AC_CHECK_LIB(util/#/' configure.ac
     --disable-openssl \
     --disable-selinux \
     --disable-seccomp \
-    --disable-capabilities
+    --disable-capabilities \
+    --disable-no-undefined
 
 make -j$(nproc)
 
