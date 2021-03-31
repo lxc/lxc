@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qq gcc clang
-          sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev docbook2x
+          sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev libpam0g-dev docbook2x
 
       - name: Compiler version
         env:
@@ -45,14 +45,16 @@ jobs:
           ./autogen.sh
 
           BUILD="$(pwd)/build"
-          mkdir -p "${BUILD}"
+          SAN_BUILD="$(pwd)/san_build"
+          mkdir -p "${BUILD}" "${SAN_BUILD}"
           cd "${BUILD}"
-          if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            ../configure --enable-tests --enable-ubsan --with-distro=unknown
-          else
-            ../configure --enable-tests --with-distro=unknown
-          fi
+          ../configure --enable-tests --with-distro=unknown
 
           # Build
           make -j4
           make DESTDIR="${BUILD}/install" install
+
+          cd "${SAN_BUILD}"
+          CFLAGS="$CFLAGS -fsanitize=address,undefined" ../configure --disable-no-undefined --enable-pam --enable-tests --with-distro=unknown
+          make -j4
+          make DESTDIR="${SAN_BUILD}/install" install
