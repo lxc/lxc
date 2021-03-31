@@ -2863,6 +2863,7 @@ void lxc_config_define_free(struct lxc_list *defines)
 		free(new_item->key);
 		free(new_item->val);
 		lxc_list_del(it);
+		free(it->elem);
 		free(it);
 	}
 }
