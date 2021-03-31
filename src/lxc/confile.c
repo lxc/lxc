@@ -692,22 +692,22 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	}
 
 	/* No prefix specified, determine it from the network class. */
-	if (prefix) {
+	ret = 0;
+	if (prefix)
 		ret = lxc_safe_uint(prefix, &inetdev->prefix);
-		if (ret < 0)
-			return ret;
-	} else {
+	else
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
-	}
-	if (inetdev->prefix > 32)
+	if (ret || inetdev->prefix > 32)
 		return ret_errno(EINVAL);
 
-	/* If no broadcast address, let compute one from the
-	 * prefix and address.
-	 */
+	/* If no broadcast address, compute one from the prefix and address. */
 	if (!bcast) {
+		unsigned int shift = LAST_BIT_PER_TYPE(inetdev->prefix);
+
 		inetdev->bcast.s_addr = inetdev->addr.s_addr;
-		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> inetdev->prefix);
+		if (inetdev->prefix < shift)
+			shift = inetdev->prefix;
+		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> shift);
 	}
 
 	list->elem = inetdev;
