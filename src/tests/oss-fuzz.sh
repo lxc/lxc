@@ -43,8 +43,11 @@ sed -i 's/^AC_CHECK_LIB(util/#/' configure.ac
 
 make -j$(nproc)
 
-$CC -c -o fuzz-lxc-config-read.o $CFLAGS -Isrc -Isrc/lxc src/tests/fuzz-lxc-config-read.c
-$CXX $CXXFLAGS $LIB_FUZZING_ENGINE fuzz-lxc-config-read.o src/lxc/.libs/liblxc.a -o $OUT/fuzz-lxc-config-read
+for fuzz_target_source in src/tests/fuzz-lxc*.c; do
+    fuzz_target_name=$(basename "$fuzz_target_source" ".c")
+    $CC -c -o "$fuzz_target_name.o" $CFLAGS -Isrc -Isrc/lxc "$fuzz_target_source"
+    $CXX $CXXFLAGS $LIB_FUZZING_ENGINE "$fuzz_target_name.o" src/lxc/.libs/liblxc.a -o "$OUT/$fuzz_target_name"
+done
 
 perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >doc/examples/keys.conf
 [[ -s doc/examples/keys.conf ]]
@@ -53,3 +56,7 @@ perl -lne 'if (/config_jump_table_net\[\]\s*=/../^}/) { /"([^"]+)"/ && print "lx
 [[ -s doc/examples/lxc-net-keys.conf ]]
 
 zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip doc/examples
+
+mkdir fuzz-lxc-define-load_seed_corpus
+perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' doc/examples/{keys,lxc-net-keys}.conf | bash
+zip -r $OUT/fuzz-lxc-define-load_seed_corpus.zip fuzz-lxc-define-load_seed_corpus
