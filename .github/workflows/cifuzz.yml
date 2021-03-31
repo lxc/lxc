@@ -28,7 +28,7 @@ jobs:
         uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
         with:
           oss-fuzz-project-name: 'lxc'
-          fuzz-seconds: 180
+          fuzz-seconds: 360
           dry-run: false
           sanitizer: ${{ matrix.sanitizer }}
       - name: Upload Crash
