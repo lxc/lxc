@@ -3111,7 +3111,9 @@ bool lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c)
 			break;
 	}
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	lxc_config_define_free(defines);
+#endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 
 	return bret;
 }
