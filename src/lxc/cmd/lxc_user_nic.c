@@ -318,10 +318,10 @@ static int get_alloted(char *me, char *intype, char *link,
 		if (ret != 4)
 			continue;
 
-		if (strlen(name) == 0)
+		if (is_empty_string(name))
 			continue;
 
-		if (strcmp(name, me)) {
+		if (!strequal(name, me)) {
 			if (name[0] != '@')
 				continue;
 
@@ -329,17 +329,17 @@ static int get_alloted(char *me, char *intype, char *link,
 				continue;
 		}
 
-		if (strcmp(type, intype))
+		if (!strequal(type, intype))
 			continue;
 
-		if (strcmp(link, br))
+		if (!strequal(link, br))
 			continue;
 
-		/* Found the user or group with the appropriate settings,
-		 * therefore finish the search. What to do if there are more
-		 * than one applicable lines? not specified in the docs. Since
-		 * getline is implemented with realloc, we don't need to free
-		 * line until exiting func.
+		/*
+		 * Found the user or group with the appropriate settings,
+		 * therefore finish the search. What to do if there are is more
+		 * than one applicable line? Currently this is not specified in
+		 * the docs.
 		 *
 		 * If append_alloted returns NULL, e.g. due to a malloc error,
 		 * we set count to 0 and break the loop, allowing cleanup and
