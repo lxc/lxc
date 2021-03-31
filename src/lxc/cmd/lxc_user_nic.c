@@ -233,10 +233,10 @@ struct alloted_s {
 	struct alloted_s *next;
 };
 
-static struct alloted_s *append_alloted(struct alloted_s **head, char *name,
-					int n)
+static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int n)
 {
-	struct alloted_s *cur, *al;
+	__do_free struct alloted_s *al = NULL;
+	struct alloted_s *cur;
 
 	if (!head || !name) {
 		/* Sanity check. Parameters should not be null. */
@@ -244,32 +244,29 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name,
 		return NULL;
 	}
 
-	al = malloc(sizeof(struct alloted_s));
+	al = zalloc(sizeof(struct alloted_s));
 	if (!al) {
 		CMD_SYSERROR("Failed to allocate memory\n");
 		return NULL;
 	}
 
 	al->name = strdup(name);
-	if (!al->name) {
-		free(al);
+	if (!al->name)
 		return NULL;
-	}
 
 	al->allowed = n;
 	al->next = NULL;
 
-	if (!*head) {
+	if (*head) {
+		cur = *head;
+		while (cur->next)
+			cur = cur->next;
+		cur->next = al;
+	} else {
 		*head = al;
-		return al;
 	}
 
-	cur = *head;
-	while (cur->next)
-		cur = cur->next;
-	cur->next = al;
-
-	return al;
+	return move_ptr(al);
 }
 
 static void free_alloted(struct alloted_s **head)
