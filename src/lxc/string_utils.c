@@ -192,41 +192,6 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 	return result;
 }
 
-char **lxc_normalize_path(const char *path)
-{
-	char **components;
-	size_t components_len = 0;
-	size_t pos = 0;
-
-	components = lxc_string_split(path, '/');
-	if (!components)
-		return NULL;
-
-	/* resolve '.' and '..' */
-	for (pos = 0; pos < components_len;) {
-		if (strequal(components[pos], ".") ||
-		    (strequal(components[pos], "..") && pos == 0)) {
-			/* eat this element */
-			free(components[pos]);
-			memmove(&components[pos], &components[pos + 1],
-				sizeof(char *) * (components_len - pos));
-			components_len--;
-		} else if (strequal(components[pos], "..")) {
-			/* eat this and the previous element */
-			free(components[pos - 1]);
-			free(components[pos]);
-			memmove(&components[pos - 1], &components[pos + 1],
-				sizeof(char *) * (components_len - pos));
-			components_len -= 2;
-			pos--;
-		} else {
-			pos++;
-		}
-	}
-
-	return components;
-}
-
 /* taken from systemd */
 char *path_simplify(const char *path)
 {
@@ -672,8 +637,9 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 	return 0;
 }
 
-int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, char *residual,
-			    size_t residual_len)
+int lxc_safe_int64_residual(const char *restrict numstr,
+			    int64_t *restrict converted, int base,
+			    char *restrict residual, size_t residual_len)
 {
 	char *remaining = NULL;
 	int64_t u;
@@ -692,7 +658,7 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 	errno = 0;
 	u = strtoll(numstr, &remaining, base);
 	if (errno == ERANGE && u == INT64_MAX)
-		return -ERANGE;
+		return ret_errno(ERANGE);
 
 	if (remaining == numstr)
 		return -EINVAL;
@@ -705,11 +671,11 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 
 		len = strlen(remaining);
 		if (len >= residual_len)
-			return -EINVAL;
+			return ret_errno(EINVAL);
 
 		memcpy(residual, remaining, len);
 	} else if (*remaining != '\0') {
-		return -EINVAL;
+		return ret_errno(EINVAL);
 	}
 
 out:

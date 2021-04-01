@@ -30,21 +30,7 @@ __hidden extern char *lxc_string_replace(const char *needle, const char *replace
 					 const char *haystack);
 __hidden extern bool lxc_string_in_array(const char *needle, const char **haystack);
 __hidden extern char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix);
-/*
- * Normalize and split path: Leading and trailing / are removed, multiple
- * / are compactified, .. and . are resolved (.. on the top level is considered
- * identical to .).
- * Examples:
- *     /            ->   { NULL }
- *     foo/../bar   ->   { bar, NULL }
- *     ../../       ->   { NULL }
- *     ./bar/baz/.. ->   { bar, NULL }
- *     foo//bar     ->   { foo, bar, NULL }
- */
-__hidden extern char **lxc_normalize_path(const char *path);
 
-/* remove multiple slashes from the path, e.g. ///foo//bar -> /foo/bar */
-__hidden extern char *lxc_deslashify(const char *path);
 __hidden extern char *lxc_append_paths(const char *first, const char *second);
 
 /*
@@ -78,8 +64,10 @@ __hidden extern int lxc_safe_long(const char *numstr, long int *converted);
 __hidden extern int lxc_safe_long_long(const char *numstr, long long int *converted);
 __hidden extern int lxc_safe_ulong(const char *numstr, unsigned long *converted);
 __hidden extern int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base);
-__hidden extern int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base,
-					    char *residual, size_t residual_len);
+__hidden extern int lxc_safe_int64_residual(const char *restrict numstr,
+					    int64_t *restrict converted,
+					    int base, char *restrict residual,
+					    size_t residual_len);
 /* Handles B, kb, MB, GB. Detects overflows and reports -ERANGE. */
 __hidden extern int parse_byte_size_string(const char *s, long long int *converted);
 
