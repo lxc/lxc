@@ -30,21 +30,7 @@ __hidden extern char *lxc_string_replace(const char *needle, const char *replace
 					 const char *haystack);
 __hidden extern bool lxc_string_in_array(const char *needle, const char **haystack);
 __hidden extern char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix);
-/*
- * Normalize and split path: Leading and trailing / are removed, multiple
- * / are compactified, .. and . are resolved (.. on the top level is considered
- * identical to .).
- * Examples:
- *     /            ->   { NULL }
- *     foo/../bar   ->   { bar, NULL }
- *     ../../       ->   { NULL }
- *     ./bar/baz/.. ->   { bar, NULL }
- *     foo//bar     ->   { foo, bar, NULL }
- */
-__hidden extern char **lxc_normalize_path(const char *path);
 
-/* remove multiple slashes from the path, e.g. ///foo//bar -> /foo/bar */
-__hidden extern char *lxc_deslashify(const char *path);
 __hidden extern char *lxc_append_paths(const char *first, const char *second);
 
 /*
