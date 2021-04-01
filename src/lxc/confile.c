@@ -89,6 +89,7 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_cwd);
 lxc_config_define(init_gid);
 lxc_config_define(init_uid);
+lxc_config_define(jump_table_net);
 lxc_config_define(keyring_session);
 lxc_config_define(log_file);
 lxc_config_define(log_level);
@@ -115,7 +116,6 @@ lxc_config_define(net_ipvlan_mode);
 lxc_config_define(net_ipvlan_isolation);
 lxc_config_define(net_mtu);
 lxc_config_define(net_name);
-lxc_config_define(net_nic);
 lxc_config_define(net_script_down);
 lxc_config_define(net_script_up);
 lxc_config_define(net_type);
@@ -212,7 +212,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.namespace.clone",            true,  set_config_namespace_clone,            get_config_namespace_clone,            clr_config_namespace_clone,            },
 	{ "lxc.namespace.keep",             true,  set_config_namespace_keep,             get_config_namespace_keep,             clr_config_namespace_keep,             },
 	{ "lxc.namespace.share",            true,  set_config_namespace_share,            get_config_namespace_share,            clr_config_namespace_share,            },
-	{ "lxc.net.",                       false, set_config_net_nic,                    get_config_net_nic,                    clr_config_net_nic,                    },
+	{ "lxc.net.",                       false, set_config_jump_table_net,             get_config_jump_table_net,             clr_config_jump_table_net,             },
 	{ "lxc.net",                        true,  set_config_net,                        get_config_net,                        clr_config_net,                        },
 	{ "lxc.no_new_privs",	            true,  set_config_no_new_privs,               get_config_no_new_privs,               clr_config_no_new_privs,               },
 	{ "lxc.prlimit",                    false, set_config_prlimit,                    get_config_prlimit,                    clr_config_prlimit,                    },
@@ -240,7 +240,11 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.proc",                       false, set_config_proc,                       get_config_proc,                       clr_config_proc,                       },
 };
 
-static struct lxc_config_t config_jump_table_net[] = {
+struct lxc_config_net_t {
+	LXC_CONFIG_MEMBERS;
+};
+
+static struct lxc_config_net_t config_jump_table_net[] = {
 	/* If a longer key is added please update. */
 	#define NETWORK_SUBKEY_SIZE_MAX (STRLITERALLEN("veth.vlan.tagged.id") * 2)
 	{ "flags",                  true,  set_config_net_flags,                  get_config_net_flags,                  clr_config_net_flags,                  },
@@ -299,12 +303,20 @@ struct lxc_config_t *lxc_get_config(const char *key)
 	return NULL;
 }
 
-static struct lxc_config_t *lxc_get_config_net(const char *key)
+static inline bool match_config_net_item(const struct lxc_config_net_t *entry,
+					 const char *key)
+{
+	if (entry->strict)
+		return strequal(entry->name, key);
+	return strnequal(entry->name, key, strlen(entry->name));
+}
+
+static struct lxc_config_net_t *lxc_get_config_net(const char *key)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table_net); i++) {
-		struct lxc_config_t *cur = &config_jump_table_net[i];
+		struct lxc_config_net_t *cur = &config_jump_table_net[i];
 
-		if (!match_config_item(cur, key))
+		if (!match_config_net_item(cur, key))
 			continue;
 
 		return cur;
@@ -4734,97 +4746,94 @@ static int get_config_includefiles(const char *key, char *retv, int inlen,
 	return ret_errno(ENOSYS);
 }
 
-static struct lxc_config_t *get_network_config_ops(const char *key,
-						   struct lxc_conf *lxc_conf,
-						   ssize_t *idx,
-						   const char **const subkey)
+struct config_net_info {
+	char buf[NETWORK_SUBKEY_SIZE_MAX];
+	const char *subkey;
+	const struct lxc_config_net_t *ops;
+	struct lxc_netdev *netdev;
+};
+
+static int get_network_config_ops(const char *key, struct lxc_conf *lxc_conf,
+				  struct config_net_info *info, bool allocate)
 {
-	struct lxc_config_t *config = NULL;
 	int ret;
 	int64_t tmpidx;
-	const char *idx_start, *subkey_start;
-	char buf[NETWORK_SUBKEY_SIZE_MAX];
-
-	if (!idx)
-		return ret_set_errno(NULL, EINVAL);
+	unsigned int idx;
+	const char *idx_start;
 
 	if (is_empty_string(key))
-		return ret_set_errno(NULL, EINVAL);
+		return ret_errno(EINVAL);
 
 	/* check that this is a sensible network key */
 	if (!strnequal("lxc.net.", key, STRLITERALLEN("lxc.net.")))
-		return log_error_errno(NULL, EINVAL, "Invalid network configuration key \"%s\"", key);
+		return syserror_set(-EINVAL, "Invalid network configuration key \"%s\"", key);
 
 	/* lxc.net.<n> */
 	/* beginning of index string */
 	idx_start = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idx_start))
-		return log_error_errno(NULL, EINVAL, "Failed to detect digit in string \"%s\"", key + 8);
+		return syserror_set(-EINVAL, "Failed to detect digit in string \"%s\"", key + 8);
 
-	ret = lxc_safe_int64_residual(idx_start, &tmpidx, 10, buf, sizeof(buf));
+	ret = lxc_safe_int64_residual(idx_start, &tmpidx, 10, info->buf, sizeof(info->buf));
 	if (ret)
-		return log_error_errno(NULL, -ret, "Failed to parse network index");
+		return syserror("Failed to parse network index");
 
 	if (tmpidx < 0 || tmpidx >= INT_MAX)
-		return log_error_errno(NULL, ERANGE, "Number of configured networks would overflow the counter");
-	*idx = (ssize_t)tmpidx;
+		return syserror_set(-ERANGE, "Number of configured networks would overflow the counter");
+	idx = (unsigned int)tmpidx;
 
-	if (!subkey)
-		return NULL;
+	info->netdev = lxc_get_netdev_by_idx(lxc_conf, idx, allocate);
+	if (!info->netdev)
+		return ret_errno(EINVAL);
 
-	subkey_start = &buf[1];
-	if (is_empty_string(subkey_start))
-		return log_error_errno(NULL, EINVAL, "No network subkey specified");
+	/* Make sure subkey points to the empty string. */
+	info->subkey = info->buf;
+	if (is_empty_string(info->subkey))
+		return ret_errno(ENOENT);
+
+	if (info->subkey[0] != '.')
+		return syserror_set(-EINVAL, "Invalid subkey");
+	info->subkey++;
 
 	/* lxc.net.<idx>.<subkey> */
-	*subkey = subkey_start;
-	config = lxc_get_config_net(*subkey);
-	if (!config)
-		return log_error_errno(NULL, ENOENT, "Unknown network configuration key \"%s\"", key);
+	info->ops = lxc_get_config_net(info->subkey);
+	if (!info->ops)
+		return syserror_set(-ENOENT, "Unknown network configuration key \"%s\"", key);
 
-	return config;
+	return 0;
 }
 
 /* Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.' was
  * found. So we make sure next comes an integer, find the right callback (by
  * rewriting the key), and call it.
  */
-static int set_config_net_nic(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf, void *data)
+static int set_config_jump_table_net(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
 {
-	const char *subkey = NULL;
-	ssize_t idx = -1;
+	struct config_net_info info = {};
+	int ret;
 	const char *idxstring;
-	struct lxc_config_t *config;
-	struct lxc_netdev *netdev;
 
 	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
 		return ret_errno(EINVAL);
 
 	if (lxc_config_value_empty(value))
-		return clr_config_net_nic(key, lxc_conf, data);
+		return clr_config_jump_table_net(key, lxc_conf, data);
 
-	config = get_network_config_ops(key, lxc_conf, &idx, &subkey);
-	if (!config || idx < 0)
-		return -errno;
+	ret = get_network_config_ops(key, lxc_conf, &info, true);
+	if (ret)
+		return ret;
 
-	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, true);
-	if (!netdev)
-		return ret_errno(EINVAL);
-
-	return config->set(subkey, value, lxc_conf, netdev);
+	return info.ops->set(info.subkey, value, lxc_conf, info.netdev);
 }
 
-static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
-			      void *data)
+static int clr_config_jump_table_net(const char *key, struct lxc_conf *lxc_conf,
+				     void *data)
 {
-	const char *subkey = NULL;
-	ssize_t idx = -1;
+	struct config_net_info info = {};
 	int ret;
 	const char *idxstring;
-	struct lxc_config_t *config;
-	struct lxc_netdev *netdev;
 
 	idxstring = key + 8;
 	if (!isdigit(*idxstring))
@@ -4847,15 +4856,11 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 		return 0;
 	}
 
-	config = get_network_config_ops(key, lxc_conf, &idx, &subkey);
-	if (!config || idx < 0)
-		return -errno;
+	ret = get_network_config_ops(key, lxc_conf, &info, false);
+	if (ret)
+		return ret;
 
-	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, false);
-	if (!netdev)
-		return ret_errno(EINVAL);
-
-	return config->clr(subkey, lxc_conf, netdev);
+	return info.ops->clr(info.subkey, lxc_conf, info.netdev);
 }
 
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
@@ -5175,28 +5180,22 @@ static int clr_config_net_veth_ipv6_route(const char *key,
 	return 0;
 }
 
-static int get_config_net_nic(const char *key, char *retv, int inlen,
-			      struct lxc_conf *c, void *data)
+static int get_config_jump_table_net(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
 {
-	const char *subkey = NULL;
-	ssize_t idx = -1;
+	struct config_net_info info = {};
+	int ret;
 	const char *idxstring;
-	struct lxc_config_t *config;
-	struct lxc_netdev *netdev;
 
 	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
 		return ret_errno(EINVAL);
 
-	config = get_network_config_ops(key, c, &idx, &subkey);
-	if (!config || idx < 0)
-		return -errno;
+	ret = get_network_config_ops(key, c, &info, false);
+	if (ret)
+		return ret;
 
-	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	if (!netdev)
-		return ret_errno(EINVAL);
-
-	return config->get(subkey, retv, inlen, c, netdev);
+	return info.ops->get(info.subkey, retv, inlen, c, info.netdev);
 }
 
 static int get_config_net_type(const char *key, char *retv, int inlen,
@@ -5865,23 +5864,22 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 
 int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 {
-	int len;
-	const char *idxstring;
+	struct config_net_info info = {};
 	struct lxc_netdev *netdev;
+	int len, ret;
+	const char *idxstring;
 	int fulllen = 0;
-	ssize_t idx = -1;
 
 	idxstring = key + STRLITERALLEN("lxc.net.");
 	if (!isdigit(*idxstring))
 		return ret_errno(EINVAL);
 
-	(void)get_network_config_ops(key, c, &idx, NULL);
-	if (idx < 0)
-		return ret_errno(EINVAL);
-
-	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	if (!netdev)
-		return ret_errno(EINVAL);
+	ret = get_network_config_ops(key, c, &info, false);
+	if (ret) {
+		if (ret != -ENOENT)
+			return ret_errno(EINVAL);
+	}
+	netdev = info.netdev;
 
 	if (!retv)
 		inlen = 0;
