@@ -637,8 +637,9 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 	return 0;
 }
 
-int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, char *residual,
-			    size_t residual_len)
+int lxc_safe_int64_residual(const char *restrict numstr,
+			    int64_t *restrict converted, int base,
+			    char *restrict residual, size_t residual_len)
 {
 	char *remaining = NULL;
 	int64_t u;
