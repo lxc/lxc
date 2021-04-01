@@ -32,12 +32,15 @@ typedef int (*config_get_cb)(const char *key, char *value, int inlen,
 typedef int (*config_clr_cb)(const char *key, struct lxc_conf *conf,
 			     void *data);
 
+#define LXC_CONFIG_MEMBERS \
+	char *name;        \
+	bool strict;       \
+	config_set_cb set; \
+	config_get_cb get; \
+	config_clr_cb clr
+
 struct lxc_config_t {
-	char *name;
-	bool strict;
-	config_set_cb set;
-	config_get_cb get;
-	config_clr_cb clr;
+	LXC_CONFIG_MEMBERS;
 };
 
 struct new_config_item {
