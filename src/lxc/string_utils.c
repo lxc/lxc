@@ -657,7 +657,7 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 	errno = 0;
 	u = strtoll(numstr, &remaining, base);
 	if (errno == ERANGE && u == INT64_MAX)
-		return -ERANGE;
+		return ret_errno(ERANGE);
 
 	if (remaining == numstr)
 		return -EINVAL;
@@ -670,11 +670,11 @@ int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, ch
 
 		len = strlen(remaining);
 		if (len >= residual_len)
-			return -EINVAL;
+			return ret_errno(EINVAL);
 
 		memcpy(residual, remaining, len);
 	} else if (*remaining != '\0') {
-		return -EINVAL;
+		return ret_errno(EINVAL);
 	}
 
 out:
