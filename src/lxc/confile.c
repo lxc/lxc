@@ -1628,13 +1628,21 @@ static int set_config_apparmor_raw(const char *key,
 static int set_config_selinux_context(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
+#if HAVE_SELINUX
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static int set_config_selinux_context_keyring(const char *key, const char *value,
 					      struct lxc_conf *lxc_conf, void *data)
 {
+#if HAVE_SELINUX
 	return set_config_string_item(&lxc_conf->lsm_se_keyring_context, value);
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static int set_config_keyring_session(const char *key, const char *value,
@@ -3732,13 +3740,21 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 static int get_config_selinux_context(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
+#if HAVE_SELINUX
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static int get_config_selinux_context_keyring(const char *key, char *retv, int inlen,
 					      struct lxc_conf *c, void *data)
 {
+#if HAVE_SELINUX
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_keyring_context);
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static int get_config_keyring_session(const char *key, char *retv, int inlen,
@@ -4740,15 +4756,23 @@ static inline int clr_config_apparmor_raw(const char *key,
 static inline int clr_config_selinux_context(const char *key,
 					     struct lxc_conf *c, void *data)
 {
+#if HAVE_SELINUX
 	free_disarm(c->lsm_se_context);
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static inline int clr_config_selinux_context_keyring(const char *key,
 						     struct lxc_conf *c, void *data)
 {
+#if HAVE_SELINUX
 	free_disarm(c->lsm_se_keyring_context);
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without SELinux support");
+#endif
 }
 
 static inline int clr_config_keyring_session(const char *key,
