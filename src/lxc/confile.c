@@ -1408,7 +1408,11 @@ static int set_config_tty_dir(const char *key, const char *value,
 static int set_config_apparmor_profile(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+#if HAVE_APPARMOR
 	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int set_config_apparmor_allow_incomplete(const char *key,
@@ -1416,6 +1420,7 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 						struct lxc_conf *lxc_conf,
 						void *data)
 {
+#if HAVE_APPARMOR
 	int ret;
 
 	if (lxc_config_value_empty(value)) {
@@ -1431,6 +1436,9 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 		return ret_errno(EINVAL);
 
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int set_config_apparmor_allow_nesting(const char *key,
@@ -1438,6 +1446,7 @@ static int set_config_apparmor_allow_nesting(const char *key,
 					     struct lxc_conf *lxc_conf,
 					     void *data)
 {
+#if HAVE_APPARMOR
 	int ret;
 
 	if (lxc_config_value_empty(value))
@@ -1451,6 +1460,9 @@ static int set_config_apparmor_allow_nesting(const char *key,
 		return ret_errno(EINVAL);
 
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int set_config_apparmor_raw(const char *key,
@@ -1458,6 +1470,7 @@ static int set_config_apparmor_raw(const char *key,
 				   struct lxc_conf *lxc_conf,
 				   void *data)
 {
+#if HAVE_APPARMOR
 	__do_free char *elem = NULL;
 	__do_free struct lxc_list *list = NULL;
 
@@ -1476,6 +1489,9 @@ static int set_config_apparmor_raw(const char *key,
 	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, move_ptr(list));
 
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int set_config_selinux_context(const char *key, const char *value,
@@ -3410,29 +3426,40 @@ static int get_config_tty_dir(const char *key, char *retv, int inlen,
 static int get_config_apparmor_profile(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
+#if HAVE_APPARMOR
 	return lxc_get_conf_str(retv, inlen, c->lsm_aa_profile);
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int get_config_apparmor_allow_incomplete(const char *key, char *retv,
 						int inlen, struct lxc_conf *c,
 						void *data)
 {
-	return lxc_get_conf_int(c, retv, inlen,
-				c->lsm_aa_allow_incomplete);
+#if HAVE_APPARMOR
+	return lxc_get_conf_int(c, retv, inlen, c->lsm_aa_allow_incomplete);
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int get_config_apparmor_allow_nesting(const char *key, char *retv,
 					     int inlen, struct lxc_conf *c,
 					     void *data)
 {
-	return lxc_get_conf_int(c, retv, inlen,
-				c->lsm_aa_allow_nesting);
+#if HAVE_APPARMOR
+	return lxc_get_conf_int(c, retv, inlen, c->lsm_aa_allow_nesting);
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int get_config_apparmor_raw(const char *key, char *retv,
 				   int inlen, struct lxc_conf *c,
 				   void *data)
 {
+#if HAVE_APPARMOR
 	int len;
 	struct lxc_list *it;
 	int fulllen = 0;
@@ -3447,6 +3474,9 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 	}
 
 	return fulllen;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static int get_config_selinux_context(const char *key, char *retv, int inlen,
@@ -4310,31 +4340,47 @@ static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 static inline int clr_config_apparmor_profile(const char *key,
 					      struct lxc_conf *c, void *data)
 {
+#if HAVE_APPARMOR
 	free_disarm(c->lsm_aa_profile);
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static inline int clr_config_apparmor_allow_incomplete(const char *key,
 						       struct lxc_conf *c,
 						       void *data)
 {
+#if HAVE_APPARMOR
 	c->lsm_aa_allow_incomplete = 0;
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static inline int clr_config_apparmor_allow_nesting(const char *key,
 						    struct lxc_conf *c,
 						    void *data)
 {
+#if HAVE_APPARMOR
 	c->lsm_aa_allow_nesting = 0;
 	return 0;
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static inline int clr_config_apparmor_raw(const char *key,
 					  struct lxc_conf *c,
 					  void *data)
 {
+#if HAVE_APPARMOR
 	return lxc_clear_apparmor_raw(c);
+#else
+	return syserror_set(-EINVAL, "Built without AppArmor support");
+#endif
 }
 
 static inline int clr_config_selinux_context(const char *key,
