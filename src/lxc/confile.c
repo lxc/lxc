@@ -211,7 +211,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.mount.fstab",                true,  set_config_mount_fstab,                get_config_mount_fstab,                clr_config_mount_fstab,                },
 	{ "lxc.namespace.clone",            true,  set_config_namespace_clone,            get_config_namespace_clone,            clr_config_namespace_clone,            },
 	{ "lxc.namespace.keep",             true,  set_config_namespace_keep,             get_config_namespace_keep,             clr_config_namespace_keep,             },
-	{ "lxc.namespace.share",            true,  set_config_namespace_share,            get_config_namespace_share,            clr_config_namespace_share,            },
+	{ "lxc.namespace.share.",           false, set_config_namespace_share,            get_config_namespace_share,            clr_config_namespace_share,            },
 	{ "lxc.net.",                       false, set_config_jump_table_net,             get_config_jump_table_net,             clr_config_jump_table_net,             },
 	{ "lxc.net",                        true,  set_config_net,                        get_config_net,                        clr_config_net,                        },
 	{ "lxc.no_new_privs",	            true,  set_config_no_new_privs,               get_config_no_new_privs,               clr_config_no_new_privs,               },
@@ -2627,6 +2627,9 @@ static int set_config_namespace_share(const char *key, const char *value,
 		return clr_config_namespace_share(key, lxc_conf, data);
 
 	namespace = key + STRLITERALLEN("lxc.namespace.share.");
+	if (is_empty_string(namespace))
+		return ret_errno(EINVAL);
+
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
@@ -4247,6 +4250,9 @@ static int get_config_namespace_share(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	namespace = key + STRLITERALLEN("lxc.namespace.share.");
+	if (is_empty_string(namespace))
+		return ret_errno(EINVAL);
+
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
@@ -4730,6 +4736,9 @@ static int clr_config_namespace_share(const char *key,
 	const char *namespace;
 
 	namespace = key + STRLITERALLEN("lxc.namespace.share.");
+	if (is_empty_string(namespace))
+		return ret_errno(EINVAL);
+
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
