@@ -3457,12 +3457,6 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to mount \"/dev\"");
 	}
 
-	lxc_conf->rootfs.dfd_dev = open_at(lxc_conf->rootfs.dfd_mnt, "dev",
-					        PROTECT_OPATH_DIRECTORY,
-						PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (lxc_conf->rootfs.dfd_dev < 0 && errno != ENOENT)
-		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
-
 	/* Do automatic mounts (mainly /proc and /sys), but exclude those that
 	 * need to wait until other stuff has finished.
 	 */
@@ -3480,6 +3474,11 @@ int lxc_setup(struct lxc_handler *handler)
 		if (ret < 0)
 			return log_error(-1, "Failed to setup mount entries");
 	}
+
+	lxc_conf->rootfs.dfd_dev = open_at(lxc_conf->rootfs.dfd_mnt, "dev",
+					   PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (lxc_conf->rootfs.dfd_dev < 0 && errno != ENOENT)
+		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
 
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
