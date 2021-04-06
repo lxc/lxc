@@ -565,7 +565,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #define syserror(format, ...)                    \
 	({                                       \
 		SYSERROR(format, ##__VA_ARGS__); \
-		(-errno);                        \
+		(-labs(errno));                  \
 	})
 
 #define syserror_set(__ret__, format, ...)                    \
@@ -586,7 +586,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #define syswarn(format, ...)                    \
 	({                                      \
 		SYSWARN(format, ##__VA_ARGS__); \
-		(-errno);                       \
+		(-labs(errno));                 \
 	})
 
 #define syswarn_set(__ret__, format, ...)                     \
@@ -605,16 +605,16 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	})
 
 #define sysinfo(format, ...)                    \
-	({                                       \
+	({                                      \
 		SYSINFO(format, ##__VA_ARGS__); \
-		(-errno);                        \
+		(-labs(errno));                 \
 	})
 
-#define sysinfo_set(__ret__, format, ...)                    \
+#define sysinfo_set(__ret__, format, ...)                     \
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
 		errno = labs(__ret__);                        \
-		SYSINFO(format, ##__VA_ARGS__);              \
+		SYSINFO(format, ##__VA_ARGS__);               \
 		__internal_ret__;                             \
 	})
 
@@ -628,7 +628,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #define sysdebug(format, ...)                    \
 	({                                       \
 		SYSDEBUG(format, ##__VA_ARGS__); \
-		(-errno);                        \
+		(-labs(errno));                  \
 	})
 
 #define sysdebug_set(__ret__, format, ...)                    \
@@ -649,7 +649,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #define systrace(format, ...)                    \
 	({                                       \
 		SYSTRACE(format, ##__VA_ARGS__); \
-		(-errno);                        \
+		(-labs(errno));                  \
 	})
 
 #define systrace_set(__ret__, format, ...)                    \
