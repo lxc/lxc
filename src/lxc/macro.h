@@ -663,10 +663,10 @@ enum {
 		__internal_ret__;                             \
 	})
 
-#define ret_errno(__errno__)         \
-	({                           \
-		errno = (__errno__); \
-		-(__errno__);        \
+#define ret_errno(__errno__)             \
+	({                               \
+		errno = labs(__errno__); \
+		-errno;                  \
 	})
 
 /* Container's specific file/directory names */
