@@ -23,7 +23,7 @@
 set -eu
 
 # Make sure the usual locations are in PATH
-export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Check for required binaries
 for bin in skopeo umoci jq; do
