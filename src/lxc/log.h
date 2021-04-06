@@ -583,6 +583,13 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
+#define error_ret(__ret__, format, ...)                       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		ERROR(format, ##__VA_ARGS__);                 \
+		__internal_ret__;                             \
+	})
+
 #define syswarn(format, ...)                    \
 	({                                      \
 		SYSWARN(format, ##__VA_ARGS__); \
