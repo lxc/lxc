@@ -82,6 +82,7 @@ lxc_config_define(console_logfile);
 lxc_config_define(console_path);
 lxc_config_define(console_rotate);
 lxc_config_define(console_size);
+lxc_config_define(unsupported_key);
 lxc_config_define(environment);
 lxc_config_define(ephemeral);
 lxc_config_define(execute_cmd);
@@ -157,6 +158,24 @@ lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
+
+static int set_config_unsupported_key(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	return syserror_set(-EINVAL, "Unsupported config key \"%s\"", key);
+}
+
+static int get_config_unsupported_key(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
+{
+	return syserror_set(-EINVAL, "Unsupported config key \"%s\"", key);
+}
+
+static int clr_config_unsupported_key(const char *key,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	return syserror_set(-EINVAL, "Unsupported config key \"%s\"", key);
+}
 
 /*
  * Important Note:
@@ -257,6 +276,14 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.proc",                       false, set_config_proc,                       get_config_proc,                       clr_config_proc,                       },
 };
 
+static struct lxc_config_t unsupported_config_key = {
+	NULL,
+	false,
+	set_config_unsupported_key,
+	get_config_unsupported_key,
+	clr_config_unsupported_key,
+};
+
 struct lxc_config_net_t {
 	LXC_CONFIG_MEMBERS;
 };
@@ -287,6 +314,14 @@ static struct lxc_config_net_t config_jump_table_net[] = {
 	{ "veth.ipv6.route",        true,  set_config_net_veth_ipv6_route,        get_config_net_veth_ipv6_route,        clr_config_net_veth_ipv6_route,        },
 	{ "veth.vlan.id",           true,  set_config_net_veth_vlan_id,           get_config_net_veth_vlan_id,           clr_config_net_veth_vlan_id,           },
 	{ "veth.vlan.tagged.id",    true,  set_config_net_veth_vlan_tagged_id,    get_config_net_veth_vlan_tagged_id,    clr_config_net_veth_vlan_tagged_id,    },
+};
+
+static struct lxc_config_net_t unsupported_config_net_key = {
+	NULL,
+	false,
+	set_config_unsupported_key,
+	get_config_unsupported_key,
+	clr_config_unsupported_key,
 };
 
 struct lxc_config_t *lxc_get_config_exact(const char *key)
@@ -327,13 +362,13 @@ struct lxc_config_t *lxc_get_config(const char *key)
 		case 0:
 			continue;
 		case -E2BIG:
-			return NULL;
+			return &unsupported_config_key;
 		}
 
 		return cur;
 	}
 
-	return NULL;
+	return &unsupported_config_key;
 }
 
 static inline bool match_config_net_item(const struct lxc_config_net_t *entry,
@@ -355,7 +390,7 @@ static struct lxc_config_net_t *lxc_get_config_net(const char *key)
 		return cur;
 	}
 
-	return NULL;
+	return &unsupported_config_net_key;
 }
 
 static int set_config_net(const char *key, const char *value,
@@ -3037,9 +3072,6 @@ static int parse_line(char *buffer, void *data)
 	}
 
 	config = lxc_get_config(key);
-	if (!config)
-		return log_error_errno(-EINVAL, EINVAL, "Unknown configuration key \"%s\"", key);
-
 	return config->set(key, value, plc->conf, NULL);
 }
 
@@ -5363,7 +5395,7 @@ static int get_network_config_ops(const char *key, struct lxc_conf *lxc_conf,
 
 	/* lxc.net.<idx>.<subkey> */
 	info->ops = lxc_get_config_net(info->subkey);
-	if (!info->ops)
+	if (info->ops == &unsupported_config_net_key)
 		return syserror_set(-ENOENT, "Unknown network configuration key \"%s\"", key);
 
 	return 0;
