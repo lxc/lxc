@@ -300,12 +300,22 @@ struct lxc_config_t *lxc_get_config_exact(const char *key)
 	return NULL;
 }
 
-static inline bool match_config_item(const struct lxc_config_t *entry,
-				     const char *key)
+/* Assume a reasonable subkey size limit. */
+#define LXC_SUBKEY_LEN_MAX 256
+
+static inline int match_config_item(const struct lxc_config_t *entry, const char *key)
 {
+	size_t len;
+
 	if (entry->strict)
 		return strequal(entry->name, key);
-	return strnequal(entry->name, key, strlen(entry->name));
+
+	/* There should be no subkey longer than this. */
+	len = strnlen(entry->name, LXC_SUBKEY_LEN_MAX);
+	if (len == LXC_SUBKEY_LEN_MAX)
+		return error_ret(-E2BIG, "Excessive subkey length");
+
+	return strnequal(entry->name, key, len);
 }
 
 struct lxc_config_t *lxc_get_config(const char *key)
@@ -313,8 +323,12 @@ struct lxc_config_t *lxc_get_config(const char *key)
 	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table); i++) {
 		struct lxc_config_t *cur = &config_jump_table[i];
 
-		if (!match_config_item(cur, key))
+		switch (match_config_item(cur, key)) {
+		case 0:
 			continue;
+		case -E2BIG:
+			return NULL;
+		}
 
 		return cur;
 	}
