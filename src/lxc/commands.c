@@ -1005,9 +1005,6 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 
 	memset(&rsp, 0, sizeof(rsp));
 	item = lxc_get_config(req->data);
-	if (!item)
-		goto err1;
-
 	cilen = item->get(req->data, NULL, 0, handler->conf, NULL);
 	if (cilen <= 0)
 		goto err1;

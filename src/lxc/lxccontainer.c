@@ -2230,12 +2230,8 @@ static bool do_lxcapi_clear_config_item(struct lxc_container *c,
 		return false;
 
 	config = lxc_get_config(key);
-	/* Verify that the config key exists and that it has a callback
-	 * implemented.
-	 */
-	if (config && config->clr)
-		ret = config->clr(key, c->lxc_conf, NULL);
 
+	ret = config->clr(key, c->lxc_conf, NULL);
 	if (!ret)
 		do_clear_unexp_config_line(c->lxc_conf, key);
 
@@ -2571,11 +2567,8 @@ static int do_lxcapi_get_config_item(struct lxc_container *c, const char *key, c
 		return -1;
 
 	config = lxc_get_config(key);
-	/* Verify that the config key exists and that it has a callback
-	 * implemented.
-	 */
-	if (config && config->get)
-		ret = config->get(key, retv, inlen, c->lxc_conf, NULL);
+
+	ret = config->get(key, retv, inlen, c->lxc_conf, NULL);
 
 	container_mem_unlock(c);
 	return ret;
@@ -3138,8 +3131,6 @@ int lxc_set_config_item_locked(struct lxc_conf *conf, const char *key,
 	bool bret = true;
 
 	config = lxc_get_config(key);
-	if (!config)
-		return -EINVAL;
 
 	ret = config->set(key, v, conf, NULL);
 	if (ret < 0)
