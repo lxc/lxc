@@ -1,5 +1,4 @@
----
-name: CIFuzz
+name: Fuzzing with OSS-fuzz
 on:
   push:
     branches:
