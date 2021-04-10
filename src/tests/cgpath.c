@@ -60,7 +60,7 @@ static int test_running_container(const char *lxcpath, const char *name)
 	char *cgrelpath;
 	char  relpath[PATH_MAX+1];
 	char  value[NAME_MAX], value_save[NAME_MAX];
-	struct cgroup_ops *cgroup_ops;
+	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 
 	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
 
