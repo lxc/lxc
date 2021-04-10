@@ -180,6 +180,7 @@ static int test_container(const char *lxcpath, const char *name,
 	if (c->is_defined(c)) {
 		c->stop(c);
 		c->destroy(c);
+		lxc_container_put(c);
 		c = lxc_container_new(name, lxcpath);
 	}
 	c->set_config_item(c, "lxc.net.0.type", "empty");
