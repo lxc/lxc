@@ -27,7 +27,7 @@ if verlte "$criu_version" "1.3.1"; then
 fi
 
 name=lxc-test-criu
-lxc-create -t ubuntu -n $name || FAIL "creating container"
+lxc-create -t busybox -n $name || FAIL "creating container"
 
 cat >> "$(lxc-config lxc.lxcpath)/$name/config" <<EOF
 # hax for criu
