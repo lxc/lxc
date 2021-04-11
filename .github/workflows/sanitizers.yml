@@ -1,0 +1,22 @@
+name: Sanitizers build
+on:
+  - push
+  - pull_request
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          sudo CC=${{ matrix.compiler }} .github/workflows/lxc-exercise
