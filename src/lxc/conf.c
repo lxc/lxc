@@ -2789,18 +2789,16 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	int ret;
 	struct stat st;
 
-	errno = EINVAL;
 	if (cap != CAP_SETUID && cap != CAP_SETGID)
-		return -1;
+		return ret_errno(EINVAL);
 
-	errno = ENOENT;
 	path = on_path(binary, NULL);
 	if (!path)
-		return -1;
+		return ret_errno(ENOENT);
 
 	ret = stat(path, &st);
 	if (ret < 0)
-		return -1;
+		return -errno;
 
 	/* Check if the binary is setuid. */
 	if (st.st_mode & S_ISUID)
@@ -2819,7 +2817,8 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED))
 		return log_debug(1, "The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE and CAP_PERMITTED sets", path);
 #else
-	/* If we cannot check for file capabilities we need to give the benefit
+	/*
+	 * If we cannot check for file capabilities we need to give the benefit
 	 * of the doubt. Otherwise we might fail even though all the necessary
 	 * file capabilities are set.
 	 */
