@@ -31,7 +31,7 @@ if [[ "$CC" == "gcc" ]]; then
 fi
 
 ./autogen.sh
-CFLAGS=-fsanitize=address,undefined ./configure --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined
+CFLAGS="-Wall -Werror -fsanitize=address,undefined" ./configure --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined
 make
 make install
 
