@@ -54,4 +54,4 @@ systemctl restart apparmor
 systemctl restart lxc-net
 
 git clone --depth=1 https://github.com/lxc/lxc-ci
-lxc-ci/deps/lxc-exercise
+timeout 30m bash -x lxc-ci/deps/lxc-exercise
