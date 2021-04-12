@@ -40,6 +40,14 @@ cat <<'EOF' >/usr/bin/lxc-test-share-ns
 printf "The test is skipped due to https://github.com/lxc/lxc/issues/3798.\n"
 EOF
 
+mv /usr/bin/{lxc-test-concurrent,test-concurrent.orig}
+cat <<EOF >/usr/bin/lxc-test-concurrent
+#!/bin/bash
+printf "Memory leaks are ignored due to https://github.com/lxc/lxc/issues/3788.\n"
+ASAN_OPTIONS=$ASAN_OPTIONS:detect_leaks=0 UBSAN_OPTIONS=$UBSAN_OPTIONS /usr/bin/test-concurrent.orig
+EOF
+chmod +x /usr/bin/lxc-test-concurrent
+
 sed -i 's/USE_LXC_BRIDGE="false"/USE_LXC_BRIDGE="true"/' /etc/default/lxc
 systemctl daemon-reload
 systemctl restart apparmor
