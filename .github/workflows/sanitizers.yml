@@ -3,7 +3,7 @@ on:
   - push
   - pull_request
 jobs:
-  test:
+  sanitizers:
     strategy:
       fail-fast: false
       matrix:
@@ -16,7 +16,5 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build
-        env:
-          CC: ${{ matrix.compiler }}
         run: |
-          sudo CC=${{ matrix.compiler }} .github/workflows/lxc-exercise
+          sudo CC=${{ matrix.compiler }} .github/workflows/sanitizers.sh
