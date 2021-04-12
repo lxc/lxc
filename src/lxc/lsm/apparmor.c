@@ -431,6 +431,7 @@ error:
 static char *apparmor_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
 	__do_close int fd_label = -EBADF;
+	__do_free char *buf = NULL;
 	__do_free char *label = NULL;
 	int ret;
 	size_t len;
@@ -439,12 +440,18 @@ static char *apparmor_process_label_get(struct lsm_ops *ops, pid_t pid)
 	if (fd_label < 0)
 		return NULL;
 
-	ret = fd_to_buf(fd_label, &label, &len);
+	ret = fd_to_buf(fd_label, &buf, &len);
 	if (ret < 0)
 		return NULL;
 
 	if (len == 0)
 		return NULL;
+
+	label = malloc(len + 1);
+	if (!label)
+		return NULL;
+	memcpy(label, buf, len);
+	label[len] = '\0';
 
 	len = strcspn(label, "\n \t");
 	if (len)
