@@ -2816,6 +2816,8 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_EFFECTIVE) &&
 	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED))
 		return log_debug(1, "The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE and CAP_PERMITTED sets", path);
+
+	return 0;
 #else
 	/*
 	 * If we cannot check for file capabilities we need to give the benefit
@@ -2823,9 +2825,8 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	 * file capabilities are set.
 	 */
 	DEBUG("Cannot check for file capabilities as full capability support is missing. Manual intervention needed");
-#endif
-
 	return 1;
+#endif
 }
 
 static int lxc_map_ids_exec_wrapper(void *args)
