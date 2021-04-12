@@ -534,9 +534,6 @@ static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
 
-		if (!(ctx->ns_inherited & ns_info[i].clone_flag))
-			continue;
-
 		ret = same_nsfd(ctx->dfd_self_pid,
 				ctx->dfd_init_pid,
 				ns_info[i].proc_path);
@@ -545,10 +542,11 @@ static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 			__fallthrough;
 		case 1:
 			ctx->ns_inherited &= ~ns_info[i].clone_flag;
-			break;
+			TRACE("Shared %s namespace doesn't need attach", ns_info[i].proc_name);
+			continue;
 		case 0:
-			TRACE("Shared %s namespace needs attach", ns_info[i].proc_name);
-			break;
+			TRACE("Different %s namespace needs attach", ns_info[i].proc_name);
+			continue;
 		}
 
 		return syserror("Failed to determine whether %s namespace is shared",
