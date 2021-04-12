@@ -292,7 +292,7 @@ setup_and_run() {
     fi
 
     debug 0 "as $asuser executing ${MYPATH} ${pt_args[*]}"
-    sudo -Hu "$asuser" "${MYPATH}" "${pt_args[@]}"
+    sudo -Hu "$asuser" ASAN_OPTIONS=${ASAN_OPTIONS:-} UBSAN_OPTIONS=${UBSAN_OPTIONS:-} "${MYPATH}" "${pt_args[@]}"
 }
 
 USERNSEXEC=${USERNSEXEC:-lxc-usernsexec}
