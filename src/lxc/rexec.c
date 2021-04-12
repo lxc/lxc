@@ -162,9 +162,6 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 	if (execfd < 0)
 		return;
 
-	ret = close_range(STDERR_FILENO + 1, MAX_FILENO, CLOSE_RANGE_CLOEXEC);
-	if (ret && (errno != ENOSYS && errno != EINVAL))
-		fprintf(stderr, "%m - Failed to mark all file descriptors as close-on-exec\n");
 	fexecve(execfd, argv, envp);
 }
 
