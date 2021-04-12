@@ -72,6 +72,16 @@ apt-get install --yes --no-install-recommends \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
     wget xz-utils
 
+# init.lxc.static is run in arbitrary containers where the libasan library lxc has been built with
+# isn't always installed. To make it work let's override GCC's default and link both libasan
+# and libubsan statically. It should help to fix issues like
+# ...
+# ++ lxc-execute -n c1 -- sudo -u ubuntu /nnptest
+# lxc-init: error while loading shared libraries: libasan.so.5: cannot open shared object file: No such file or directory
+if [[ "$CC" == "gcc" ]]; then
+    sed -i '/init_lxc_static_LDFLAGS/s/$/ -static-libasan -static-libubsan/' src/lxc/Makefile.am
+fi
+
 ./autogen.sh
 CFLAGS=-fsanitize=address,undefined ./configure --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined
 make
