@@ -305,14 +305,6 @@ static struct lxc_config_net_t unsupported_config_net_key = {
 	clr_config_unsupported_key,
 };
 
-static struct lxc_config_net_t unsupported_config_net_key = {
-	NULL,
-	false,
-	set_config_unsupported_key,
-	get_config_unsupported_key,
-	clr_config_unsupported_key,
-};
-
 struct lxc_config_t *lxc_get_config_exact(const char *key)
 {
 	size_t i;
