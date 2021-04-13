@@ -27,6 +27,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "memory_utils.h"
+
 #define MYNAME "lxctest1"
 
 #define TSTERR(x) do { \
@@ -36,7 +38,8 @@
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
-	const char *p1, *p2;
+	const char *p1;
+	__do_free char *p2 = NULL;
 	int retval = -1;
 
 	c = lxc_container_new(MYNAME, NULL);
@@ -60,6 +63,7 @@ int main(int argc, char *argv[])
 	}
 
 	p1 = c->get_config_path(c);
+	free(p2);
 	p2 = c->config_file_name(c);
 	if (strcmp(p1, CPATH) || strcmp(p2, FPATH)) {
 		TSTERR("Bad result for path names after set_config_path()");
@@ -74,6 +78,7 @@ int main(int argc, char *argv[])
 	}
 
 	p1 = c->get_config_path(c);
+	free(p2);
 	p2 = c->config_file_name(c);
 	if (strcmp(p1, CPATH) || strcmp(p2, FPATH)) {
 		TSTERR("Bad result for path names after create with custom path");
