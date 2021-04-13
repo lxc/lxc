@@ -471,11 +471,6 @@ if test "x$enable_sanitizers" = "xyes"; then
 		-fno-omit-frame-pointer])
 	AC_SUBST(AM_CFLAGS)
 
-	CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[ \
-		-fsanitize=address])
-
-	AC_SUBST(AM_LDFLAGS)
-
 	AC_MSG_RESULT([yes])
 else
 	AC_MSG_RESULT([no])
