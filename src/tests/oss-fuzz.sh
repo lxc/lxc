@@ -39,14 +39,15 @@ sed -i 's/^AC_CHECK_LIB(util/#/' configure.ac
     --disable-selinux \
     --disable-seccomp \
     --disable-capabilities \
-    --disable-no-undefined
+    --disable-no-undefined \
+    --enable-tests \
+    --enable-fuzzers
 
 make -j$(nproc)
 
 for fuzz_target_source in src/tests/fuzz-lxc*.c; do
     fuzz_target_name=$(basename "$fuzz_target_source" ".c")
-    $CC -c -o "$fuzz_target_name.o" $CFLAGS -Isrc -Isrc/lxc "$fuzz_target_source"
-    $CXX $CXXFLAGS $LIB_FUZZING_ENGINE "$fuzz_target_name.o" src/lxc/.libs/liblxc.a -o "$OUT/$fuzz_target_name"
+    cp "src/tests/$fuzz_target_name" "$OUT"
 done
 
 perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >doc/examples/keys.conf
