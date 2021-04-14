@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
@@ -270,5 +271,29 @@ static inline __u32 copy_struct_to_client(__u32 client_size, void *dst,
 	memcpy(dst, src, size);
 	return size;
 }
+
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+static inline int is_in_comm(const char *s)
+{
+	__do_free char *buf = NULL;
+	__do_free char *comm = NULL;
+	size_t buf_size;
+
+	buf = file_to_buf("/proc/self/comm", &buf_size);
+	if (!buf)
+		return -1;
+
+	if (buf_size == 0)
+		return -1;
+
+	comm = malloc(buf_size + 1);
+	if (!comm)
+		return -1;
+	memcpy(comm, buf, buf_size);
+	comm[buf_size] = '\0';
+
+	return strstr(comm, s) != NULL;
+}
+#endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 
 #endif /* __LXC_UTILS_H */

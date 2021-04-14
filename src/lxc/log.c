@@ -508,7 +508,10 @@ static int build_dir(const char *name)
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		ret = lxc_unpriv(mkdir(n, 0755));
 #else
-		ret = errno = EEXIST;
+		if (is_in_comm("fuzz-lxc-") > 0)
+			ret = errno = EEXIST;
+		else
+			ret = lxc_unpriv(mkdir(n, 0755));
 #endif /*!FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 		*p = '/';
 		if (ret && errno != EEXIST)
@@ -521,10 +524,14 @@ static int build_dir(const char *name)
 static int log_open(const char *name)
 {
 	int newfd = -EBADF;
-#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	__do_close int fd = -EBADF;
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
+#else
+	if (is_in_comm("fuzz-lxc-") <= 0)
+		fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
+#endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	if (fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open log file \"%s\"", name);
 
@@ -534,7 +541,6 @@ static int log_open(const char *name)
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO);
 	if (newfd < 0)
 		return log_error_errno(-errno, errno, "Failed to dup log fd %d", fd);
-#endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	return newfd;
 }
 
