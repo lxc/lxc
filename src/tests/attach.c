@@ -321,8 +321,7 @@ static struct lxc_container *test_ct_create(const char *lxcpath,
 		goto out1;
 	}
 	if (ct->is_defined(ct)) {
-		ct->stop(ct);
-		ct->destroy(ct);
+		test_ct_destroy(ct);
 		ct = lxc_container_new(name, lxcpath);
 	}
 	if (!ct->createl(ct, template, NULL, NULL, 0, NULL)) {
