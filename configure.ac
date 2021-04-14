@@ -62,6 +62,7 @@ if test "x$valid_compiler" = "xno"; then
 fi
 
 AC_PROG_GCC_TRADITIONAL
+AC_PROG_CXX
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 # Check binaries
@@ -204,6 +205,13 @@ AC_ARG_ENABLE([no_undefined],
 	[AS_HELP_STRING([--disable-no-undefined], [do not pass -Wl,--no-undefined])],
 	[enable_no_undefined=$enableval], [enable_no_undefined=yes])
 AM_CONDITIONAL([ENABLE_NO_UNDEFINED], [test "x$enable_no_undefined" = "xyes"])
+
+AC_ARG_ENABLE([fuzzers],
+	[AS_HELP_STRING([--enable-fuzzers], [compile with fuzzers])],
+	[enable_fuzzers=$enableval], [enable_fuzzers=no])
+AM_CONDITIONAL([ENABLE_FUZZERS], [test "x$enable_fuzzers" = "xyes"])
+
+AM_CONDITIONAL([OSS_FUZZ], [test "x$LIB_FUZZING_ENGINE" != x])
 
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
@@ -474,6 +482,13 @@ if test "x$enable_sanitizers" = "xyes"; then
 	AC_MSG_RESULT([yes])
 else
 	AC_MSG_RESULT([no])
+fi
+
+if test "x$enable_fuzzers" = "xyes" -a "x$LIB_FUZZING_ENGINE" = x; then
+	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
+		-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION \
+		-fsanitize=fuzzer-no-link])
+	AC_SUBST(AM_CFLAGS)
 fi
 
 # Optional test binaries
@@ -1123,6 +1138,7 @@ Debugging:
  - Coverity: $enable_coverity_build
  - mutex debugging: $enable_mutex_debugging
  - tests: $enable_tests
+ - fuzzers: $enable_fuzzers
 
 Paths:
  - Logs in configpath: $enable_configpath_log
