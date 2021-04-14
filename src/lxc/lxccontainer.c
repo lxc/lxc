@@ -1775,21 +1775,19 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			     const char *bdevtype, struct bdev_specs *specs,
 			     int flags, char *const argv[])
 {
+	__do_free char *path_template = NULL;
 	int partial_fd;
 	mode_t mask;
 	pid_t pid;
 	bool ret = false, rootfs_managed = true;
-	char *tpath = NULL;
 
 	if (!c)
 		return false;
 
 	if (t) {
-		tpath = get_template_path(t);
-		if (!tpath) {
-			ERROR("Unknown template \"%s\"", t);
-			goto out;
-		}
+		path_template = get_template_path(t);
+		if (!path_template)
+			return syserror_set(ENOENT, "Template \"%s\" not found", t);
 	}
 
 	/* If a template is passed in, and the rootfs already is defined in the
@@ -1797,22 +1795,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	 * existing container. Return an error, but do NOT delete the container.
 	 */
 	if (do_lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
-	    access(c->lxc_conf->rootfs.path, F_OK) == 0 && tpath) {
-		ERROR("Container \"%s\" already exists in \"%s\"", c->name,
-		      c->config_path);
-		goto free_tpath;
-	}
+	    access(c->lxc_conf->rootfs.path, F_OK) == 0 && path_template)
+		return syserror_set(EEXIST, "Container \"%s\" already exists in \"%s\"", c->name, c->config_path);
 
-	if (!c->lxc_conf) {
-		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s",
-			      lxc_global_config_value("lxc.default_config"));
-			goto free_tpath;
-		}
-	}
+	if (!c->lxc_conf &&
+	    !do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config")))
+		return syserror_set(EINVAL, "Failed to load default configuration file %s",
+				    lxc_global_config_value("lxc.default_config"));
 
 	if (!create_container_dir(c))
-		goto free_tpath;
+		return syserror_set(EINVAL, "Failed to create container %s", c->name);
 
 	if (c->lxc_conf->rootfs.path)
 		rootfs_managed = false;
@@ -1821,7 +1813,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	 * rootfs.path. The container is already created if we have a config and
 	 * rootfs.path is accessible
 	 */
-	if (!c->lxc_conf->rootfs.path && !tpath) {
+	if (!c->lxc_conf->rootfs.path && !path_template) {
 		/* No template passed in and rootfs does not exist. */
 		if (!c->save_config(c, NULL)) {
 			ERROR("Failed to save initial config for \"%s\"", c->name);
@@ -1835,7 +1827,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
 		goto out;
 
-	if (do_lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
+	if (do_lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !path_template) {
 		/* Rootfs already existed, user just wanted to save the loaded
 		 * configuration.
 		 */
@@ -1901,7 +1893,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (!load_config_locked(c, c->configfile))
 		goto out_unlock;
 
-	if (!create_run_template(c, tpath, !!(flags & LXC_CREATE_QUIET), argv))
+	if (!create_run_template(c, path_template, !!(flags & LXC_CREATE_QUIET), argv))
 		goto out_unlock;
 
 	/* Now clear out the lxc_conf we have, reload from the created
@@ -1910,7 +1902,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	do_lxcapi_clear_config(c);
 
 	if (t) {
-		if (!prepend_lxc_header(c->configfile, tpath, argv)) {
+		if (!prepend_lxc_header(c->configfile, path_template, argv)) {
 			ERROR("Failed to prepend header to config file");
 			goto out_unlock;
 		}
@@ -1936,8 +1928,6 @@ out:
 		c->lxc_conf->rootfs.managed = reset_managed;
 	}
 
-free_tpath:
-	free(tpath);
 	return ret;
 }
 
