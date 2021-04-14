@@ -20,8 +20,13 @@ apt-get install --yes --no-install-recommends \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
     wget xz-utils
 
+ARGS="--enable-sanitizers --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined"
+case "$CC" in clang*)
+	ARGS="$ARGS --enable-fuzzers"
+esac
+
 ./autogen.sh
-CFLAGS="-Wall -Werror" ./configure --enable-sanitizers --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined
+CFLAGS="-Wall -Werror" ./configure $ARGS
 make
 make install
 

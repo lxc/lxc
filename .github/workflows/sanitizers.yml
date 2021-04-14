@@ -17,4 +17,4 @@ jobs:
 
       - name: Build
         run: |
-          sudo CC=${{ matrix.compiler }} .github/workflows/sanitizers.sh
+          sudo CC=${{ matrix.compiler }} CXX=${{ matrix.compiler }}++ .github/workflows/sanitizers.sh
