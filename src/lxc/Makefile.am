@@ -1932,6 +1932,9 @@ init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 if ENABLE_SANITIZERS
 init_lxc_static_CFLAGS += -fno-sanitize=address,undefined
 endif
+if ENABLE_FUZZERS
+init_lxc_static_CFLAGS += -fno-sanitize=fuzzer-no-link
+endif
 endif
 endif
 

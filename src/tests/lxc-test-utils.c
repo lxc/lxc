@@ -594,6 +594,15 @@ void test_task_blocks_signal(void)
 	return;
 }
 
+void test_is_in_comm(void)
+{
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	lxc_test_assert_abort(is_in_comm("fuzz-lxc-") == 0);
+	lxc_test_assert_abort(is_in_comm("lxc-test") == 1);
+	lxc_test_assert_abort(is_in_comm("") == 1);
+#endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
+}
+
 int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
@@ -606,6 +615,7 @@ int main(int argc, char *argv[])
 	test_parse_byte_size_string();
 	test_lxc_config_net_is_hwaddr();
 	test_task_blocks_signal();
+	test_is_in_comm();
 
 	exit(EXIT_SUCCESS);
 }
