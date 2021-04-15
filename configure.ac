@@ -467,9 +467,14 @@ if test "x$enable_sanitizers" = "xyes"; then
 	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 		-fsanitize=address \
 		-fsanitize=undefined \
-		-fsanitize=memory \
+		-fno-optimize-sibling-calls \
 		-fno-omit-frame-pointer])
 	AC_SUBST(AM_CFLAGS)
+
+	CC_CHECK_FLAGS_APPEND([AM_LDFLAGS],[LDFLAGS],[ \
+		-fsanitize=address])
+
+	AC_SUBST(AM_LDFLAGS)
 
 	AC_MSG_RESULT([yes])
 else
