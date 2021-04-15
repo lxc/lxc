@@ -146,14 +146,12 @@ int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
 #define __LXC_STACK_SIZE (8 * 1024 * 1024)
 pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 {
+	__do_free void *stack = NULL;
 	pid_t ret;
-	void *stack;
 
 	stack = malloc(__LXC_STACK_SIZE);
-	if (!stack) {
-		SYSERROR("Failed to allocate clone stack");
-		return -ENOMEM;
-	}
+	if (!stack)
+		return syserror_set(-ENOMEM, "Failed to allocate clone stack");
 
 #ifdef __ia64__
 	ret = __clone2(fn, stack, __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
