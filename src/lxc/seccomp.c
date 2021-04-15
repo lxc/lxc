@@ -1310,6 +1310,7 @@ void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 	seccomp_notify_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
 	seccomp->notifier.req_buf = NULL;
 	seccomp->notifier.rsp_buf = NULL;
+	free_disarm(seccomp->notifier.cookie);
 #endif
 }
 
@@ -1560,6 +1561,7 @@ void seccomp_conf_init(struct lxc_conf *conf)
 	       sizeof(conf->seccomp.notifier.proxy_addr));
 	conf->seccomp.notifier.req_buf = NULL;
 	conf->seccomp.notifier.rsp_buf = NULL;
+	conf->seccomp.notifier.cookie = NULL;
 #endif
 }
 
