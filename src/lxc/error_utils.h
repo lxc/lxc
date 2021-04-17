@@ -4,6 +4,9 @@
 #define __LXC_ERROR_UTILS_H
 
 #include <stdbool.h>
+
+#include "macro.h"
+
 #define MAX_ERRNO 4095
 
 #define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-MAX_ERRNO)
