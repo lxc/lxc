@@ -48,7 +48,8 @@ FAIL() {
 run_cmd() {
 	sudo -i -u $TUSER \
 	    env http_proxy=${http_proxy:-} https_proxy=${https_proxy:-} \
-	        XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) $*
+	        XDG_RUNTIME_DIR=/run/user/$(id -u $TUSER) ASAN_OPTIONS=${ASAN_OPTIONS:-} \
+		UBSAN_OPTIONS=${UBSAN_OPTIONS:-} $*
 }
 
 DONE=0
