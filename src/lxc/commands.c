@@ -286,7 +286,8 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		}
 		return syserror_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
 	case LXC_CMD_CONSOLE_LOG:		/* data */
-		__data = zalloc(rsp->datalen + 1);
+		if (rsp->datalen > 0)
+			__data = zalloc(rsp->datalen + 1);
 		rsp->data = __data;
 		break;
 	default:				/* catch any additional command */
