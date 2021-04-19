@@ -48,16 +48,6 @@ ASAN_OPTIONS=$ASAN_OPTIONS:detect_leaks=0 UBSAN_OPTIONS=$UBSAN_OPTIONS /usr/bin/
 EOF
 chmod +x /usr/bin/lxc-test-concurrent
 
-if [[ "$CC" == "clang" ]]; then
-    mv /usr/bin/{lxc-test-console-log,test-console-log.orig}
-    cat <<EOF >/usr/bin/lxc-test-console-log
-#!/bin/bash
-printf "Memory leaks are ignored due to https://github.com/lxc/lxc/issues/3796.\n"
-ASAN_OPTIONS=$ASAN_OPTIONS:detect_leaks=0 UBSAN_OPTIONS=$UBSAN_OPTIONS /usr/bin/test-console-log.orig
-EOF
-    chmod +x /usr/bin/lxc-test-console-log
-fi
-
 sed -i 's/USE_LXC_BRIDGE="false"/USE_LXC_BRIDGE="true"/' /etc/default/lxc
 systemctl daemon-reload
 systemctl restart apparmor

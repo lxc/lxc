@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
 		lxc_debug("Retrieved %" PRIu64
 			  " bytes from console log. Contents are \"%s\"\n",
 			  *log.read_max, log.data);
+		free(log.data);
 	}
 
 	/* Leave another two seconds to ensure boot is finished. */
