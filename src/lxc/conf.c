@@ -102,6 +102,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRCHRNUL
+#include "include/strchrnul.h"
+#endif
+
 lxc_log_define(conf, lxc);
 
 /*
