@@ -69,6 +69,10 @@ if ENABLE_SECCOMP
 lxc_test_api_reboot_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
+if !HAVE_STRCHRNUL
+lxc_test_api_reboot_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/af_unix.c ../lxc/af_unix.h \
 			    ../lxc/caps.c ../lxc/caps.h \
@@ -119,6 +123,10 @@ if ENABLE_SECCOMP
 lxc_test_apparmor_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
+if !HAVE_STRCHRNUL
+lxc_test_apparmor_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/caps.c ../lxc/caps.h \
@@ -167,6 +175,10 @@ lxc_test_attach_SOURCES = attach.c \
 			  $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_test_attach_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_attach_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 lxc_test_basic_SOURCES = basic.c
@@ -220,6 +232,10 @@ if ENABLE_SECCOMP
 lxc_test_cgpath_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
+if !HAVE_STRCHRNUL
+lxc_test_cgpath_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_config_jump_table_SOURCES = config_jump_table.c \
@@ -271,6 +287,10 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_test_config_jump_table_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_config_jump_table_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 lxc_test_console_SOURCES = console.c
@@ -329,6 +349,11 @@ lxc_test_device_add_remove_SOURCES = device_add_remove.c \
 if ENABLE_SECCOMP
 lxc_test_device_add_remove_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_test_device_add_remove_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_getkeys_SOURCES = getkeys.c
 lxc_test_get_item_SOURCES = get_item.c \
 			    ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -379,6 +404,11 @@ lxc_test_get_item_SOURCES = get_item.c \
 if ENABLE_SECCOMP
 lxc_test_get_item_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_test_get_item_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_list_SOURCES = list.c
 lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -428,6 +458,10 @@ lxc_test_locktests_SOURCES = locktests.c \
 			     $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_test_locktests_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_locktests_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 lxc_test_lxcpath_SOURCES = lxcpath.c
@@ -483,6 +517,10 @@ if ENABLE_SECCOMP
 lxc_test_mount_injection_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
+if !HAVE_STRCHRNUL
+lxc_test_mount_injection_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -534,6 +572,10 @@ if ENABLE_SECCOMP
 lxc_test_parse_config_file_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
+if !HAVE_STRCHRNUL
+lxc_test_parse_config_file_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -583,6 +625,10 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_test_raw_clone_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_raw_clone_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 lxc_test_reboot_SOURCES = reboot.c
@@ -648,6 +694,10 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_test_utils_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_utils_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \

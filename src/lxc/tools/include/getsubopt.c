@@ -4,19 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *strchrnul(const char *s, int c)
-{
-    char *result;
+#include "config.h"
 
-    result = strchr( s, c );
-
-    if( !result )
-    {
-        result = (char *)s + strlen( s );
-    }
-
-    return( result );
-}
+#ifndef HAVE_STRCHRNUL
+#include "include/strchrnul"
+#endif
 
 /* Parse comma separated suboption from *OPTIONP and match against
    strings in TOKENS.  If found return index and set *VALUEP to
