@@ -20,6 +20,7 @@ noinst_HEADERS = api_extensions.h \
 		 error.h \
 		 error_utils.h \
 		 file_utils.h \
+		 ../include/strchrnul.h \
 		 ../include/netns_ifaddrs.h \
 		 initutils.h \
 		 list.h \
@@ -391,6 +392,10 @@ lxc_attach_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_attach_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_attach_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
@@ -447,6 +452,10 @@ lxc_autostart_SOURCES += af_unix.c af_unix.h \
 			 $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_autostart_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_autostart_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -505,6 +514,10 @@ lxc_cgroup_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_cgroup_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_cgroup_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_config_SOURCES = tools/lxc_config.c \
@@ -561,6 +574,10 @@ lxc_config_SOURCES += af_unix.c af_unix.h \
 		      $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_config_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_config_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -619,6 +636,10 @@ lxc_console_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_console_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_console_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_destroy_SOURCES = tools/lxc_destroy.c \
@@ -675,6 +696,10 @@ lxc_destroy_SOURCES += af_unix.c af_unix.h \
 		       $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_destroy_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_destroy_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -733,6 +758,10 @@ lxc_device_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_device_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_device_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_execute_SOURCES = tools/lxc_execute.c \
@@ -789,6 +818,10 @@ lxc_execute_SOURCES += af_unix.c af_unix.h \
 		       $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_execute_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_execute_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -847,6 +880,10 @@ lxc_freeze_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_freeze_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_freeze_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_info_SOURCES = tools/lxc_info.c \
@@ -903,6 +940,10 @@ lxc_info_SOURCES += af_unix.c af_unix.h \
 		    $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_info_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_info_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -962,6 +1003,10 @@ lxc_monitor_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_monitor_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_ls_SOURCES = tools/lxc_ls.c \
@@ -1020,6 +1065,10 @@ lxc_ls_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_ls_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_ls_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_copy_SOURCES = tools/lxc_copy.c \
@@ -1076,6 +1125,10 @@ lxc_copy_SOURCES += af_unix.c af_unix.h \
 		    $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_copy_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_copy_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1134,6 +1187,10 @@ lxc_start_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_start_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_start_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_stop_SOURCES = tools/lxc_stop.c \
@@ -1190,6 +1247,10 @@ lxc_stop_SOURCES += af_unix.c af_unix.h \
 		    $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_stop_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1248,6 +1309,10 @@ lxc_top_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_top_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
@@ -1304,6 +1369,10 @@ lxc_unfreeze_SOURCES += af_unix.c af_unix.h \
 			$(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_unfreeze_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_unfreeze_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1364,6 +1433,10 @@ lxc_unshare_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_unshare_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_unshare_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_wait_SOURCES = tools/lxc_wait.c \
@@ -1420,6 +1493,10 @@ lxc_wait_SOURCES += af_unix.c af_unix.h \
 		    $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_wait_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_wait_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1478,6 +1555,10 @@ lxc_create_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_create_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_create_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
@@ -1534,6 +1615,10 @@ lxc_snapshot_SOURCES += af_unix.c af_unix.h \
 			$(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_snapshot_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_snapshot_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1592,6 +1677,11 @@ lxc_checkpoint_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_checkpoint_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_checkpoint_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
 endif
 endif
 
@@ -1665,6 +1755,10 @@ lxc_monitord_SOURCES += af_unix.c af_unix.h \
 if ENABLE_SECCOMP
 lxc_monitord_SOURCES += seccomp.c lxcseccomp.h
 endif
+
+if !HAVE_STRCHRNUL
+lxc_monitord_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
 endif
 
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c
@@ -1723,6 +1817,10 @@ lxc_user_nic_SOURCES += af_unix.c af_unix.h \
 			$(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_user_nic_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_user_nic_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 
@@ -1783,6 +1881,10 @@ lxc_usernsexec_SOURCES += af_unix.c af_unix.h \
 			  $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_usernsexec_SOURCES += seccomp.c lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_usernsexec_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 endif
 endif
