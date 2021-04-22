@@ -2131,10 +2131,10 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 		__do_close int fd_userns = -EBADF;
 		const char *opt_name = lxc_mount_options_info[i];
 		size_t len;
-		char *idmap_path, *p, *p2;
+		char *idmap_path, *opt, *opt_next;
 
-		p = strstr(mnt_opts, opt_name);
-		if (!p)
+		opt = strstr(mnt_opts, opt_name);
+		if (!opt)
 			continue;
 
 		switch (i) {
@@ -2151,11 +2151,11 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			opts->relative = 1;
 			break;
 		case LXC_MOUNT_IDMAP:
-			p2 = p;
-			p2 += STRLITERALLEN("idmap=");
-			idmap_path = strchrnul(p2, ',');
+			opt_next = opt;
+			opt_next += STRLITERALLEN("idmap=");
+			idmap_path = strchrnul(opt_next, ',');
 
-			len = strlcpy(opts->userns_path, p2, idmap_path - p2 + 1);
+			len = strlcpy(opts->userns_path, opt_next, idmap_path - opt_next + 1);
 			if (len >= sizeof(opts->userns_path))
 				return syserror_set(-EIO, "Excessive idmap path length for \"idmap=<path>\" LXC specific mount option");
 
@@ -2172,11 +2172,11 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			return syserror_set(-EINVAL, "Unknown LXC specific mount option");
 		}
 
-		p2 = strchr(p, ',');
-		if (!p2)
-			*p = '\0'; /* no more mntopts, so just chop it here */
+		opt_next = strchr(opt, ',');
+		if (!opt_next)
+			*opt = '\0'; /* no more mntopts, so just chop it here */
 		else
-			memmove(p, p2 + 1, strlen(p2 + 1) + 1);
+			memmove(opt, opt_next + 1, strlen(opt_next + 1) + 1);
 	}
 
 	return 0;
