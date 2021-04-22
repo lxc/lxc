@@ -2154,10 +2154,12 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			opt_next = opt;
 			opt_next += STRLITERALLEN("idmap=");
 			idmap_path = strchrnul(opt_next, ',');
+			len = idmap_path - opt_next + 1;
 
-			len = strlcpy(opts->userns_path, opt_next, idmap_path - opt_next + 1);
 			if (len >= sizeof(opts->userns_path))
 				return syserror_set(-EIO, "Excessive idmap path length for \"idmap=<path>\" LXC specific mount option");
+
+			memcpy(opts->userns_path, opt_next, len);
 
 			if (is_empty_string(opts->userns_path))
 				return syserror_set(-EINVAL, "Missing idmap path for \"idmap=<path>\" LXC specific mount option");
