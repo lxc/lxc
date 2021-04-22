@@ -152,6 +152,10 @@
 #define MOUNT_ATTR_NODIRATIME 0x00000080 /* Do not update directory access times */
 #endif
 
+#ifndef MOUNT_ATTR_IDMAP
+#define MOUNT_ATTR_IDMAP 0x00100000
+#endif
+
 __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new_flags);
 
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
@@ -185,6 +189,18 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
 				  __u64 o_flags_to, __u64 resolve_flags_to,
 				  unsigned int attr_flags, bool recursive);
 
+__hidden extern int fd_mount_idmapped(int dfd_from, const char *path_from,
+				      __u64 o_flags_from, __u64 resolve_flags_from,
+				      int dfd_to, const char *path_to,
+				      __u64 o_flags_to, __u64 resolve_flags_to,
+				      unsigned int attr_flags, int userns_fd,
+				      bool recursive);
+__hidden extern int create_detached_idmapped_mount(const char *path,
+						   int userns_fd, bool recursive);
+__hidden extern int move_detached_mount(int dfd_from, int dfd_to,
+					const char *path_to, __u64 o_flags_to,
+					__u64 resolve_flags_to);
+
 __hidden extern int calc_remount_flags_new(int dfd_from, const char *path_from,
 					   __u64 o_flags_from,
 					   __u64 resolve_flags_from,
@@ -202,5 +218,6 @@ __hidden extern unsigned long add_required_remount_flags(const char *s,
 							 unsigned long flags);
 
 __hidden extern bool can_use_mount_api(void);
+__hidden extern bool can_use_bind_mounts(void);
 
 #endif /* __LXC_MOUNT_UTILS_H */

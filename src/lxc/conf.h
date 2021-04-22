@@ -181,6 +181,26 @@ struct lxc_tty_info {
 	struct lxc_terminal_info *tty;
 };
 
+typedef enum lxc_mount_options_t {
+	LXC_MOUNT_CREATE_DIR	= 0,
+	LXC_MOUNT_CREATE_FILE	= 1,
+	LXC_MOUNT_OPTIONAL	= 2,
+	LXC_MOUNT_RELATIVE	= 3,
+	LXC_MOUNT_IDMAP		= 4,
+	LXC_MOUNT_MAX		= 5,
+} lxc_mount_options_t;
+
+__hidden extern const char *lxc_mount_options_info[LXC_MOUNT_MAX];
+
+struct lxc_mount_options {
+	int create_dir : 1;
+	int create_file : 1;
+	int optional : 1;
+	int relative : 1;
+	char userns_path[PATH_MAX];
+	int userns_fd;
+};
+
 /* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
  * @path         : the rootfs source (directory or device)
@@ -211,6 +231,7 @@ struct lxc_rootfs {
 	unsigned long mountflags;
 	char *data;
 	bool managed;
+	struct lxc_mount_options mnt_opts;
 };
 
 /*
@@ -509,6 +530,7 @@ __hidden extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), v
 				     const char *fn_name);
 __hidden extern int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata);
 __hidden extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
+__hidden extern int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts);
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
@@ -554,12 +576,18 @@ static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
 	return !is_empty_string(rootfs->path) ? rootfs->mount : s;
 }
 
+static inline bool idmapped_rootfs_mnt(const struct lxc_rootfs *rootfs)
+{
+	return rootfs->mnt_opts.userns_fd >= 0;
+}
+
 static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 {
 	if (rootfs) {
 		close_prot_errno_disarm(rootfs->dfd_host);
 		close_prot_errno_disarm(rootfs->dfd_mnt);
 		close_prot_errno_disarm(rootfs->dfd_dev);
+		close_prot_errno_disarm(rootfs->mnt_opts.userns_fd);
 		if (unpin)
 			close_prot_errno_disarm(rootfs->fd_path_pin);
 	}

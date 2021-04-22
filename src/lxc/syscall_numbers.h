@@ -680,4 +680,24 @@
 	#endif
 #endif
 
+#ifndef __NR_mount_setattr
+	#if defined __alpha__
+		#define __NR_mount_setattr 552
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_mount_setattr (442 + 4000)
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_mount_setattr (442 + 6000)
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_mount_setattr (442 + 5000)
+		#endif
+	#elif defined __ia64__
+		#define __NR_mount_setattr (442 + 1024)
+	#else
+		#define __NR_mount_setattr 442
+	#endif
+#endif
+
 #endif /* __LXC_SYSCALL_NUMBERS_H */

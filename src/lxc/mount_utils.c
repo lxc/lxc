@@ -236,16 +236,76 @@ int fs_attach(int fd_fs,
 	return 0;
 }
 
-int fd_bind_mount(int dfd_from, const char *path_from,
-		  __u64 o_flags_from, __u64 resolve_flags_from,
-		  int dfd_to, const char *path_to,
-		  __u64 o_flags_to, __u64 resolve_flags_to,
-		  unsigned int attr_flags, bool recursive)
+int create_detached_idmapped_mount(const char *path, int userns_fd, bool recursive)
 {
-	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
+	__do_close int fd_tree_from = -EBADF;
+	unsigned int open_tree_flags = OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
+	struct lxc_mount_attr attr = {
+		.attr_set	= MOUNT_ATTR_IDMAP,
+		.userns_fd	= userns_fd,
+
+	};
+	int ret;
+
+	TRACE("Idmapped mount \"%s\" requested with user namespace fd %d", path, userns_fd);
+
+	if (recursive)
+		open_tree_flags |= AT_RECURSIVE;
+
+	fd_tree_from = open_tree(-EBADF, path, open_tree_flags);
+	if (fd_tree_from < 0)
+		return syserror("Failed to create detached mount");
+
+	ret = mount_setattr(fd_tree_from, "",
+			    AT_EMPTY_PATH | (recursive ? AT_RECURSIVE : 0),
+			    &attr, sizeof(attr));
+	if (ret < 0)
+		return syserror("Failed to change mount attributes");
+
+	return move_fd(fd_tree_from);
+}
+
+int move_detached_mount(int dfd_from, int dfd_to, const char *path_to,
+			__u64 o_flags_to, __u64 resolve_flags_to)
+{
+	__do_close int __fd_to = -EBADF;
+	int fd_to, ret;
+
+	if (!is_empty_string(path_to)) {
+		struct lxc_open_how how = {
+			.flags		= o_flags_to,
+			.resolve	= resolve_flags_to,
+		};
+
+		__fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
+		if (__fd_to < 0)
+			return -errno;
+		fd_to = __fd_to;
+	} else {
+		fd_to = dfd_to;
+	}
+
+	ret = move_mount(dfd_from, "", fd_to, "", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
+	if (ret)
+		return syserror("Failed to attach detached mount %d to filesystem at %d", dfd_from, fd_to);
+
+	TRACE("Attach detached mount %d to filesystem at %d", dfd_from, fd_to);
+	return 0;
+}
+
+static int __fd_bind_mount(int dfd_from, const char *path_from,
+			   __u64 o_flags_from, __u64 resolve_flags_from,
+			   int dfd_to, const char *path_to, __u64 o_flags_to,
+			   __u64 resolve_flags_to, unsigned int attr_flags,
+			   int userns_fd, bool recursive)
+{
+	struct lxc_mount_attr attr = {
+		.attr_set = attr_flags,
+	};
+	__do_close int __fd_from = -EBADF;
 	__do_close int fd_tree_from = -EBADF;
 	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
-	int fd_from, fd_to, ret;
+	int fd_from, ret;
 
 	if (!is_empty_string(path_from)) {
 		struct lxc_open_how how = {
@@ -266,28 +326,46 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 
 	fd_tree_from = open_tree(fd_from, "", open_tree_flags);
 	if (fd_tree_from < 0)
-		return log_error_errno(-errno, errno, "Failed to create detached mount");
+		return syserror("Failed to create detached mount");
 
-	if (!is_empty_string(path_to)) {
-		struct lxc_open_how how = {
-			.flags		= o_flags_to,
-			.resolve	= resolve_flags_to,
-		};
-
-		__fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
-		if (__fd_to < 0)
-			return -errno;
-		fd_to = __fd_to;
-	} else {
-		fd_to = dfd_to;
+	if (userns_fd >= 0) {
+		attr.attr_set	|= MOUNT_ATTR_IDMAP;
+		attr.userns_fd	= userns_fd;
+		TRACE("Idmapped mount requested with user namespace fd %d", userns_fd);
 	}
 
-	ret = move_mount(fd_tree_from, "", fd_to, "", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
-	if (ret)
-		return log_error_errno(-errno, errno, "Failed to attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
+	if (attr.attr_set) {
+		ret = mount_setattr(fd_tree_from, "",
+				    AT_EMPTY_PATH | (recursive ? AT_RECURSIVE : 0),
+				    &attr, sizeof(attr));
+		if (ret < 0)
+			return syserror("Failed to change mount attributes");
+	}
 
-	TRACE("Attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
-	return 0;
+	return move_detached_mount(fd_tree_from, dfd_to, path_to, o_flags_to,
+				   resolve_flags_to);
+}
+
+int fd_mount_idmapped(int dfd_from, const char *path_from,
+		      __u64 o_flags_from, __u64 resolve_flags_from,
+		      int dfd_to, const char *path_to,
+		      __u64 o_flags_to, __u64 resolve_flags_to,
+		      unsigned int attr_flags, int userns_fd, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, userns_fd, recursive);
+}
+
+int fd_bind_mount(int dfd_from, const char *path_from,
+		  __u64 o_flags_from, __u64 resolve_flags_from,
+		  int dfd_to, const char *path_to,
+		  __u64 o_flags_to, __u64 resolve_flags_to,
+		  unsigned int attr_flags, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, -EBADF, recursive);
 }
 
 int calc_remount_flags_new(int dfd_from, const char *path_from,
@@ -484,6 +562,31 @@ bool can_use_mount_api(void)
 
 		supported = 1;
 		TRACE("Kernel supports mount api");
+	}
+
+	return supported == 1;
+}
+
+bool can_use_bind_mounts(void)
+{
+	static int supported = -1;
+
+	if (supported == -1) {
+		int ret;
+
+		if (!can_use_mount_api()) {
+			supported = 0;
+			return false;
+		}
+
+		ret = mount_setattr(-EBADF, NULL, 0, NULL, 0);
+		if (!ret || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		supported = 1;
+		TRACE("Kernel supports bind mounts in the new mount api");
 	}
 
 	return supported == 1;

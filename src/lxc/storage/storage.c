@@ -598,14 +598,13 @@ struct lxc_storage *storage_init(struct lxc_conf *conf)
 	if (!q)
 		return NULL;
 
-	bdev = malloc(sizeof(struct lxc_storage));
+	bdev = zalloc(sizeof(struct lxc_storage));
 	if (!bdev)
 		return NULL;
 
-	memset(bdev, 0, sizeof(struct lxc_storage));
-
-	bdev->ops = q->ops;
-	bdev->type = q->name;
+	bdev->ops	= q->ops;
+	bdev->type	= q->name;
+	bdev->rootfs	= &conf->rootfs;
 
 	if (mntopts)
 		bdev->mntopts = strdup(mntopts);
