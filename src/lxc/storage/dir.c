@@ -151,11 +151,11 @@ int dir_mount(struct lxc_storage *bdev)
 	if (can_use_bind_mounts()) {
 		__do_close int fd_source = -EBADF, fd_target = -EBADF;
 
-		fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
 		if (fd_source < 0)
 			return syserror("Failed to open \"%s\"", src);
 
-		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, 0, 0);
 		if (fd_target < 0)
 			return syserror("Failed to open \"%s\"", bdev->dest);
 
