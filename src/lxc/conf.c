@@ -483,6 +483,43 @@ int run_script(const char *name, const char *section, const char *script, ...)
 	return run_buffer(buffer);
 }
 
+int lxc_storage_prepare(struct lxc_conf *conf)
+{
+	int ret;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
+
+	if (!rootfs->path) {
+		ret = mount("", "/", NULL, MS_SLAVE | MS_REC, 0);
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
+
+		rootfs->dfd_mnt = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		if (rootfs->dfd_mnt < 0)
+			return -errno;
+
+		return 0;
+	}
+
+	ret = access(rootfs->mount, F_OK);
+	if (ret != 0)
+		return log_error_errno(-1, errno, "Failed to access to \"%s\". Check it is present",
+				       rootfs->mount);
+
+	rootfs->storage = storage_init(conf);
+	if (!rootfs->storage)
+		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
+				 rootfs->path, rootfs->mount,
+				 rootfs->options ? rootfs->options : "(null)");
+
+	return 0;
+}
+
+void lxc_storage_put(struct lxc_conf *conf)
+{
+	storage_put(conf->rootfs.storage);
+	conf->rootfs.storage = NULL;
+}
+
 /* lxc_rootfs_prepare
  * if rootfs is a directory, then open ${rootfs}/.lxc-keep for writing for
  * the duration of the container run, to prevent the container from marking
@@ -490,12 +527,17 @@ int run_script(const char *name, const char *section, const char *script, ...)
  * no name pollution is happens.
  * don't unlink on NFS to avoid random named stale handles.
  */
-int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
+int lxc_rootfs_prepare(struct lxc_conf *conf, bool userns)
 {
 	__do_close int dfd_path = -EBADF, fd_pin = -EBADF, fd_userns = -EBADF;
 	int ret;
 	struct stat st;
 	struct statfs stfs;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
+
+	ret = lxc_storage_prepare(conf);
+	if (ret)
+		return syserror_set(-EINVAL, "Failed to prepare rootfs storage");
 
 	if (!is_empty_string(rootfs->mnt_opts.userns_path)) {
 		if (!rootfs->path)
@@ -1286,11 +1328,9 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int lxc_mount_rootfs(struct lxc_conf *conf)
+static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 {
 	int ret;
-	struct lxc_storage *bdev;
-	struct lxc_rootfs *rootfs = &conf->rootfs;
 
 	if (!rootfs->path) {
 		ret = mount("", "/", NULL, MS_SLAVE | MS_REC, 0);
@@ -1309,14 +1349,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 		return log_error_errno(-1, errno, "Failed to access to \"%s\". Check it is present",
 				       rootfs->mount);
 
-	bdev = storage_init(conf);
-	if (!bdev)
-		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
-				 rootfs->path, rootfs->mount,
-				 rootfs->options ? rootfs->options : "(null)");
-
-	ret = bdev->ops->mount(bdev);
-	storage_put(bdev);
+	ret = rootfs->storage->ops->mount(rootfs->storage);
 	if (ret < 0)
 		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
 				 rootfs->path, rootfs->mount,
@@ -3361,7 +3394,7 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 	if (ret < 0)
 		return log_error(-1, "Failed to run pre-mount hooks");
 
-	ret = lxc_mount_rootfs(conf);
+	ret = lxc_mount_rootfs(&conf->rootfs);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup rootfs for");
 

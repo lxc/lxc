@@ -24,6 +24,7 @@
 #include "memory_utils.h"
 #include "ringbuf.h"
 #include "start.h"
+#include "storage/storage.h"
 #include "string_utils.h"
 #include "terminal.h"
 
@@ -232,6 +233,7 @@ struct lxc_rootfs {
 	char *data;
 	bool managed;
 	struct lxc_mount_options mnt_opts;
+	struct lxc_storage *storage;
 };
 
 /*
@@ -500,7 +502,9 @@ extern thread_local struct lxc_conf *current_config;
 __hidden extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
 __hidden extern struct lxc_conf *lxc_conf_init(void);
 __hidden extern void lxc_conf_free(struct lxc_conf *conf);
-__hidden extern int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns);
+__hidden extern int lxc_storage_prepare(struct lxc_conf *conf);
+__hidden extern int lxc_rootfs_prepare(struct lxc_conf *conf, bool userns);
+__hidden extern void lxc_storage_put(struct lxc_conf *conf);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
@@ -590,6 +594,8 @@ static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 		close_prot_errno_disarm(rootfs->mnt_opts.userns_fd);
 		if (unpin)
 			close_prot_errno_disarm(rootfs->fd_path_pin);
+		storage_put(rootfs->storage);
+		rootfs->storage = NULL;
 	}
 }
 
