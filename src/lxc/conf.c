@@ -527,7 +527,7 @@ void lxc_storage_put(struct lxc_conf *conf)
  * no name pollution is happens.
  * don't unlink on NFS to avoid random named stale handles.
  */
-int lxc_rootfs_prepare(struct lxc_conf *conf, bool userns)
+int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 {
 	__do_close int dfd_path = -EBADF, fd_pin = -EBADF, fd_userns = -EBADF;
 	int ret;

@@ -505,6 +505,7 @@ __hidden extern void lxc_conf_free(struct lxc_conf *conf);
 __hidden extern int lxc_storage_prepare(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_prepare(struct lxc_conf *conf, bool userns);
 __hidden extern void lxc_storage_put(struct lxc_conf *conf);
+__hidden extern int lxc_rootfs_init(struct lxc_conf *conf, bool userns);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
