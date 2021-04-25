@@ -4065,7 +4065,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
-	free(conf->rootfs.data);
 	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
 	if (conf->logfd != -1)
