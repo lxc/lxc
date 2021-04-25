@@ -545,11 +545,6 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 
 		if (rootfs->bdev_type && !strequal(rootfs->bdev_type, "dir"))
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
-
-		fd_userns = open_at(-EBADF, rootfs->mnt_opts.userns_path,
-				    PROTECT_OPEN_WITH_TRAILING_SYMLINKS, 0, 0);
-		if (fd_userns < 0)
-			return syserror("Failed to open user namespace");
 	}
 
 	if (rootfs->path) {
@@ -610,6 +605,51 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 out:
 	rootfs->fd_path_pin = move_fd(fd_pin);
 	rootfs->mnt_opts.userns_fd = move_fd(fd_userns);
+	return 0;
+}
+
+int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
+{
+	__do_close int dfd_idmapped = -EBADF, fd_userns = -EBADF;
+	struct lxc_rootfs *rootfs = &handler->conf->rootfs;
+	struct lxc_storage *storage = rootfs->storage;
+	int ret;
+	const char *path_source;
+
+	if (lxc_list_empty(&handler->conf->id_map))
+		return 0;
+
+	if (is_empty_string(rootfs->mnt_opts.userns_path))
+		return 0;
+
+	if (handler->conf->rootfs_setup)
+		return 0;
+
+	if (rootfs_is_blockdev(handler->conf))
+		return syserror_set(-EOPNOTSUPP, "Idmapped mounts on block-backed storage not yet supported");
+
+	if (!can_use_bind_mounts())
+		return syserror_set(-EOPNOTSUPP, "Kernel does not support the new mount api");
+
+	if (rootfs->mnt_opts.userns_self)
+		fd_userns = dup_cloexec(handler->nsfd[LXC_NS_USER]);
+	else
+		fd_userns = open_at(-EBADF, rootfs->mnt_opts.userns_path,
+				    PROTECT_OPEN_WITH_TRAILING_SYMLINKS, 0, 0);
+	if (fd_userns < 0)
+		return syserror("Failed to open user namespace");
+
+	path_source = lxc_storage_get_path(storage->src, storage->type);
+
+	dfd_idmapped = create_detached_idmapped_mount(path_source, fd_userns, true);
+	if (dfd_idmapped < 0)
+		return syserror("Failed to create detached idmapped mount");
+
+	ret = lxc_abstract_unix_send_fds(handler->data_sock[0], &dfd_idmapped, 1, NULL, 0);
+	if (ret < 0)
+		return syserror("Failed to send detached idmapped mount fd");
+
+	TRACE("Created detached idmapped mount %d", dfd_idmapped);
 	return 0;
 }
 
@@ -2197,9 +2237,13 @@ int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts)
 			if (is_empty_string(opts->userns_path))
 				return syserror_set(-EINVAL, "Missing idmap path for \"idmap=<path>\" LXC specific mount option");
 
-			fd_userns = open(opts->userns_path, O_RDONLY | O_NOCTTY | O_CLOEXEC);
-			if (fd_userns < 0)
-				return syserror("Failed to open user namespace");
+			if (strequal(opts->userns_path, "container")) {
+				opts->userns_self = 1;
+			} else {
+				fd_userns = open(opts->userns_path, O_RDONLY | O_NOCTTY | O_CLOEXEC);
+				if (fd_userns < 0)
+					return syserror("Failed to open user namespace");
+			}
 
 			TRACE("Parse LXC specific mount option %d->\"idmap=%s\"", fd_userns, opts->userns_path);
 			break;
@@ -2790,6 +2834,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.dfd_dev = -EBADF;
 	new->rootfs.dfd_host = -EBADF;
 	new->rootfs.fd_path_pin = -EBADF;
+	new->rootfs.dfd_idmapped = -EBADF;
 	new->rootfs.mnt_opts.userns_fd = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
@@ -3523,11 +3568,39 @@ static int lxc_setup_keyring(struct lsm_ops *lsm_ops, const struct lxc_conf *con
 	return ret;
 }
 
+static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
+{
+	struct lxc_rootfs *rootfs = &handler->conf->rootfs;
+	int dfd_idmapped = -EBADF;
+	int ret;
+
+	if (lxc_list_empty(&handler->conf->id_map))
+		return 0;
+
+	if (is_empty_string(rootfs->mnt_opts.userns_path))
+		return 0;
+
+	if (handler->conf->rootfs_setup)
+		return 0;
+
+	ret = lxc_abstract_unix_recv_one_fd(handler->data_sock[1], &dfd_idmapped, NULL, 0);
+	if (ret < 0)
+		return syserror("Failed to receive idmapped mount fd");
+
+	rootfs->dfd_idmapped = dfd_idmapped;
+	TRACE("Received detached idmapped mount %d", rootfs->dfd_idmapped);
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
+
+	ret = lxc_rootfs_prepare_child(handler);
+	if (ret < 0)
+		return syserror("Failed to prepare rootfs");
 
 	ret = lxc_setup_rootfs_prepare_root(lxc_conf, name, lxcpath);
 	if (ret < 0)

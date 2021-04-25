@@ -198,6 +198,7 @@ struct lxc_mount_options {
 	int create_file : 1;
 	int optional : 1;
 	int relative : 1;
+	int userns_self : 1;
 	char userns_path[PATH_MAX];
 	int userns_fd;
 	unsigned long mnt_flags;
@@ -221,6 +222,7 @@ struct lxc_rootfs {
 
 	char *path;
 	int fd_path_pin;
+	int dfd_idmapped;
 
 	int dfd_mnt;
 	char *mount;
@@ -506,6 +508,7 @@ __hidden extern int lxc_storage_prepare(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_prepare(struct lxc_conf *conf, bool userns);
 __hidden extern void lxc_storage_put(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_init(struct lxc_conf *conf, bool userns);
+__hidden extern int lxc_rootfs_prepare_parent(struct lxc_handler *handler);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
@@ -581,17 +584,13 @@ static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
 	return !is_empty_string(rootfs->path) ? rootfs->mount : s;
 }
 
-static inline bool idmapped_rootfs_mnt(const struct lxc_rootfs *rootfs)
-{
-	return rootfs->mnt_opts.userns_fd >= 0;
-}
-
 static inline void put_lxc_mount_options(struct lxc_mount_options *mnt_opts)
 {
 	mnt_opts->create_dir = 0;
 	mnt_opts->create_file = 0;
 	mnt_opts->optional = 0;
 	mnt_opts->relative = 0;
+	mnt_opts->userns_self = 0;
 	mnt_opts->userns_path[0] = '\0';
 	mnt_opts->mnt_flags = 0;
 	mnt_opts->prop_flags = 0;
@@ -609,6 +608,7 @@ static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 		close_prot_errno_disarm(rootfs->mnt_opts.userns_fd);
 		if (unpin)
 			close_prot_errno_disarm(rootfs->fd_path_pin);
+		close_prot_errno_disarm(rootfs->dfd_idmapped);
 		put_lxc_mount_options(&rootfs->mnt_opts);
 		storage_put(rootfs->storage);
 		rootfs->storage = NULL;

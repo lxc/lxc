@@ -1786,6 +1786,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
+	ret = lxc_rootfs_prepare_parent(handler);
+	if (ret) {
+		ERROR("Failed to prepare rootfs");
+		goto out_delete_net;
+	}
+
 	if (!lxc_sync_wake_child(handler, START_SYNC_STARTUP))
 		goto out_delete_net;
 
@@ -2043,21 +2049,9 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 
 	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
 		/*
-		 * This handles two cases: mounting real block devices and
-		 * creating idmapped mounts. The block device case should be
-		 * obivous, i.e. no real filesystem can currently be mounted
-		 * from inside a user namespace.
-		 *
-		 * Idmapped mounts can currently only be created if the caller
-		 * is privileged wrt to the user namespace in which the
-		 * underlying block device has been mounted in. This basically
-		 * (with few exceptions) means we need to be CAP_SYS_ADMIN in
-		 * the initial user namespace since almost no interesting
-		 * filesystems can be mounted inside of user namespaces. This
-		 * is way we need to do the rootfs setup here. In the future
-		 * this may change.
+		 * Most filesystems can't be mounted inside a userns so handle them here.
 		 */
-		if (idmapped_rootfs_mnt(&conf->rootfs) || rootfs_is_blockdev(conf)) {
+		if (rootfs_is_blockdev(conf)) {
 			ret = unshare(CLONE_NEWNS);
 			if (ret < 0) {
 				ERROR("Failed to unshare CLONE_NEWNS");
