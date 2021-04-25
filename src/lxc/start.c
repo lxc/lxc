@@ -2034,7 +2034,7 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	ret = lxc_rootfs_prepare(&conf->rootfs, !lxc_list_empty(&conf->id_map));
+	ret = lxc_rootfs_prepare(conf, !lxc_list_empty(&conf->id_map));
 	if (ret) {
 		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
 		ret = -1;

@@ -964,6 +964,10 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		if (unshare(CLONE_NEWNS))
 			goto out_fini_handler;
 
+		ret = lxc_storage_prepare(c->lxc_conf);
+		if (ret)
+			goto out_fini_handler;
+
 		/* CRIU needs the lxc root bind mounted so that it is the root of some
 		 * mount. */
 		rootfs = &c->lxc_conf->rootfs;
