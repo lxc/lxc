@@ -200,6 +200,9 @@ struct lxc_mount_options {
 	int relative : 1;
 	char userns_path[PATH_MAX];
 	int userns_fd;
+	unsigned long mnt_flags;
+	unsigned long prop_flags;
+	char *data;
 };
 
 /* Defines a structure to store the rootfs location, the
@@ -209,8 +212,6 @@ struct lxc_mount_options {
  * @buf		 : static buffer to construct paths
  * @bev_type     : optional backing store type
  * @options      : mount options
- * @mountflags   : the portion of @options that are flags
- * @data         : the portion of @options that are not flags
  * @managed      : whether it is managed by LXC
  * @dfd_mnt	 : fd for @mount
  * @dfd_dev : fd for /dev of the container
@@ -230,7 +231,6 @@ struct lxc_rootfs {
 	char *bdev_type;
 	char *options;
 	unsigned long mountflags;
-	char *data;
 	bool managed;
 	struct lxc_mount_options mnt_opts;
 	struct lxc_storage *storage;
@@ -585,6 +585,20 @@ static inline bool idmapped_rootfs_mnt(const struct lxc_rootfs *rootfs)
 	return rootfs->mnt_opts.userns_fd >= 0;
 }
 
+static inline void put_lxc_mount_options(struct lxc_mount_options *mnt_opts)
+{
+	mnt_opts->create_dir = 0;
+	mnt_opts->create_file = 0;
+	mnt_opts->optional = 0;
+	mnt_opts->relative = 0;
+	mnt_opts->userns_path[0] = '\0';
+	mnt_opts->mnt_flags = 0;
+	mnt_opts->prop_flags = 0;
+
+	close_prot_errno_disarm(mnt_opts->userns_fd);
+	free_disarm(mnt_opts->data);
+}
+
 static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 {
 	if (rootfs) {
@@ -594,6 +608,7 @@ static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 		close_prot_errno_disarm(rootfs->mnt_opts.userns_fd);
 		if (unpin)
 			close_prot_errno_disarm(rootfs->fd_path_pin);
+		put_lxc_mount_options(&rootfs->mnt_opts);
 		storage_put(rootfs->storage);
 		rootfs->storage = NULL;
 	}
