@@ -127,7 +127,8 @@ bool dir_detect(const char *path)
 
 int dir_mount(struct lxc_storage *bdev)
 {
-	struct lxc_mount_options *mnt_opts = &bdev->rootfs->mnt_opts;
+	struct lxc_rootfs *rootfs = bdev->rootfs;
+	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	__do_free char *mntdata = NULL;
 	unsigned long mflags = 0;
 	int ret;
@@ -141,22 +142,31 @@ int dir_mount(struct lxc_storage *bdev)
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 
+	if (rootfs->dfd_idmapped >= 0 && !can_use_bind_mounts())
+		return syserror_set(-EOPNOTSUPP, "Idmapped mount requested but kernel doesn't support new mount API");
+
 	if (can_use_bind_mounts()) {
 		__do_close int fd_source = -EBADF, fd_target = -EBADF;
-
-		fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
-		if (fd_source < 0)
-			return syserror("Failed to open \"%s\"", src);
 
 		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, 0, 0);
 		if (fd_target < 0)
 			return syserror("Failed to open \"%s\"", bdev->dest);
 
-		ret = fd_mount_idmapped(fd_source, "", PROTECT_OPATH_DIRECTORY,
-					PROTECT_LOOKUP_BENEATH, fd_target, "",
-					PROTECT_OPATH_DIRECTORY,
-					PROTECT_LOOKUP_BENEATH, 0,
-					mnt_opts->userns_fd, true);
+		if (rootfs->dfd_idmapped >= 0) {
+			ret = move_detached_mount(rootfs->dfd_idmapped, fd_target, "",
+						  PROTECT_OPATH_DIRECTORY,
+						  PROTECT_LOOKUP_BENEATH);
+		} else {
+			fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
+			if (fd_source < 0)
+				return syserror("Failed to open \"%s\"", src);
+
+			ret = fd_bind_mount(fd_source, "",
+					    PROTECT_OPATH_DIRECTORY,
+					    PROTECT_LOOKUP_BENEATH, fd_target,
+					    "", PROTECT_OPATH_DIRECTORY,
+					    PROTECT_LOOKUP_BENEATH, 0, true);
+		}
 		if (ret < 0)
 			return syserror("Failed to mount \"%s\" onto \"%s\"", src, bdev->dest);
 	} else {
