@@ -811,6 +811,8 @@ fuzz_lxc_define_load_LDADD = $(LDADD) $(LIB_FUZZING_ENGINE)
 
 bin_PROGRAMS += fuzz-lxc-config-read \
 	        fuzz-lxc-define-load
+
+bin_SCRIPTS += lxc-test-fuzzers
 endif
 endif
 
