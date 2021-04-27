@@ -24,9 +24,6 @@ mkdir -p $OUT
 
 export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 
-# AFL++ and hoggfuzz are both incompatible with lto=thin apparently
-sed -i '/-flto=thin/d' configure.ac
-
 # turn off the libutil dependency
 sed -i 's/^AC_CHECK_LIB(util/#/' configure.ac
 
