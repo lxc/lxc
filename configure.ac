@@ -484,12 +484,16 @@ else
 	AC_MSG_RESULT([no])
 fi
 
-if test "x$enable_fuzzers" = "xyes" -a "x$LIB_FUZZING_ENGINE" = x; then
-	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
-		-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION \
-		-fsanitize=fuzzer-no-link])
-	AC_SUBST(AM_CFLAGS)
+if test "x$enable_fuzzers" = "xyes"; then
+	if test "x$LIB_FUZZING_ENGINE" = x; then
+		CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
+			-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION \
+			-fsanitize=fuzzer-no-link])
+	fi
+else
+	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[-flto=thin])
 fi
+AC_SUBST(AM_CFLAGS)
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
@@ -815,7 +819,6 @@ CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 	-Warray-bounds \
 	-Wrestrict \
 	-Wreturn-local-addr \
-	-flto=thin \
 	-fsanitize=cfi \
 	-Wstringop-overflow])
 AC_SUBST(AM_CFLAGS)
