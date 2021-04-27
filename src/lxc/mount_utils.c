@@ -243,6 +243,7 @@ int create_detached_idmapped_mount(const char *path, int userns_fd, bool recursi
 	struct lxc_mount_attr attr = {
 		.attr_set	= MOUNT_ATTR_IDMAP,
 		.userns_fd	= userns_fd,
+		.propagation	= MS_SLAVE,
 
 	};
 	int ret;

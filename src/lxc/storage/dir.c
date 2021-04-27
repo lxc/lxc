@@ -127,8 +127,10 @@ bool dir_detect(const char *path)
 
 int dir_mount(struct lxc_storage *bdev)
 {
+	struct lxc_rootfs *rootfs = bdev->rootfs;
+	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	__do_free char *mntdata = NULL;
-	unsigned long mflags = 0, mntflags = 0, pflags = 0;
+	unsigned long mflags = 0;
 	int ret;
 	const char *src;
 
@@ -138,53 +140,54 @@ int dir_mount(struct lxc_storage *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
-	if (ret < 0)
-		return log_error_errno(ret, errno, "Failed to parse mount options \"%s\"", bdev->mntopts);
-
-	ret = parse_propagationopts(bdev->mntopts, &pflags);
-	if (ret < 0)
-		return log_error_errno(-EINVAL, EINVAL, "Failed to parse mount propagation options \"%s\"", bdev->mntopts);
-
 	src = lxc_storage_get_path(bdev->src, bdev->type);
+
+	if (rootfs->dfd_idmapped >= 0 && !can_use_bind_mounts())
+		return syserror_set(-EOPNOTSUPP, "Idmapped mount requested but kernel doesn't support new mount API");
 
 	if (can_use_bind_mounts()) {
 		__do_close int fd_source = -EBADF, fd_target = -EBADF;
-
-		fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
-		if (fd_source < 0)
-			return syserror("Failed to open \"%s\"", src);
 
 		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, 0, 0);
 		if (fd_target < 0)
 			return syserror("Failed to open \"%s\"", bdev->dest);
 
-		ret = fd_mount_idmapped(fd_source, "", PROTECT_OPATH_DIRECTORY,
-					PROTECT_LOOKUP_BENEATH, fd_target, "",
-					PROTECT_OPATH_DIRECTORY,
-					PROTECT_LOOKUP_BENEATH, 0,
-					bdev->rootfs->mnt_opts.userns_fd, true);
+		if (rootfs->dfd_idmapped >= 0) {
+			ret = move_detached_mount(rootfs->dfd_idmapped, fd_target, "",
+						  PROTECT_OPATH_DIRECTORY,
+						  PROTECT_LOOKUP_BENEATH);
+		} else {
+			fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
+			if (fd_source < 0)
+				return syserror("Failed to open \"%s\"", src);
+
+			ret = fd_bind_mount(fd_source, "",
+					    PROTECT_OPATH_DIRECTORY,
+					    PROTECT_LOOKUP_BENEATH, fd_target,
+					    "", PROTECT_OPATH_DIRECTORY,
+					    PROTECT_LOOKUP_BENEATH, 0, true);
+		}
 		if (ret < 0)
 			return syserror("Failed to mount \"%s\" onto \"%s\"", src, bdev->dest);
 	} else {
-		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags | pflags, mntdata);
+		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mntdata);
 		if (ret < 0)
 			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
 
-		if (ret == 0 && (mntflags & MS_RDONLY)) {
-			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | pflags | MS_REMOUNT);
+		if (ret == 0 && (mnt_opts->mnt_flags & MS_RDONLY)) {
+			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->mnt_flags | MS_REMOUNT);
 
 			ret = mount(src, bdev->dest, "bind", mflags, mntdata);
 			if (ret < 0)
 				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
 			else
 				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
 		}
 
 		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, pflags);
+		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
 	}
 
 	TRACE("Mounted \"%s\" onto \"%s\"", src, bdev->dest);
