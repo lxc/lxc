@@ -170,8 +170,6 @@ int dir_mount(struct lxc_storage *bdev)
 					    "", PROTECT_OPATH_DIRECTORY,
 					    PROTECT_LOOKUP_BENEATH, 0, true);
 		}
-		if (ret < 0)
-			return syserror("Failed to mount \"%s\" onto \"%s\"", source, target);
 	} else {
 		ret = mount(source, target, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mnt_opts->data);
 		if (ret < 0)
@@ -192,6 +190,8 @@ int dir_mount(struct lxc_storage *bdev)
 		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
 		      source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
 	}
+	if (ret < 0)
+		return syserror_set(ret, "Failed to mount \"%s\" onto \"%s\"", source, target);
 
 	TRACE("Mounted \"%s\" onto \"%s\"", source, target);
 	return 0;
