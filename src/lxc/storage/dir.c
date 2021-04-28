@@ -133,11 +133,14 @@ int dir_mount(struct lxc_storage *bdev)
 	int ret;
 	const char *src;
 
-	if (strcmp(bdev->type, "dir"))
-		return -22;
+	if (!strequal(bdev->type, "dir"))
+		return syserror_set(-EINVAL, "Invalid storage driver");
 
-	if (!bdev->src || !bdev->dest)
-		return -22;
+	if (is_empty_string(bdev->src))
+		return syserror_set(-EINVAL, "Missing rootfs path");
+
+	if (is_empty_string(bdev->dest))
+		return syserror_set(-EINVAL, "Missing target mountpoint");
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 
