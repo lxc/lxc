@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eux
+set -o pipefail
+
+TMP_DIR=`mktemp -d`
+export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:strict_string_checks=1}
+export UBSAN_OPTIONS=${UBSAN_OPTIONS:-print_stacktrace=1:print_summary=1:halt_on_error=1}
+
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+
+trap cleanup exit
+
+for fuzzer in /usr/bin/fuzz-lxc-*; do
+    name=$(basename "$fuzzer")
+    corpus_dir="$TMP_DIR/$name"
+
+    mkdir -p "$corpus_dir"
+    if wget --directory-prefix="$TMP_DIR" https://storage.googleapis.com/lxc-backup.clusterfuzz-external.appspot.com/corpus/libFuzzer/lxc_$name/public.zip; then
+        unzip -q -d "$corpus_dir" "$TMP_DIR/public.zip"
+    fi
+    "$fuzzer" -max_total_time=120 "$corpus_dir"
+done

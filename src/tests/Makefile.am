@@ -791,6 +791,29 @@ bin_SCRIPTS += lxc-test-lxc-attach \
 endif
 endif
 
+if ENABLE_FUZZERS
+LIB_FUZZING_ENGINE ?= -fsanitize=fuzzer
+
+# https://google.github.io/oss-fuzz/getting-started/new-project-guide/#Requirements
+nodist_EXTRA_fuzz_lxc_config_read_SOURCES = dummy.cxx
+fuzz_lxc_config_read_SOURCES = fuzz-lxc-config-read.c
+fuzz_lxc_config_read_CFLAGS = $(AM_CFLAGS)
+fuzz_lxc_config_read_CXXFLAGS = $(AM_CFLAGS)
+fuzz_lxc_config_read_LDFLAGS = $(AM_LDFLAGS) -static
+fuzz_lxc_config_read_LDADD = $(LDADD) $(LIB_FUZZING_ENGINE)
+
+nodist_EXTRA_fuzz_lxc_define_load_SOURCES = dummy.cxx
+fuzz_lxc_define_load_SOURCES = fuzz-lxc-define-load.c
+fuzz_lxc_define_load_CFLAGS = $(AM_CFLAGS)
+fuzz_lxc_define_load_CXXFLAGS = $(AM_CFLAGS)
+fuzz_lxc_define_load_LDFLAGS = $(AM_LDFLAGS) -static
+fuzz_lxc_define_load_LDADD = $(LDADD) $(LIB_FUZZING_ENGINE)
+
+bin_PROGRAMS += fuzz-lxc-config-read \
+	        fuzz-lxc-define-load
+
+bin_SCRIPTS += lxc-test-fuzzers
+endif
 endif
 
 EXTRA_DIST = basic.c \
