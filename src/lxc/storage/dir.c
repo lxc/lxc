@@ -129,7 +129,6 @@ int dir_mount(struct lxc_storage *bdev)
 {
 	struct lxc_rootfs *rootfs = bdev->rootfs;
 	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
-	unsigned long mflags = 0;
 	int ret;
 	const char *source, *target;
 
@@ -172,23 +171,21 @@ int dir_mount(struct lxc_storage *bdev)
 		}
 	} else {
 		ret = mount(source, target, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mnt_opts->data);
-		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", source, target);
+		if (!ret && (mnt_opts->mnt_flags & MS_RDONLY)) {
+			unsigned long mflags;
 
-		if (ret == 0 && (mnt_opts->mnt_flags & MS_RDONLY)) {
-			mflags = add_required_remount_flags(source, target, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->mnt_flags | MS_REMOUNT);
+			mflags = add_required_remount_flags(source, target,
+							    MS_BIND |
+							    MS_REC |
+							    mnt_opts->mnt_flags |
+							    MS_REMOUNT);
 
 			ret = mount(source, target, "bind", mflags, mnt_opts->data);
-			if (ret < 0)
-				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
+			if (ret)
+				SYSERROR("Failed to remount \"%s\" on \"%s\" read-only", source, target);
 			else
-				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
+				TRACE("Remounted \"%s\" on \"%s\" read-only", source, target);
 		}
-
-		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
 	}
 	if (ret < 0)
 		return syserror_set(ret, "Failed to mount \"%s\" onto \"%s\"", source, target);
