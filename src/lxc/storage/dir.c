@@ -175,19 +175,19 @@ int dir_mount(struct lxc_storage *bdev)
 			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
 
 		if (ret == 0 && (mnt_opts->mnt_flags & MS_RDONLY)) {
-			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->mnt_flags | MS_REMOUNT);
+			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags | MS_REMOUNT);
 
 			ret = mount(src, bdev->dest, "bind", mflags, mntdata);
 			if (ret < 0)
 				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->prop_flags);
 			else
 				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->prop_flags);
 		}
 
 		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->prop_flags);
 	}
 
 	TRACE("Mounted \"%s\" onto \"%s\"", src, bdev->dest);
