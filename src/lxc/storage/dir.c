@@ -129,37 +129,39 @@ int dir_mount(struct lxc_storage *bdev)
 {
 	struct lxc_rootfs *rootfs = bdev->rootfs;
 	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
-	__do_free char *mntdata = NULL;
-	unsigned long mflags = 0;
 	int ret;
-	const char *src;
+	const char *source, *target;
 
-	if (strcmp(bdev->type, "dir"))
-		return -22;
+	if (!strequal(bdev->type, "dir"))
+		return syserror_set(-EINVAL, "Invalid storage driver");
 
-	if (!bdev->src || !bdev->dest)
-		return -22;
+	if (is_empty_string(bdev->src))
+		return syserror_set(-EINVAL, "Missing rootfs path");
 
-	src = lxc_storage_get_path(bdev->src, bdev->type);
+	if (is_empty_string(bdev->dest))
+		return syserror_set(-EINVAL, "Missing target mountpoint");
 
 	if (rootfs->dfd_idmapped >= 0 && !can_use_bind_mounts())
 		return syserror_set(-EOPNOTSUPP, "Idmapped mount requested but kernel doesn't support new mount API");
 
+	source = lxc_storage_get_path(bdev->src, bdev->type);
+	target = bdev->dest;
+
 	if (can_use_bind_mounts()) {
 		__do_close int fd_source = -EBADF, fd_target = -EBADF;
 
-		fd_target = open_at(-EBADF, bdev->dest, PROTECT_OPATH_DIRECTORY, 0, 0);
+		fd_target = open_at(-EBADF, target, PROTECT_OPATH_DIRECTORY, 0, 0);
 		if (fd_target < 0)
-			return syserror("Failed to open \"%s\"", bdev->dest);
+			return syserror("Failed to open \"%s\"", target);
 
 		if (rootfs->dfd_idmapped >= 0) {
 			ret = move_detached_mount(rootfs->dfd_idmapped, fd_target, "",
 						  PROTECT_OPATH_DIRECTORY,
 						  PROTECT_LOOKUP_BENEATH);
 		} else {
-			fd_source = open_at(-EBADF, src, PROTECT_OPATH_DIRECTORY, 0, 0);
+			fd_source = open_at(-EBADF, source, PROTECT_OPATH_DIRECTORY, 0, 0);
 			if (fd_source < 0)
-				return syserror("Failed to open \"%s\"", src);
+				return syserror("Failed to open \"%s\"", source);
 
 			ret = fd_bind_mount(fd_source, "",
 					    PROTECT_OPATH_DIRECTORY,
@@ -167,30 +169,28 @@ int dir_mount(struct lxc_storage *bdev)
 					    "", PROTECT_OPATH_DIRECTORY,
 					    PROTECT_LOOKUP_BENEATH, 0, true);
 		}
-		if (ret < 0)
-			return syserror("Failed to mount \"%s\" onto \"%s\"", src, bdev->dest);
 	} else {
-		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mntdata);
-		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
+		ret = mount(source, target, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mnt_opts->data);
+		if (!ret && (mnt_opts->mnt_flags & MS_RDONLY)) {
+			unsigned long mflags;
 
-		if (ret == 0 && (mnt_opts->mnt_flags & MS_RDONLY)) {
-			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->mnt_flags | MS_REMOUNT);
+			mflags = add_required_remount_flags(source, target,
+							    MS_BIND |
+							    MS_REC |
+							    mnt_opts->mnt_flags |
+							    MS_REMOUNT);
 
-			ret = mount(src, bdev->dest, "bind", mflags, mntdata);
-			if (ret < 0)
-				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+			ret = mount(source, target, "bind", mflags, mnt_opts->data);
+			if (ret)
+				SYSERROR("Failed to remount \"%s\" on \"%s\" read-only", source, target);
 			else
-				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+				TRACE("Remounted \"%s\" on \"%s\" read-only", source, target);
 		}
-
-		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
 	}
+	if (ret < 0)
+		return syserror_set(ret, "Failed to mount \"%s\" onto \"%s\"", source, target);
 
-	TRACE("Mounted \"%s\" onto \"%s\"", src, bdev->dest);
+	TRACE("Mounted \"%s\" onto \"%s\"", source, target);
 	return 0;
 }
 
