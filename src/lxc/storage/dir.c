@@ -129,7 +129,6 @@ int dir_mount(struct lxc_storage *bdev)
 {
 	struct lxc_rootfs *rootfs = bdev->rootfs;
 	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
-	__do_free char *mntdata = NULL;
 	unsigned long mflags = 0;
 	int ret;
 	const char *src;
@@ -170,24 +169,24 @@ int dir_mount(struct lxc_storage *bdev)
 		if (ret < 0)
 			return syserror("Failed to mount \"%s\" onto \"%s\"", src, bdev->dest);
 	} else {
-		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mntdata);
+		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mnt_opts->data);
 		if (ret < 0)
 			return log_error_errno(-errno, errno, "Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
 
 		if (ret == 0 && (mnt_opts->mnt_flags & MS_RDONLY)) {
 			mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->mnt_flags | MS_REMOUNT);
 
-			ret = mount(src, bdev->dest, "bind", mflags, mntdata);
+			ret = mount(src, bdev->dest, "bind", mflags, mnt_opts->data);
 			if (ret < 0)
 				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+						       src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mnt_opts->data, mflags, mnt_opts->mnt_flags);
 			else
 				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+				      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mnt_opts->data, mflags, mnt_opts->mnt_flags);
 		}
 
 		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mntdata, mflags, mnt_opts->mnt_flags);
+		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)", mnt_opts->data, mflags, mnt_opts->mnt_flags);
 	}
 
 	TRACE("Mounted \"%s\" onto \"%s\"", src, bdev->dest);
