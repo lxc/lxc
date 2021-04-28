@@ -142,10 +142,10 @@ int dir_mount(struct lxc_storage *bdev)
 	if (is_empty_string(bdev->dest))
 		return syserror_set(-EINVAL, "Missing target mountpoint");
 
-	src = lxc_storage_get_path(bdev->src, bdev->type);
-
 	if (rootfs->dfd_idmapped >= 0 && !can_use_bind_mounts())
 		return syserror_set(-EOPNOTSUPP, "Idmapped mount requested but kernel doesn't support new mount API");
+
+	src = lxc_storage_get_path(bdev->src, bdev->type);
 
 	if (can_use_bind_mounts()) {
 		__do_close int fd_source = -EBADF, fd_target = -EBADF;
