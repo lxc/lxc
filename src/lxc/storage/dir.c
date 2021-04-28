@@ -183,14 +183,14 @@ int dir_mount(struct lxc_storage *bdev)
 			ret = mount(source, target, "bind", mflags, mnt_opts->data);
 			if (ret < 0)
 				return log_error_errno(-errno, errno, "Failed to remount \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-						       source ? source : "(none)", target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
+						       source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
 			else
 				DEBUG("Remounted \"%s\" on \"%s\" read-only with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-				      source ? source : "(none)", target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
+				      source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
 		}
 
 		TRACE("Mounted \"%s\" on \"%s\" with options \"%s\", mount flags \"%lu\", and propagation flags \"%lu\"",
-		      source ? source : "(none)", target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
+		      source, target, mnt_opts->data, mflags, mnt_opts->mnt_flags);
 	}
 
 	TRACE("Mounted \"%s\" onto \"%s\"", source, target);
