@@ -144,3 +144,7 @@ Retrieve the seccomp notifier fd from a running container.
 ## seccomp\_proxy\_send\_notify\_fd
 
 Whether the seccomp notify proxy sends a long a notify fd file descriptor.
+
+## idmapped\_mounts
+
+Whether this LXC instance can handle idmapped mounts.
