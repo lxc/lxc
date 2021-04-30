@@ -346,7 +346,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	orig = c->lxc_conf->rootfs.storage;
 
 	if (c->lxc_conf->rootfs.dfd_idmapped >= 0) {
-		new_rootfs.dfd_idmapped = dup_cloexec(new_rootfs.dfd_idmapped);
+		new_rootfs.dfd_idmapped = dup_cloexec(c->lxc_conf->rootfs.dfd_idmapped);
 		if (new_rootfs.dfd_idmapped < 0) {
 			SYSERROR("Failed to duplicate user namespace file descriptor");
 			lxc_storage_put(c->lxc_conf);
