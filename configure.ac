@@ -488,7 +488,11 @@ if test "x$enable_fuzzers" = "xyes"; then
 	if test "x$LIB_FUZZING_ENGINE" = x; then
 		CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 			-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION \
+			-DRUN_ON_OSS_FUZZ=0 \
 			-fsanitize=fuzzer-no-link])
+	else
+		CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
+			-DRUN_ON_OSS_FUZZ=1])
 	fi
 else
 	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[-flto=thin])

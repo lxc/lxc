@@ -508,7 +508,7 @@ static int build_dir(const char *name)
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 		ret = lxc_unpriv(mkdir(n, 0755));
 #else
-		if (is_in_comm("fuzz-lxc-") > 0)
+		if (RUN_ON_OSS_FUZZ || is_in_comm("fuzz-lxc-") > 0)
 			ret = errno = EEXIST;
 		else
 			ret = lxc_unpriv(mkdir(n, 0755));
@@ -529,7 +529,7 @@ static int log_open(const char *name)
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
 #else
-	if (is_in_comm("fuzz-lxc-") <= 0)
+	if (!RUN_ON_OSS_FUZZ && is_in_comm("fuzz-lxc-") <= 0)
 		fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
 #endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	if (fd < 0)
