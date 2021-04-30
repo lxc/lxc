@@ -2293,7 +2293,7 @@ static int __cg_unified_attach(const struct hierarchy *h,
 	ret = cgroup_attach(conf, name, lxcpath, pid);
 	if (ret == 0)
 		return log_trace(0, "Attached to unified cgroup via command handler");
-	if (ret != -ENOCGROUP2)
+	if (!ERRNO_IS_NOT_SUPPORTED(ret) && ret != -ENOCGROUP2)
 		return log_error_errno(ret, errno, "Failed to attach to unified cgroup");
 
 	/* Fall back to retrieving the path for the unified cgroup. */
