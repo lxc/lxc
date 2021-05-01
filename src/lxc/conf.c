@@ -1826,7 +1826,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
+		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
 
 	if (can_use_mount_api()) {
 		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, "console");
@@ -1888,7 +1888,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
+		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
 	if (can_use_mount_api()) {
