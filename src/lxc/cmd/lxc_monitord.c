@@ -339,13 +339,11 @@ static void lxc_monitord_sig_handler(int sig)
 int main(int argc, char *argv[])
 {
 	int ret, pipefd = -1;
-	char logpath[PATH_MAX];
 	sigset_t mask;
 	const char *lxcpath = NULL;
 	bool mainloop_opened = false;
 	bool monitord_created = false;
 	bool persistent = false;
-	struct lxc_log log;
 
 	if (argc > 1 && !strcmp(argv[1], "--daemon")) {
 		persistent = true;
@@ -380,23 +378,6 @@ int main(int argc, char *argv[])
 			"      and does not need to be run by hand\n\n");
 		exit(EXIT_FAILURE);
 	}
-
-	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
-		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH));
-	if (ret < 0 || ret >= sizeof(logpath))
-		exit(EXIT_FAILURE);
-
-	log.name = NULL;
-	log.file = logpath;
-	log.level = "DEBUG";
-	log.prefix = "lxc-monitord";
-	log.quiet = 0;
-	log.lxcpath = lxcpath;
-
-	ret = lxc_log_init(&log);
-	if (ret)
-		INFO("Failed to open log file %s, log will be lost", lxcpath);
-	lxc_log_options_no_override();
 
 	if (sigfillset(&mask) ||
 	    sigdelset(&mask, SIGILL)  ||
