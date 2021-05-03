@@ -27,7 +27,7 @@ esac
 
 ./autogen.sh
 CFLAGS="-Wall -Werror" ./configure $ARGS
-make
+make -j$(nproc)
 make install
 
 cat <<'EOF' >/usr/bin/lxc-test-share-ns
