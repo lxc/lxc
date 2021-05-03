@@ -13,9 +13,8 @@ apt-get update -qq
 apt-get install --yes --no-install-recommends \
     apparmor automake autoconf bash-completion bridge-utils build-essential \
     busybox-static clang cloud-image-utils curl dbus debhelper debootstrap \
-    devscripts dh-apparmor dh-autoreconf dh-systemd dnsmasq-base \
-    docbook2x doxygen ed fakeroot file gcc gnupg graphviz git iptables \
-    net-tools libapparmor-dev libcap-dev libgnutls28-dev liblua5.2-dev \
+    devscripts dnsmasq-base docbook2x doxygen ed fakeroot file gcc gnupg graphviz \
+    git iptables net-tools libapparmor-dev libcap-dev libgnutls28-dev liblua5.2-dev \
     libpam0g-dev libseccomp-dev libselinux1-dev libtool linux-libc-dev \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
@@ -28,7 +27,7 @@ esac
 
 ./autogen.sh
 CFLAGS="-Wall -Werror" ./configure $ARGS
-make
+make -j$(nproc)
 make install
 
 cat <<'EOF' >/usr/bin/lxc-test-share-ns
