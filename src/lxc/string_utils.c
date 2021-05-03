@@ -877,14 +877,18 @@ int parse_byte_size_string(const char *s, long long int *converted)
 	char *end;
 	char dup[INTTYPE_TO_STRLEN(long long int)] = {0};
 	char suffix[3] = {0};
+	size_t len;
 
-	if (is_empty_string(s))
+	if (!s)
 		return ret_errno(EINVAL);
 
-	end = stpncpy(dup, s, sizeof(dup) - 1);
-	if (*end != '\0')
+	len = strlen(s);
+	if (len == 0 || len > sizeof(dup) - 1)
 		return ret_errno(EINVAL);
 
+	memcpy(dup, s, len);
+
+	end = dup + len;
 	if (isdigit(*(end - 1)))
 		suffix_len = 0;
 	else if (isalpha(*(end - 1)))
