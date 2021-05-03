@@ -9,6 +9,7 @@ ASAN_OPTIONS="$ASAN_OPTIONS:detect_odr_violation=0"
 
 export UBSAN_OPTIONS=print_stacktrace=1:print_summary=1:halt_on_error=1
 
+apt-get update -qq
 apt-get install --yes --no-install-recommends \
     apparmor automake autoconf bash-completion bridge-utils build-essential \
     busybox-static clang cloud-image-utils curl dbus debhelper debootstrap \
