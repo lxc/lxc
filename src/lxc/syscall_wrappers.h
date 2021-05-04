@@ -317,4 +317,11 @@ static inline int close_range(unsigned int fd, unsigned int max_fd, unsigned int
 }
 #endif
 
+#ifndef HAVE_SYS_PERSONALITY_H
+static inline int personality(unsigned long persona)
+{
+	return syscall(__NR_personality, persona);
+}
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
