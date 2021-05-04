@@ -3216,7 +3216,7 @@ void lxc_config_define_free(struct lxc_list *defines)
 signed long lxc_config_parse_arch(const char *arch)
 {
 #if HAVE_SYS_PERSONALITY_H
-	struct per_name {
+	static struct per_name {
 		char *name;
 		unsigned long per;
 	} pername[] = {
