@@ -126,7 +126,7 @@ static ssize_t lxc_cmd_rsp_recv_fds(int fd_sock, struct unix_fds *fds,
 
 	ret = lxc_abstract_unix_recv_fds(fd_sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
-		return ret;
+		return log_error(ret, "Failed to receive file descriptors");
 
 	/*
 	 * If we end up here with fewer or more file descriptors the caller
@@ -135,18 +135,18 @@ static ssize_t lxc_cmd_rsp_recv_fds(int fd_sock, struct unix_fds *fds,
 	 */
 
 	if (fds->flags & UNIX_FDS_RECEIVED_EXACT)
-		return log_info(ret, "Received exact number of file descriptors %u == %u",
-				fds->fd_count_max, fds->fd_count_ret);
+		return log_debug(ret, "Received exact number of file descriptors %u == %u",
+				 fds->fd_count_max, fds->fd_count_ret);
 
 	if (fds->flags & UNIX_FDS_RECEIVED_LESS)
-		return log_info(ret, "Received less file descriptors %u < %u",
-				fds->fd_count_ret, fds->fd_count_max);
+		return log_debug(ret, "Received less file descriptors %u < %u",
+				 fds->fd_count_ret, fds->fd_count_max);
 
 	if (fds->flags & UNIX_FDS_RECEIVED_MORE)
-		return log_info(ret, "Received more file descriptors (excessive fds were automatically closed) %u > %u",
-				fds->fd_count_ret, fds->fd_count_max);
+		return log_debug(ret, "Received more file descriptors (excessive fds were automatically closed) %u > %u",
+				 fds->fd_count_ret, fds->fd_count_max);
 
-	INFO("Command \"%s\" received response", cur_cmdstr);
+	DEBUG("Command \"%s\" received response", cur_cmdstr);
 	return ret;
 }
 
