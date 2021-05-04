@@ -95,7 +95,7 @@ struct attach_context {
 	uid_t target_host_gid;
 	char *lsm_label;
 	struct lxc_container *container;
-	signed long personality;
+	personality_t personality;
 	unsigned long long capability_mask;
 	int ns_inherited;
 	int ns_fd[LXC_NS_MAX];
@@ -197,7 +197,7 @@ static struct attach_context *alloc_attach_context(void)
 }
 
 static int get_personality(const char *name, const char *lxcpath,
-			   signed long *personality)
+			   personality_t *personality)
 {
 	__do_free char *p = NULL;
 	int ret;
@@ -1153,7 +1153,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			new_personality = options->personality;
 
 		if (new_personality != LXC_ARCH_UNCHANGED) {
-			ret = personality(new_personality);
+			ret = lxc_personality(new_personality);
 			if (ret < 0)
 				goto on_error;
 

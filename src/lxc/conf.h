@@ -26,6 +26,7 @@
 #include "start.h"
 #include "storage/storage.h"
 #include "string_utils.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 
 #if HAVE_SYS_RESOURCE_H
@@ -35,6 +36,8 @@
 #if HAVE_SCMP_FILTER_CTX
 typedef void * scmp_filter_ctx;
 #endif
+
+typedef signed long personality_t;
 
 /* worth moving to configure.ac? */
 #define subuidfile "/etc/subuid"
@@ -327,7 +330,7 @@ struct lxc_conf {
 	const char *name;
 	bool is_execute;
 	int reboot;
-	signed long personality;
+	personality_t personality;
 	struct utsname *utsname;
 
 	struct {
@@ -626,6 +629,14 @@ static inline void lxc_clear_cgroup2_devices(struct bpf_devices *bpf_devices)
 	}
 
 	lxc_list_init(&bpf_devices->device_item);
+}
+
+static inline int lxc_personality(personality_t persona)
+{
+	if (persona < 0)
+		return ret_errno(EINVAL);
+
+	return personality(persona);
 }
 
 #endif /* __LXC_CONF_H */

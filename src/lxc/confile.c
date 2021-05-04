@@ -1242,7 +1242,7 @@ static int set_config_personality(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	signed long personality;
+	personality_t personality;
 
 	ret = lxc_config_parse_arch(value, &personality);
 	if (ret < 0)
