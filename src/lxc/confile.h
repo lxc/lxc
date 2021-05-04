@@ -84,11 +84,10 @@ __hidden extern void lxc_config_define_free(struct lxc_list *defines);
 
 #define LXC_ARCH_UNCHANGED 0xffffffffL
 /*
- * Parse personality of the container. Returns LXC_ARCH_UNCHANGED if the
- * personality is not know.
- * (Used during attach.)
+ * Parse personality of the container. Returns 0 if personality is valid,
+ * negative errno otherwise.
  */
-__hidden extern signed long lxc_config_parse_arch(const char *arch);
+__hidden extern int lxc_config_parse_arch(const char *arch, signed long *persona);
 
 __hidden extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);
 

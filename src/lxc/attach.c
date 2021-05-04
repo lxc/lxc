@@ -200,6 +200,7 @@ static int get_personality(const char *name, const char *lxcpath,
 			   signed long *personality)
 {
 	__do_free char *p = NULL;
+	int ret;
 	signed long per;
 
 	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
@@ -208,9 +209,9 @@ static int get_personality(const char *name, const char *lxcpath,
 		return 0;
 	}
 
-	per = lxc_config_parse_arch(p);
-	if (per == LXC_ARCH_UNCHANGED)
-		return ret_errno(EINVAL);
+	ret = lxc_config_parse_arch(p, &per);
+	if (ret < 0)
+		return syserror("Failed to parse personality");
 
 	*personality = per;
 	return 0;
