@@ -1728,14 +1728,14 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	return 0;
 }
 
-static int setup_personality(signed long persona)
+static int setup_personality(personality_t persona)
 {
 	int ret;
 
 	if (persona == LXC_ARCH_UNCHANGED)
 		return log_debug(0, "Retaining original personality");
 
-	ret = personality(persona);
+	ret = lxc_personality(persona);
 	if (ret < 0)
 		return syserror("Failed to set personality to \"0lx%lx\"", persona);
 
