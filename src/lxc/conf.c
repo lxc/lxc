@@ -80,10 +80,6 @@
 #include <sys/capability.h>
 #endif
 
-#if HAVE_SYS_PERSONALITY_H
-#include <sys/personality.h>
-#endif
-
 #ifndef HAVE_STRLCAT
 #include "include/strlcat.h"
 #endif
@@ -1732,11 +1728,10 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	return 0;
 }
 
-static int setup_personality(int persona)
+static int setup_personality(signed long persona)
 {
 	int ret;
 
-#if HAVE_SYS_PERSONALITY_H
 	if (persona == -1)
 		return 0;
 
@@ -1744,8 +1739,7 @@ static int setup_personality(int persona)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to set personality to \"0x%x\"", persona);
 
-	INFO("Set personality to \"0x%x\"", persona);
-#endif
+	INFO("Set personality to \"0lx%lx\"", persona);
 
 	return 0;
 }

@@ -38,10 +38,6 @@
 #include "storage/storage.h"
 #include "utils.h"
 
-#if HAVE_SYS_PERSONALITY_H
-#include <sys/personality.h>
-#endif
-
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
 #endif
@@ -2927,7 +2923,6 @@ void lxc_config_define_free(struct lxc_list *defines)
 
 signed long lxc_config_parse_arch(const char *arch)
 {
-#if HAVE_SYS_PERSONALITY_H
 	static struct per_name {
 		char *name;
 		unsigned long per;
@@ -2964,7 +2959,6 @@ signed long lxc_config_parse_arch(const char *arch)
 	for (int i = 0; i < len; i++)
 		if (strequal(pername[i].name, arch))
 			return pername[i].per;
-#endif
 
 	return LXC_ARCH_UNCHANGED;
 }
@@ -3447,7 +3441,6 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-#if HAVE_SYS_PERSONALITY_H
 	int len = 0;
 
 	switch (c->personality) {
@@ -3460,7 +3453,6 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	default:
 		break;
 	}
-#endif
 
 	return fulllen;
 }
