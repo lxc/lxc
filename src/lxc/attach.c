@@ -48,10 +48,6 @@
 #include "terminal.h"
 #include "utils.h"
 
-#if HAVE_SYS_PERSONALITY_H
-#include <sys/personality.h>
-#endif
-
 lxc_log_define(attach, lxc);
 
 /* Define default options if no options are supplied by the user. */
@@ -1147,7 +1143,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	}
 
 	/* Now perform additional attachments. */
-#if HAVE_SYS_PERSONALITY_H
 	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
 		long new_personality;
 
@@ -1164,7 +1159,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			TRACE("Set new personality");
 		}
 	}
-#endif
 
 	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
 		ret = drop_capabilities(ctx);

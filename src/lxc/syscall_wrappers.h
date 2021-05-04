@@ -31,6 +31,10 @@
 #include <linux/openat2.h>
 #endif
 
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
+
 typedef int32_t key_serial_t;
 
 #if !HAVE_KEYCTL
