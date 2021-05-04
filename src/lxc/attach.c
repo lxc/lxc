@@ -1147,7 +1147,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
 		long new_personality;
 
-		if (options->personality < 0)
+		if (options->personality == LXC_ATTACH_DETECT_PERSONALITY)
 			new_personality = ctx->personality;
 		else
 			new_personality = options->personality;
