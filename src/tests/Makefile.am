@@ -815,8 +815,16 @@ fuzz_lxc_define_load_CXXFLAGS = $(AM_CFLAGS)
 fuzz_lxc_define_load_LDFLAGS = $(AM_LDFLAGS) -static
 fuzz_lxc_define_load_LDADD = $(LDADD) $(LIB_FUZZING_ENGINE)
 
-bin_PROGRAMS += fuzz-lxc-config-read \
-	        fuzz-lxc-define-load
+nodist_EXTRA_fuzz_lxc_cgroup_init_SOURCES = dummy.cxx
+fuzz_lxc_cgroup_init_SOURCES = fuzz-lxc-cgroup-init.c
+fuzz_lxc_cgroup_init_CFLAGS = $(AM_CFLAGS)
+fuzz_lxc_cgroup_init_CXXFLAGS = $(AM_CFLAGS)
+fuzz_lxc_cgroup_init_LDFLAGS = $(AM_LDFLAGS) -static
+fuzz_lxc_cgroup_init_LDADD = $(LDADD) $(LIB_FUZZING_ENGINE)
+
+bin_PROGRAMS += fuzz-lxc-cgroup-init \
+		fuzz-lxc-config-read \
+		fuzz-lxc-define-load
 
 bin_SCRIPTS += lxc-test-fuzzers
 endif
