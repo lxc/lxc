@@ -1732,15 +1732,14 @@ static int setup_personality(signed long persona)
 {
 	int ret;
 
-	if (persona == -1)
-		return 0;
+	if (persona == LXC_ARCH_UNCHANGED)
+		return log_debug(0, "Retaining original personality");
 
 	ret = personality(persona);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to set personality to \"0x%x\"", persona);
+		return syserror("Failed to set personality to \"0lx%lx\"", persona);
 
 	INFO("Set personality to \"0lx%lx\"", persona);
-
 	return 0;
 }
 
@@ -2800,7 +2799,7 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 
 	new->loglevel = LXC_LOG_LEVEL_NOTSET;
-	new->personality = -1;
+	new->personality = LXC_ARCH_UNCHANGED;
 	new->autodev = 1;
 	new->console.buffer_size = 0;
 	new->console.log_path = NULL;
@@ -3731,7 +3730,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	ret = setup_personality(lxc_conf->personality);
 	if (ret < 0)
-		return log_error(-1, "Failed to set personality");
+		return syserror("Failed to set personality");
 
 	/* Set sysctl value to a path under /proc/sys as determined from the
 	 * key. For e.g. net.ipv4.ip_forward translated to
