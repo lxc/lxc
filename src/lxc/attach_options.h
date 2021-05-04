@@ -160,7 +160,7 @@ typedef struct lxc_attach_options_t {
 	{                                               \
 		.attach_flags	= LXC_ATTACH_DEFAULT,   \
 		.namespaces	= -1,                   \
-		.personality	= 0xffffffff,           \
+		.personality	= -1,			\
 		.initial_cwd	= NULL,                 \
 		.uid		= (uid_t)-1,            \
 		.gid		= (gid_t)-1,            \
