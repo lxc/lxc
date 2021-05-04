@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
+#include "config.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -740,5 +741,10 @@ enum {
 #define BITS_PER_BYTE 8
 #define BITS_PER_TYPE(type) (sizeof(type) * 8)
 #define LAST_BIT_PER_TYPE(type) (BITS_PER_TYPE(type) - 1)
+
+#ifndef HAVE_SYS_PERSONALITY_H
+#define PER_LINUX	0x0000
+#define PER_LINUX32	0x0008
+#endif
 
 #endif /* __LXC_MACRO_H */

@@ -154,8 +154,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 'R': remount_sys_proc = 1; break;
 	case 'a':
-		new_personality = lxc_config_parse_arch(arg);
-		if (new_personality < 0) {
+		ret = lxc_config_parse_arch(arg, &new_personality);
+		if (ret < 0) {
 			ERROR("Invalid architecture specified: %s", arg);
 			return -1;
 		}

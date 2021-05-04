@@ -39,10 +39,6 @@
 #include "storage/storage.h"
 #include "utils.h"
 
-#if HAVE_SYS_PERSONALITY_H
-#include <sys/personality.h>
-#endif
-
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
 #endif
@@ -1392,14 +1388,14 @@ static int set_config_hooks_version(const char *key, const char *value,
 static int set_config_personality(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	signed long personality;
+	int ret;
+	personality_t personality;
 
-	personality = lxc_config_parse_arch(value);
-	if (personality >= 0)
-		lxc_conf->personality = personality;
-	else
-		WARN("Unsupported personality \"%s\"", value);
+	ret = lxc_config_parse_arch(value, &personality);
+	if (ret < 0)
+		return syserror("Unsupported personality \"%s\"", value);
 
+	lxc_conf->personality = personality;
 	return 0;
 }
 
@@ -3213,10 +3209,9 @@ void lxc_config_define_free(struct lxc_list *defines)
 	}
 }
 
-signed long lxc_config_parse_arch(const char *arch)
+int lxc_config_parse_arch(const char *arch, signed long *persona)
 {
-#if HAVE_SYS_PERSONALITY_H
-	struct per_name {
+	static struct per_name {
 		char *name;
 		unsigned long per;
 	} pername[] = {
@@ -3247,14 +3242,16 @@ signed long lxc_config_parse_arch(const char *arch)
 		{ "s390x",     PER_LINUX   },
 		{ "x86_64",    PER_LINUX   },
 	};
-	size_t len = sizeof(pername) / sizeof(pername[0]);
 
-	for (int i = 0; i < len; i++)
-		if (strequal(pername[i].name, arch))
-			return pername[i].per;
-#endif
+	for (int i = 0; i < ARRAY_SIZE(pername); i++) {
+		if (!strequal(pername[i].name, arch))
+			continue;
 
-	return LXC_ARCH_UNCHANGED;
+		*persona = pername[i].per;
+		return 0;
+	}
+
+	return ret_errno(EINVAL);
 }
 
 int lxc_fill_elevated_privileges(char *flaglist, int *flags)
@@ -3735,7 +3732,6 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-#if HAVE_SYS_PERSONALITY_H
 	int len = 0;
 
 	switch (c->personality) {
@@ -3748,7 +3744,6 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	default:
 		break;
 	}
-#endif
 
 	return fulllen;
 }

@@ -82,6 +82,8 @@ typedef struct lxc_groups_t {
 	gid_t *list;
 } lxc_groups_t;
 
+#define LXC_ATTACH_DETECT_PERSONALITY ~0L
+
 /*!
  * LXC attach options for \ref lxc_container \c attach().
  */
@@ -92,7 +94,7 @@ typedef struct lxc_attach_options_t {
 	/*! The namespaces to attach to (CLONE_NEW... flags) */
 	int namespaces;
 
-	/*! Initial personality (\c -1 to autodetect).
+	/*! Initial personality (\c LXC_ATTACH_DETECT_PERSONALITY to autodetect).
 	 * \warning This may be ignored if lxc is compiled without personality
 	 * support)
 	 */
@@ -156,23 +158,23 @@ typedef struct lxc_attach_options_t {
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
-#define LXC_ATTACH_OPTIONS_DEFAULT			\
-	{                                               \
-		.attach_flags	= LXC_ATTACH_DEFAULT,   \
-		.namespaces	= -1,                   \
-		.personality	= 0xffffffff,           \
-		.initial_cwd	= NULL,                 \
-		.uid		= (uid_t)-1,            \
-		.gid		= (gid_t)-1,            \
-		.env_policy	= LXC_ATTACH_KEEP_ENV,  \
-		.extra_env_vars = NULL,                 \
-		.extra_keep_env = NULL,                 \
-		.stdin_fd	= 0,                    \
-		.stdout_fd	= 1,                    \
-		.stderr_fd	= 2,                    \
-		.log_fd		= -EBADF,               \
-		.lsm_label	= NULL,			\
-		.groups		= {},			\
+#define LXC_ATTACH_OPTIONS_DEFAULT					\
+	{                                               		\
+		.attach_flags	= LXC_ATTACH_DEFAULT,   		\
+		.namespaces	= -1,					\
+		.personality	= LXC_ATTACH_DETECT_PERSONALITY,	\
+		.initial_cwd	= NULL,					\
+		.uid		= (uid_t)-1,            		\
+		.gid		= (gid_t)-1,            		\
+		.env_policy	= LXC_ATTACH_KEEP_ENV,  		\
+		.extra_env_vars = NULL,                 		\
+		.extra_keep_env = NULL,                 		\
+		.stdin_fd	= 0,                    		\
+		.stdout_fd	= 1,                    		\
+		.stderr_fd	= 2,                    		\
+		.log_fd		= -EBADF,               		\
+		.lsm_label	= NULL,					\
+		.groups		= {},					\
 	}
 
 /*!

@@ -48,10 +48,6 @@
 #include "terminal.h"
 #include "utils.h"
 
-#if HAVE_SYS_PERSONALITY_H
-#include <sys/personality.h>
-#endif
-
 lxc_log_define(attach, lxc);
 
 /* Define default options if no options are supplied by the user. */
@@ -99,7 +95,7 @@ struct attach_context {
 	uid_t target_host_gid;
 	char *lsm_label;
 	struct lxc_container *container;
-	signed long personality;
+	personality_t personality;
 	unsigned long long capability_mask;
 	int ns_inherited;
 	int ns_fd[LXC_NS_MAX];
@@ -201,9 +197,10 @@ static struct attach_context *alloc_attach_context(void)
 }
 
 static int get_personality(const char *name, const char *lxcpath,
-			   signed long *personality)
+			   personality_t *personality)
 {
 	__do_free char *p = NULL;
+	int ret;
 	signed long per;
 
 	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
@@ -212,9 +209,9 @@ static int get_personality(const char *name, const char *lxcpath,
 		return 0;
 	}
 
-	per = lxc_config_parse_arch(p);
-	if (per == LXC_ARCH_UNCHANGED)
-		return ret_errno(EINVAL);
+	ret = lxc_config_parse_arch(p, &per);
+	if (ret < 0)
+		return syserror("Failed to parse personality");
 
 	*personality = per;
 	return 0;
@@ -1147,24 +1144,22 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	}
 
 	/* Now perform additional attachments. */
-#if HAVE_SYS_PERSONALITY_H
 	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
 		long new_personality;
 
-		if (options->personality < 0)
+		if (options->personality == LXC_ATTACH_DETECT_PERSONALITY)
 			new_personality = ctx->personality;
 		else
 			new_personality = options->personality;
 
 		if (new_personality != LXC_ARCH_UNCHANGED) {
-			ret = personality(new_personality);
+			ret = lxc_personality(new_personality);
 			if (ret < 0)
 				goto on_error;
 
 			TRACE("Set new personality");
 		}
 	}
-#endif
 
 	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
 		ret = drop_capabilities(ctx);

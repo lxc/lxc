@@ -31,6 +31,10 @@
 #include <linux/openat2.h>
 #endif
 
+#if HAVE_SYS_PERSONALITY_H
+#include <sys/personality.h>
+#endif
+
 typedef int32_t key_serial_t;
 
 #if !HAVE_KEYCTL
@@ -314,6 +318,13 @@ static inline int openat2(int dfd, const char *filename, struct lxc_open_how *ho
 static inline int close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
 {
 	return syscall(__NR_close_range, fd, max_fd, flags);
+}
+#endif
+
+#ifndef HAVE_SYS_PERSONALITY_H
+static inline int personality(unsigned long persona)
+{
+	return syscall(__NR_personality, persona);
 }
 #endif
 

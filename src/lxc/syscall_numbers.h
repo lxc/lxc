@@ -700,4 +700,43 @@
 	#endif
 #endif
 
+#ifndef __NR_personality
+	#if defined __alpha__
+		#define __NR_personality 324
+	#elif defined __m68k__
+		#define __NR_personality 136
+	#elif defined __i386__
+		#define __NR_personality 136
+	#elif defined __x86_64__
+		#define __NR_personality 135
+	#elif defined __arm__
+		#define __NR_personality 136
+	#elif defined __aarch64__
+		#define __NR_personality 92
+	#elif defined __s390__
+		#define __NR_personality 136
+	#elif defined __powerpc__
+		#define __NR_personality 136
+	#elif defined __riscv
+		#define __NR_personality -1
+	#elif defined __sparc__
+		#define __NR_personality 191
+	#elif defined __ia64__
+		#define __NR_personality (116 + 1024)
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_personality (136 + 4000)
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_personality (132 + 6000)
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_personality (132 + 5000)
+		#endif
+	#else
+		#define -1
+		#warning "__NR_personality not defined for your architecture"
+	#endif
+#endif
+
 #endif /* __LXC_SYSCALL_NUMBERS_H */
