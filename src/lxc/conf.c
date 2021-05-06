@@ -2978,6 +2978,9 @@ static int lxc_map_ids_exec_wrapper(void *args)
 	return -1;
 }
 
+static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
+					       unsigned id, enum idtype idtype);
+
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
 	int fill, left;
@@ -2991,11 +2994,21 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	char mapbuf[STRLITERALLEN("new@idmap") + STRLITERALLEN(" ") +
 		    INTTYPE_TO_STRLEN(pid_t) + STRLITERALLEN(" ") +
 		    LXC_IDMAPLEN] = {0};
-	bool had_entry = false, use_shadow = false;
+	bool had_entry = false, maps_host_root = false, use_shadow = false;
 	int hostuid, hostgid;
 
 	hostuid = geteuid();
 	hostgid = getegid();
+
+	/*
+	 * Check whether caller wants to map host root.
+	 * Due to a security fix newer kernels require CAP_SETFCAP when mapping
+	 * host root into the child userns as you would be able to write fscaps
+	 * that would be valid in the ancestor userns. Mapping host root should
+	 * rarely be the case but LXC is being clever in a bunch of cases.
+	 */
+	if (find_mapped_hostid_entry(idmap, 0, ID_TYPE_UID))
+		maps_host_root = true;
 
 	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
 	 * ranges, then insist that root also reserve ranges in subuid. This
@@ -3014,7 +3027,9 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	else if (!gidmap)
 		WARN("newgidmap is lacking necessary privileges");
 
-	if (uidmap > 0 && gidmap > 0) {
+	if (maps_host_root) {
+		INFO("Caller maps host root. Writing mapping directly");
+	} else if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found");
 		use_shadow = true;
 	} else {
@@ -4229,14 +4244,14 @@ static struct id_map *mapped_nsid_add(const struct lxc_conf *conf, unsigned id,
 	return retmap;
 }
 
-static struct id_map *find_mapped_hostid_entry(const struct lxc_conf *conf,
+static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
 					       unsigned id, enum idtype idtype)
 {
 	struct id_map *map;
 	struct lxc_list *it;
 	struct id_map *retmap = NULL;
 
-	lxc_list_for_each (it, &conf->id_map) {
+	lxc_list_for_each (it, idmap) {
 		map = it->elem;
 		if (map->idtype != idtype)
 			continue;
@@ -4265,7 +4280,7 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 		return NULL;
 
 	/* Reuse existing mapping. */
-	tmp = find_mapped_hostid_entry(conf, id, type);
+	tmp = find_mapped_hostid_entry(&conf->id_map, id, type);
 	if (tmp) {
 		memcpy(entry, tmp, sizeof(*entry));
 	} else {
