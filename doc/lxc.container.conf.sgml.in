@@ -1497,7 +1497,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              extra mount options to use when mounting the rootfs.
+              Specify extra mount options to use when mounting the rootfs.
+                The format of the mount options corresponds to the
+		format used in fstab. In addition, LXC supports the custom
+                <option>idmap=</option> mount option. This option can be used
+		to tell LXC to create an idmapped mount for the container's
+                rootfs. This is useful when the user doesn't want to recursively
+		chown the rootfs of the container to match the idmapping of the
+		user namespace the container is going to use. Instead an
+		idmapped mount can be used to handle this.
+		The argument for
+                <option>idmap=</option>
+                can either be a path pointing to a user namespace file that
+                LXC will open and use to idmap the rootfs or the special value
+                "container" which will instruct LXC to use
+		the container's user namespace to idmap the rootfs.
             </para>
           </listitem>
         </varlistentry>
@@ -3098,6 +3112,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         lxc.mount.fstab = /etc/fstab.complex
         lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
         lxc.rootfs.path = dir:/mnt/rootfs.complex
+        lxc.rootfs.options = idmap=container
         lxc.cap.drop = sys_module mknod setuid net_raw
         lxc.cap.drop = mac_override
       </programlisting>
