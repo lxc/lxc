@@ -71,6 +71,7 @@ src/lxc/cmd/lxc-update-config
 src/tests/lxc-test-device-add-remove
 src/tests/lxc-test-attach
 src/tests/lxc-test-apparmor
+src/tests/lxc-test-arch-parse
 src/tests/lxc-test-cgpath
 src/tests/lxc-test-clonetest
 src/tests/lxc-test-concurrent

@@ -30,7 +30,7 @@
 
 #define lxc_debug_stream(stream, format, ...)                                  \
 	do {                                                                   \
-		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
+		fprintf(stream, "%s: %d: %s: " format "\n", __FILE__, __LINE__,     \
 			__func__, __VA_ARGS__);                                \
 	} while (false)
 
@@ -47,5 +47,12 @@
 	} while (false)
 
 #define lxc_test_assert_abort(expression) lxc_test_assert_stringify(expression, #expression)
+
+#define test_error_ret(__ret__, format, ...)                  \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		fprintf(stderr, format, ##__VA_ARGS__);       \
+		__internal_ret__;                             \
+	})
 
 #endif /* __LXC_TEST_H */
