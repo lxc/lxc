@@ -543,6 +543,11 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
 	}
 
+	if (rootfs->bdev_type && strequal(rootfs->bdev_type, "zfs")) {
+		TRACE("Not pinning because container uses ZFS");
+		goto out;
+	}
+
 	if (rootfs->path) {
 		if (rootfs->bdev_type &&
 		    (strequal(rootfs->bdev_type, "overlay") ||
