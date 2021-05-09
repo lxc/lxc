@@ -543,16 +543,13 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
 	}
 
-	if (rootfs->bdev_type && strequal(rootfs->bdev_type, "zfs")) {
-		TRACE("Not pinning because container uses ZFS");
-		goto out;
-	}
-
 	if (rootfs->path) {
-		if (rootfs->bdev_type &&
-		    (strequal(rootfs->bdev_type, "overlay") ||
-		     strequal(rootfs->bdev_type, "overlayfs")))
-			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+		if (rootfs->bdev_type) {
+			if (strequal(rootfs->bdev_type, "overlay") || strequal(rootfs->bdev_type, "overlayfs"))
+				return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+			if (strequal(rootfs->bdev_type, "zfs"))
+				return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
+		}
 
 		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
 	} else {
