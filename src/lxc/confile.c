@@ -2942,6 +2942,7 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 		{ "ppc",       PER_LINUX32 },
 		{ "powerpc",   PER_LINUX32 },
 		{ "x86",       PER_LINUX32 },
+		{ "aarch64",   PER_LINUX   },
 		{ "amd64",     PER_LINUX   },
 		{ "arm64",     PER_LINUX   },
 		{ "linux64",   PER_LINUX   },
