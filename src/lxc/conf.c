@@ -544,10 +544,12 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 	}
 
 	if (rootfs->path) {
-		if (rootfs->bdev_type &&
-		    (strequal(rootfs->bdev_type, "overlay") ||
-		     strequal(rootfs->bdev_type, "overlayfs")))
-			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+		if (rootfs->bdev_type) {
+			if (strequal(rootfs->bdev_type, "overlay") || strequal(rootfs->bdev_type, "overlayfs"))
+				return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+			if (strequal(rootfs->bdev_type, "zfs"))
+				return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
+		}
 
 		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
 	} else {
