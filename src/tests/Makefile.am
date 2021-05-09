@@ -19,6 +19,11 @@ if ENABLE_SELINUX
 LSM_SOURCES += ../lxc/lsm/selinux.c
 endif
 
+lxc_test_arch_parse_SOURCES = arch_parse.c \
+			      lxc.h \
+			      lxctest.h \
+			      memory_utils.h
+
 lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/af_unix.c ../lxc/af_unix.h \
 			      ../lxc/caps.c ../lxc/caps.h \
@@ -734,6 +739,7 @@ endif
 
 bin_PROGRAMS = lxc-test-api-reboot \
 	       lxc-test-apparmor \
+	       lxc-test-arch-parse \
 	       lxc-test-attach \
 	       lxc-test-basic \
 	       lxc-test-cgpath \
