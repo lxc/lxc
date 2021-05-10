@@ -20,9 +20,9 @@ LSM_SOURCES += ../lxc/lsm/selinux.c
 endif
 
 lxc_test_arch_parse_SOURCES = arch_parse.c \
-			      lxc.h \
 			      lxctest.h \
-			      memory_utils.h
+			      ../lxc/lxc.h \
+			      ../lxc/memory_utils.h
 
 lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -822,7 +822,8 @@ bin_SCRIPTS += lxc-test-fuzzers
 endif
 endif
 
-EXTRA_DIST = basic.c \
+EXTRA_DIST = arch_parse.c \
+	     basic.c \
 	     cgpath.c \
 	     clonetest.c \
 	     concurrent.c \
