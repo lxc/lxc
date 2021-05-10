@@ -1456,7 +1456,8 @@ static int set_config_apparmor_profile(const char *key, const char *value,
 #if HAVE_APPARMOR
 	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -1482,7 +1483,8 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -1506,7 +1508,8 @@ static int set_config_apparmor_allow_nesting(const char *key,
 
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -1535,7 +1538,8 @@ static int set_config_apparmor_raw(const char *key,
 
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -1545,7 +1549,8 @@ static int set_config_selinux_context(const char *key, const char *value,
 #if HAVE_SELINUX
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
@@ -1555,7 +1560,8 @@ static int set_config_selinux_context_keyring(const char *key, const char *value
 #if HAVE_SELINUX
 	return set_config_string_item(&lxc_conf->lsm_se_keyring_context, value);
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
@@ -3485,7 +3491,8 @@ static int get_config_apparmor_profile(const char *key, char *retv, int inlen,
 #if HAVE_APPARMOR
 	return lxc_get_conf_str(retv, inlen, c->lsm_aa_profile);
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -3496,7 +3503,8 @@ static int get_config_apparmor_allow_incomplete(const char *key, char *retv,
 #if HAVE_APPARMOR
 	return lxc_get_conf_int(c, retv, inlen, c->lsm_aa_allow_incomplete);
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -3507,7 +3515,8 @@ static int get_config_apparmor_allow_nesting(const char *key, char *retv,
 #if HAVE_APPARMOR
 	return lxc_get_conf_int(c, retv, inlen, c->lsm_aa_allow_nesting);
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -3531,7 +3540,8 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 
 	return fulllen;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -3541,7 +3551,8 @@ static int get_config_selinux_context(const char *key, char *retv, int inlen,
 #if HAVE_SELINUX
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
@@ -3551,7 +3562,8 @@ static int get_config_selinux_context_keyring(const char *key, char *retv, int i
 #if HAVE_SELINUX
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_keyring_context);
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
@@ -4400,7 +4412,8 @@ static inline int clr_config_apparmor_profile(const char *key,
 	free_disarm(c->lsm_aa_profile);
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -4412,7 +4425,8 @@ static inline int clr_config_apparmor_allow_incomplete(const char *key,
 	c->lsm_aa_allow_incomplete = 0;
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -4424,7 +4438,8 @@ static inline int clr_config_apparmor_allow_nesting(const char *key,
 	c->lsm_aa_allow_nesting = 0;
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -4435,7 +4450,8 @@ static inline int clr_config_apparmor_raw(const char *key,
 #if HAVE_APPARMOR
 	return lxc_clear_apparmor_raw(c);
 #else
-	return syserror_set(-EINVAL, "Built without AppArmor support");
+	SYSWARN("Built without AppArmor support");
+	return 0;
 #endif
 }
 
@@ -4446,7 +4462,8 @@ static inline int clr_config_selinux_context(const char *key,
 	free_disarm(c->lsm_se_context);
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
@@ -4457,7 +4474,8 @@ static inline int clr_config_selinux_context_keyring(const char *key,
 	free_disarm(c->lsm_se_keyring_context);
 	return 0;
 #else
-	return syserror_set(-EINVAL, "Built without SELinux support");
+	SYSWARN("Built without SELinux support");
+	return 0;
 #endif
 }
 
