@@ -27,7 +27,6 @@
 #include "lxc/lxccontainer.h"
 
 #include "lxctest.h"
-#include "../lxc/log.h"
 #include "../lxc/lxc.h"
 #include "../lxc/memory_utils.h"
 
