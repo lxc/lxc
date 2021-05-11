@@ -3342,14 +3342,14 @@ __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 
 struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 {
-	__do_free struct cgroup_ops *cgfsng_ops = NULL;
+	__cleanup_cgroup_ops struct cgroup_ops *cgfsng_ops = NULL;
 
 	cgfsng_ops = zalloc(sizeof(struct cgroup_ops));
 	if (!cgfsng_ops)
 		return ret_set_errno(NULL, ENOMEM);
 
-	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
-	cgfsng_ops->dfd_mnt = -EBADF;
+	cgfsng_ops->cgroup_layout	= CGROUP_LAYOUT_UNKNOWN;
+	cgfsng_ops->dfd_mnt		= -EBADF;
 
 	if (initialize_cgroups(cgfsng_ops, conf))
 		return NULL;

@@ -280,6 +280,7 @@ __hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 
 __hidden extern void cgroup_exit(struct cgroup_ops *ops);
 define_cleanup_function(struct cgroup_ops *, cgroup_exit);
+#define __cleanup_cgroup_ops call_cleaner(cgroup_exit)
 
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
