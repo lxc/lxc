@@ -543,30 +543,24 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
 	}
 
-	if (rootfs->path) {
-		if (rootfs->bdev_type) {
-			if (strequal(rootfs->bdev_type, "overlay") || strequal(rootfs->bdev_type, "overlayfs"))
-				return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
-			if (strequal(rootfs->bdev_type, "zfs"))
-				return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
-		}
+	if (!rootfs->path)
+		return log_trace(0, "Not pinning because container does not have a rootfs");
 
-		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
-	} else {
-		dfd_path = open_at(-EBADF, "/", PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (userns)
+		return log_trace(0, "Not pinning because container runs in user namespace");
+
+	if (rootfs->bdev_type) {
+		if (strequal(rootfs->bdev_type, "overlay") ||
+		    strequal(rootfs->bdev_type, "overlayfs"))
+			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+
+		if (strequal(rootfs->bdev_type, "zfs"))
+			return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
 	}
+
+	dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
 	if (dfd_path < 0)
 		return syserror("Failed to open \"%s\"", rootfs->path);
-
-	if (!rootfs->path) {
-		TRACE("Not pinning because container does not have a rootfs");
-		goto out;
-	}
-
-	if (userns) {
-		TRACE("Not pinning because container runs in user namespace");
-		goto out;
-	}
 
 	ret = fstat(dfd_path, &st);
 	if (ret < 0)
@@ -717,33 +711,49 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
         bool has_cap_net_admin;
 
         if (flags & LXC_AUTO_PROC_MASK) {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc",
-				 rootfs->path ? rootfs->mount : "");
-		if (ret < 0)
-			return ret_errno(EIO);
+		if (rootfs->path) {
+			/*
+			 * Only unmount procfs if we have a separate rootfs so
+			 * we can still access it in safe_mount() below.
+			 */
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc",
+					rootfs->path ? rootfs->mount : "");
+			if (ret < 0)
+				return ret_errno(EIO);
 
-		ret = umount2(rootfs->buf, MNT_DETACH);
-		if (ret)
-			SYSDEBUG("Tried to ensure procfs is unmounted");
+			ret = umount2(rootfs->buf, MNT_DETACH);
+			if (ret)
+				SYSDEBUG("Tried to ensure procfs is unmounted");
+		}
 
 		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return syserror("Failed to create procfs mountpoint under %d", rootfs->dfd_mnt);
+
+		TRACE("Created procfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/sys",
-				 rootfs->path ? rootfs->mount : "");
-		if (ret < 0)
-			return ret_errno(EIO);
+		if (rootfs->path) {
+			/*
+			 * Only unmount sysfs if we have a separate rootfs so
+			 * we can still access it in safe_mount() below.
+			 */
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/sys",
+					rootfs->path ? rootfs->mount : "");
+			if (ret < 0)
+				return ret_errno(EIO);
 
-		ret = umount2(rootfs->buf, MNT_DETACH);
-		if (ret)
-			SYSDEBUG("Tried to ensure sysfs is unmounted");
+			ret = umount2(rootfs->buf, MNT_DETACH);
+			if (ret)
+				SYSDEBUG("Tried to ensure sysfs is unmounted");
+		}
 
 		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return syserror("Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
+
+		TRACE("Created sysfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
@@ -1206,7 +1216,9 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		if (ret < 0)
 			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
-		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
+		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev",
+				PROTECT_OPATH_DIRECTORY,
+				PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	} else {
 		__do_free char *fallback_path = NULL;
 
@@ -1224,7 +1236,6 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
 		goto reset_umask;
 	}
-
 
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
@@ -1379,7 +1390,7 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 		if (rootfs->dfd_mnt < 0)
 			return -errno;
 
-		return 0;
+		return log_trace(0, "Container doesn't use separate rootfs. Opened host's rootfs");
 	}
 
 	ret = access(rootfs->mount, F_OK);
@@ -1401,7 +1412,7 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 	if (rootfs->dfd_mnt < 0)
 		return -errno;
 
-	return 0;
+	return log_trace(0, "Container uses separate rootfs. Opened container's rootfs");
 }
 
 static int lxc_chroot(const struct lxc_rootfs *rootfs)
