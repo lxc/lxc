@@ -717,14 +717,20 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
         bool has_cap_net_admin;
 
         if (flags & LXC_AUTO_PROC_MASK) {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc",
-				 rootfs->path ? rootfs->mount : "");
-		if (ret < 0)
-			return ret_errno(EIO);
+		if (rootfs->path) {
+			/*
+			 * Only unmount procfs if we have a separate rootfs so
+			 * we can still access it in safe_mount() below.
+			 */
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc",
+					rootfs->path ? rootfs->mount : "");
+			if (ret < 0)
+				return ret_errno(EIO);
 
-		ret = umount2(rootfs->buf, MNT_DETACH);
-		if (ret)
-			SYSDEBUG("Tried to ensure procfs is unmounted");
+			ret = umount2(rootfs->buf, MNT_DETACH);
+			if (ret)
+				SYSDEBUG("Tried to ensure procfs is unmounted");
+		}
 
 		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
@@ -732,14 +738,20 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/sys",
-				 rootfs->path ? rootfs->mount : "");
-		if (ret < 0)
-			return ret_errno(EIO);
+		if (rootfs->path) {
+			/*
+			 * Only unmount sysfs if we have a separate rootfs so
+			 * we can still access it in safe_mount() below.
+			 */
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/sys",
+					rootfs->path ? rootfs->mount : "");
+			if (ret < 0)
+				return ret_errno(EIO);
 
-		ret = umount2(rootfs->buf, MNT_DETACH);
-		if (ret)
-			SYSDEBUG("Tried to ensure sysfs is unmounted");
+			ret = umount2(rootfs->buf, MNT_DETACH);
+			if (ret)
+				SYSDEBUG("Tried to ensure sysfs is unmounted");
+		}
 
 		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
