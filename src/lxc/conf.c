@@ -1206,7 +1206,9 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		if (ret < 0)
 			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
-		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
+		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev",
+				PROTECT_OPATH_DIRECTORY,
+				PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	} else {
 		__do_free char *fallback_path = NULL;
 
