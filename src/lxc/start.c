@@ -1786,12 +1786,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_rootfs_prepare_parent(handler);
-	if (ret) {
-		ERROR("Failed to prepare rootfs");
-		goto out_delete_net;
-	}
-
 	if (!lxc_sync_wake_child(handler, START_SYNC_STARTUP))
 		goto out_delete_net;
 
@@ -1850,6 +1844,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("Failed to send veth names to child");
 			goto out_delete_net;
 		}
+	}
+
+	ret = lxc_rootfs_prepare_parent(handler);
+	if (ret) {
+		ERROR("Failed to prepare rootfs");
+		goto out_delete_net;
 	}
 
 	if (!lxc_list_empty(&conf->procs)) {
