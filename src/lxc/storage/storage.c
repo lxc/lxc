@@ -321,7 +321,6 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		.dfd_host		= -EBADF,
 		.fd_path_pin		= -EBADF,
 		.dfd_idmapped		= -EBADF,
-		.mnt_opts.userns_fd	= -EBADF,
 	};
 
 	if (!src) {

@@ -2211,16 +2211,13 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 					int *sk_fd, pid_t pid)
 {
 	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
-	int target_fds[2];
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
 	size_t pidstr_len;
 	ssize_t ret;
 
-	ret = lxc_abstract_unix_recv_two_fds(sk, target_fds);
+	ret = lxc_abstract_unix_recv_two_fds(sk, &target_fd0, &target_fd1);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
-	target_fd0 = target_fds[0];
-	target_fd1 = target_fds[1];
 
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 

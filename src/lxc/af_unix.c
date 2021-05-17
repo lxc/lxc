@@ -164,6 +164,16 @@ int lxc_unix_send_fds(int fd, int *sendfds, int num_sendfds, void *data,
 	return lxc_abstract_unix_send_fds(fd, sendfds, num_sendfds, data, size);
 }
 
+int __lxc_abstract_unix_send_two_fds(int fd, int fd_first, int fd_second,
+				     void *data, size_t size)
+{
+	int fd_send[2] = {
+		fd_first,
+		fd_second,
+	};
+	return lxc_abstract_unix_send_fds(fd, fd_send, 2, data, size);
+}
+
 static ssize_t lxc_abstract_unix_recv_fds_iov(int fd,
 					      struct unix_fds *ret_fds,
 					      struct iovec *ret_iov,
@@ -355,13 +365,14 @@ ssize_t lxc_abstract_unix_recv_one_fd(int fd, int *ret_fd, void *ret_data,
 	return ret;
 }
 
-ssize_t lxc_abstract_unix_recv_two_fds(int fd, int *ret_fd)
+ssize_t __lxc_abstract_unix_recv_two_fds(int fd, int *fd_first, int *fd_second,
+					 void *data, size_t size)
 {
 	call_cleaner(put_unix_fds) struct unix_fds *fds = NULL;
 	char buf[1] = {};
 	struct iovec iov = {
-	    .iov_base	= buf,
-	    .iov_len	= sizeof(buf),
+	    .iov_base	= data ?: buf,
+	    .iov_len	= size ?: sizeof(buf),
 	};
 	ssize_t ret;
 
@@ -377,11 +388,11 @@ ssize_t lxc_abstract_unix_recv_two_fds(int fd, int *ret_fd)
 		return ret_errno(ENODATA);
 
 	if (fds->fd_count_ret != fds->fd_count_max) {
-		ret_fd[0] = -EBADF;
-		ret_fd[1] = -EBADF;
+		*fd_first = -EBADF;
+		*fd_second = -EBADF;
 	} else {
-		ret_fd[0] = move_fd(fds->fd[0]);
-		ret_fd[1] = move_fd(fds->fd[1]);
+		*fd_first = move_fd(fds->fd[0]);
+		*fd_second = move_fd(fds->fd[1]);
 	}
 
 	return 0;
