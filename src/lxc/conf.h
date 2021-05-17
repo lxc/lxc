@@ -539,7 +539,7 @@ __hidden extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *)
 				  const char *fn_name);
 __hidden extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 				     const char *fn_name);
-__hidden extern int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata);
+__hidden extern int parse_mntopts_legacy(const char *mntopts, unsigned long *mntflags, char **mntdata);
 __hidden extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
 __hidden extern int parse_lxc_mntopts(struct lxc_mount_options *opts, char *mnt_opts);
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
