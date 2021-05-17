@@ -203,7 +203,7 @@ int btrfs_mount(struct lxc_storage *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+	if (parse_mntopts_legacy(bdev->mntopts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
 		return -22;
 	}

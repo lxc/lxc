@@ -414,7 +414,7 @@ int ovl_mount(struct lxc_storage *bdev)
 	work = must_make_path(upper, LXC_OVERLAY_WORK_DIR, NULL);
 	upper[lastslash - upper] = '/';
 
-	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
+	ret = parse_mntopts_legacy(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
 		ERROR("Failed to parse mount options");
 		free(mntdata);

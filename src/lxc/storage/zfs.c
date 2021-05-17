@@ -173,7 +173,7 @@ int zfs_mount(struct lxc_storage *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
+	ret = parse_mntopts_legacy(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
 		ERROR("Failed to parse mount options");
 		return -22;

@@ -359,7 +359,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		unsigned long flags = 0;
 		char arg[2 * PATH_MAX + 2];
 
-		if (parse_mntopts(mntent.mnt_opts, &flags, &mnt_options) < 0)
+		if (parse_mntopts_legacy(mntent.mnt_opts, &flags, &mnt_options) < 0)
 			return log_error_errno(-EINVAL, EINVAL, "Failed to parse mount options");
 
 		/* only add --ext-mount-map for actual bind mounts */

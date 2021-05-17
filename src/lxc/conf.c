@@ -2000,7 +2000,7 @@ static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t siz
 	return 0;
 }
 
-int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
+int parse_mntopts_legacy(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
 	__do_free char *mntopts_new = NULL, *mntopts_dup = NULL;
 	char *mntopt_cur = NULL;
@@ -2354,7 +2354,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	if (ret < 0)
 		return -1;
 
-	ret = parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata);
+	ret = parse_mntopts_legacy(mntent->mnt_opts, &mntflags, &mntdata);
 	if (ret < 0)
 		return ret;
 

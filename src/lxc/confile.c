@@ -2803,7 +2803,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (ret < 0)
 		return ret;
 
-	ret = parse_mntopts(dup, &mnt_opts->mnt_flags, &mdata);
+	ret = parse_mntopts_legacy(dup, &mnt_opts->mnt_flags, &mdata);
 	if (ret < 0)
 		return ret_errno(EINVAL);
 
