@@ -126,7 +126,7 @@ char *lxchook_names[NUM_LXC_HOOKS] = {
 struct mount_opt {
 	char *name;
 	int clear;
-	int flag;
+	int legacy_flag;
 };
 
 struct caps_opt {
@@ -1979,9 +1979,9 @@ static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t siz
 
 			if (opt_len == mo_name_len && strnequal(opt, mo->name, mo_name_len)) {
 				if (mo->clear)
-					*flags &= ~mo->flag;
+					*flags &= ~mo->legacy_flag;
 				else
-					*flags |= mo->flag;
+					*flags |= mo->legacy_flag;
 				return 0;
 			}
 		}
@@ -2041,9 +2041,9 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 			continue;
 
 		if (mo->clear)
-			*flags &= ~mo->flag;
+			*flags &= ~mo->legacy_flag;
 		else
-			*flags |= mo->flag;
+			*flags |= mo->legacy_flag;
 
 		return;
 	}
