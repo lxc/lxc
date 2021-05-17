@@ -1291,12 +1291,6 @@ static int do_start(void *data)
 	if (ret < 0)
 		goto out_warn_father;
 
-	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, data_sock0);
-	if (ret < 0) {
-		SYSERROR("Failed to send seccomp notify fd to parent");
-		goto out_warn_father;
-	}
-
 	ret = run_lxc_hooks(handler->name, "start", handler->conf, NULL);
 	if (ret < 0) {
 		ERROR("Failed to run lxc.hook.start for container \"%s\"",
@@ -1334,6 +1328,35 @@ static int do_start(void *data)
 	}
 
 	if (!lxc_sync_barrier_parent(handler, START_SYNC_CGROUP_LIMITS))
+		goto out_warn_father;
+
+	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, data_sock0);
+	if (ret < 0) {
+		SYSERROR("Failed to send seccomp notify fd to parent");
+		goto out_warn_father;
+	}
+
+	ret = lxc_send_devpts_to_parent(handler);
+	if (ret < 0) {
+		SYSERROR("Failed to send seccomp devpts fd to parent");
+		goto out_warn_father;
+	}
+
+	ret = lxc_send_ttys_to_parent(handler);
+	if (ret < 0) {
+		SYSERROR("Failed to send tty file descriptors to parent");
+		goto out_warn_father;
+	}
+
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
+		if (ret < 0) {
+			SYSERROR("Failed to send network device names and ifindices to parent");
+			goto out_warn_father;
+		}
+	}
+
+	if (!lxc_sync_wait_parent(handler, START_SYNC_READY_START))
 		goto out_warn_father;
 
 	/* Reset the environment variables the user requested in a clear
@@ -1458,16 +1481,16 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		return -1;
 
 	for (i = 0; i < conf->ttys.max; i++) {
-		int ttyfds[2];
+		int ttyx = -EBADF, ttyy = -EBADF;
 
-		ret = lxc_abstract_unix_recv_two_fds(sock, ttyfds);
+		ret = lxc_abstract_unix_recv_two_fds(sock, &ttyx, &ttyy);
 		if (ret < 0)
 			break;
 
 		tty = &ttys->tty[i];
 		tty->busy = -1;
-		tty->ptx = ttyfds[0];
-		tty->pty = ttyfds[1];
+		tty->ptx = ttyx;
+		tty->pty = ttyy;
 		TRACE("Received pty with ptx fd %d and pty fd %d from child", tty->ptx, tty->pty);
 	}
 
@@ -1875,6 +1898,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!lxc_sync_barrier_child(handler, START_SYNC_CGROUP_UNSHARE))
 		goto out_delete_net;
 
+	ret = lxc_idmapped_mounts_parent(handler);
+	if (ret) {
+		ERROR("Failed to setup mount entries");
+		goto out_delete_net;
+	}
+
+	if (!lxc_sync_wait_child(handler, START_SYNC_CGROUP_LIMITS))
+		goto out_delete_net;
+
 	/*
 	 * With isolation the limiting devices cgroup was already setup, so
 	 * only setup devices here if we have no namespace directory.
@@ -1924,14 +1956,27 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	/* Tell the child to complete its initialization and wait for it to exec
-	 * or return an error. (The child will never return
-	 * START_SYNC_READY_START+1. It will either close the sync pipe, causing
-	 * lxc_sync_barrier_child to return success, or return a different
-	 * value, causing us to error out).
-	 */
-	if (!lxc_sync_barrier_child(handler, START_SYNC_READY_START))
+	if (!lxc_sync_wake_child(handler, START_SYNC_FDS))
 		goto out_delete_net;
+
+	ret = lxc_seccomp_recv_notifier_fd(&handler->conf->seccomp, data_sock1);
+	if (ret < 0) {
+		SYSERROR("Failed to receive seccomp notify fd from child");
+		goto out_delete_net;
+	}
+
+	ret = lxc_setup_devpts_parent(handler);
+	if (ret < 0) {
+		SYSERROR("Failed to receive devpts fd from child");
+		goto out_delete_net;
+	}
+
+	/* Read tty fds allocated by child. */
+	ret = lxc_recv_ttys_from_child(handler);
+	if (ret < 0) {
+		ERROR("Failed to receive tty info from child process");
+		goto out_delete_net;
+	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		ret = lxc_network_recv_name_and_ifindex_from_child(handler);
@@ -1941,11 +1986,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_setup_devpts_parent(handler);
-	if (ret < 0) {
-		SYSERROR("Failed to receive devpts fd from child");
+	/*
+	 * Tell the child to complete its initialization and wait for it to
+	 * exec or return an error. (The child will never return
+	 * START_SYNC_READY_START+1. It will either close the sync pipe,
+	 * causing lxc_sync_barrier_child to return success, or return a
+	 * different value, causing us to error out).
+	 */
+	if (!lxc_sync_barrier_child(handler, START_SYNC_READY_START))
 		goto out_delete_net;
-	}
 
 	/* Now all networks are created, network devices are moved into place,
 	 * and the correct names and ifindices in the respective namespaces have
@@ -1953,19 +2002,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * log them for debugging purposes.
 	 */
 	lxc_log_configured_netdevs(conf);
-
-	/* Read tty fds allocated by child. */
-	ret = lxc_recv_ttys_from_child(handler);
-	if (ret < 0) {
-		ERROR("Failed to receive tty info from child process");
-		goto out_delete_net;
-	}
-
-	ret = lxc_seccomp_recv_notifier_fd(&handler->conf->seccomp, data_sock1);
-	if (ret < 0) {
-		SYSERROR("Failed to receive seccomp notify fd from child");
-		goto out_delete_net;
-	}
 
 	ret = handler->ops->post_start(handler, handler->data);
 	if (ret < 0)
