@@ -573,8 +573,12 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 			 PROTECT_OPEN | O_CREAT,
 			 PROTECT_LOOKUP_BENEATH,
 			 S_IWUSR | S_IRUSR);
-	if (fd_pin < 0)
+	if (fd_pin < 0) {
+		if (errno == EROFS) {
+			return log_trace_errno(0, EROFS, "Not pinning on read-only filesystem");
+		}
 		return syserror("Failed to pin rootfs");
+	}
 
 	TRACE("Pinned rootfs %d(.lxc_keep)", fd_pin);
 
