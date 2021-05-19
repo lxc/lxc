@@ -2110,7 +2110,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 static int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 {
 	__do_free char *mntopts_new = NULL, *mntopts_dup = NULL;
-	char *mntopt_cur = NULL;
+	char *end = NULL, *mntopt_cur = NULL;
 	int ret;
 	size_t size;
 
@@ -2130,8 +2130,6 @@ static int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts
 		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(mntopt_cur, mntopts_dup, ",") {
-		char *end = NULL;
-
 		/* This is a filesystem specific option. */
 		if (strchr(mntopt_cur, '=')) {
 			if (!end) {
