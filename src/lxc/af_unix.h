@@ -125,7 +125,24 @@ __hidden extern ssize_t lxc_abstract_unix_recv_one_fd(int fd, int *ret_fd,
 						      size_t size_ret_data)
     __access_r(3, 4);
 
-__hidden extern ssize_t lxc_abstract_unix_recv_two_fds(int fd, int *ret_fd);
+__hidden extern int __lxc_abstract_unix_send_two_fds(int fd, int fd_first,
+						     int fd_second, void *data,
+						     size_t size);
+
+static inline int lxc_abstract_unix_send_two_fds(int fd, int fd_first,
+						 int fd_second)
+{
+	return __lxc_abstract_unix_send_two_fds(fd, fd_first, fd_second, NULL, 0);
+}
+
+__hidden extern ssize_t __lxc_abstract_unix_recv_two_fds(int fd, int *fd_first,
+							 int *fd_second,
+							 void *data, size_t size);
+
+static inline ssize_t lxc_abstract_unix_recv_two_fds(int fd, int *fd_first, int *fd_second)
+{
+	return __lxc_abstract_unix_recv_two_fds(fd, fd_first, fd_second, NULL, 0);
+}
 
 __hidden extern int lxc_unix_send_fds(int fd, int *sendfds, int num_sendfds, void *data, size_t size);
 

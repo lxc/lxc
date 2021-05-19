@@ -2786,7 +2786,7 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *dup = NULL, *mdata = NULL, *opts = NULL;
+	__do_free char *__data = NULL, *dup = NULL, *mdata = NULL, *opts = NULL;
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
 	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	int ret;
@@ -2799,11 +2799,12 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (!dup)
 		return -ENOMEM;
 
-	ret = parse_lxc_mntopts(mnt_opts, dup);
+	ret = parse_lxc_mount_attrs(mnt_opts, dup);
 	if (ret < 0)
 		return ret;
+	__data = mnt_opts->data;
 
-	ret = parse_mntopts(dup, &mnt_opts->mnt_flags, &mdata);
+	ret = parse_mntopts_legacy(dup, &mnt_opts->mnt_flags, &mdata);
 	if (ret < 0)
 		return ret_errno(EINVAL);
 

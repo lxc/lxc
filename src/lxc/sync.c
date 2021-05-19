@@ -74,6 +74,10 @@ static inline const char *start_sync_to_string(int state)
 		return "cgroup-unshare";
 	case START_SYNC_CGROUP_LIMITS:
 		return "cgroup-limits";
+	case START_SYNC_IDMAPPED_MOUNTS:
+		return "idmapped-mounts";
+	case START_SYNC_FDS:
+		return "fds";
 	case START_SYNC_READY_START:
 		return "ready-start";
 	case START_SYNC_RESTART:
@@ -109,13 +113,13 @@ bool lxc_sync_wake_parent(struct lxc_handler *handler, int sequence)
 
 bool lxc_sync_wait_parent(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Parent waiting for child with sequence %s", start_sync_to_string(sequence));
+	TRACE("Child waiting for parent with sequence %s", start_sync_to_string(sequence));
 	return sync_wait(handler->sync_sock[0], sequence);
 }
 
 bool lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Child waiting for parent with sequence %s", start_sync_to_string(sequence));
+	TRACE("Parent waiting for child with sequence %s", start_sync_to_string(sequence));
 	return sync_wait(handler->sync_sock[1], sequence);
 }
 
