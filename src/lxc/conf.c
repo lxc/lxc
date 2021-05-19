@@ -2705,6 +2705,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 {
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
+	int mnt_seq = 0;
 	int ret;
 	char buf[PATH_MAX];
 	struct mntent mntent;
@@ -2713,6 +2714,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		__do_close int fd_from = -EBADF, fd_to = -EBADF,
 			       fd_userns = -EBADF;
 		__do_free char *__data = NULL;
+		int cur_mnt_seq = -1;
 		struct lxc_mount_options opts = {};
 		int dfd_from;
 		const char *source_relative, *target_relative;
@@ -2794,7 +2796,9 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 					opts.userns_path);
 		}
 
-		ret = lxc_abstract_unix_rcv_credential(handler->data_sock[0], NULL, 0);
+		ret = lxc_abstract_unix_rcv_credential(handler->data_sock[0],
+						       &cur_mnt_seq,
+						       sizeof(cur_mnt_seq));
 		if (ret <= 0) {
 			if (opts.optional) {
 				TRACE("Skipping optional idmapped mount");
@@ -2805,6 +2809,11 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 					opts.recursive ? "recursive " : "",
 					dfd_from, source_relative, fd_userns);
 		}
+
+		if (mnt_seq != cur_mnt_seq)
+			return syserror("Expected mount sequence number and mount sequence number from parent mismatch: %d != %d",
+					mnt_seq, cur_mnt_seq);
+		mnt_seq++;
 
 		/* Set remaining mount options. */
 		ret = mount_setattr(fd_from, "", AT_EMPTY_PATH |
@@ -3960,6 +3969,8 @@ static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
 
 int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 {
+	int mnt_seq = 0;
+
 	for (;;) {
 		__do_close int fd_from = -EBADF, fd_userns = -EBADF;
 		struct lxc_mount_attr attr = {};
@@ -3986,7 +3997,9 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 					opts.recursive ? "recursive " : "",
 					fd_from, fd_userns);
 
-		ret = lxc_abstract_unix_send_credential(handler->data_sock[1], NULL, 0);
+		ret = lxc_abstract_unix_send_credential(handler->data_sock[1],
+							&mnt_seq,
+							sizeof(mnt_seq));
 		if (ret < 0)
 			return syserror("Parent failed to notify child that detached %smount %d was idmapped to user namespace %d",
 					opts.recursive ? "recursive " : "",
@@ -3994,6 +4007,7 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 
 		TRACE("Parent idmapped detached %smount %d to user namespace %d",
 		      opts.recursive ? "recursive " : "", fd_from, fd_userns);
+		mnt_seq++;
 	}
 }
 
