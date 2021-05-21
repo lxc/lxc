@@ -3077,8 +3077,11 @@ static bool unified_hierarchy_delegated(int dfd_base, char ***ret_files)
 
 static bool legacy_hierarchy_delegated(int dfd_base)
 {
-	if (faccessat(dfd_base, "cgroup.procs", W_OK, 0) && errno != ENOENT)
-		return sysinfo_ret(false, "The cgroup.procs file is not writable, skipping legacy hierarchy");
+	int ret;
+
+	ret = faccessat(dfd_base, ".", W_OK, 0);
+	if (ret < 0 && errno != ENOENT)
+		return sysinfo_ret(false, "Legacy hierarchy not writable, skipping");
 
 	return true;
 }
