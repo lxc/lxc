@@ -1751,10 +1751,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!lxc_sync_wake_child(handler, START_SYNC_STARTUP))
-		goto out_delete_net;
-
-	if (!lxc_sync_wait_child(handler, START_SYNC_CONFIGURE))
+	if (!lxc_sync_barrier_child(handler, START_SYNC_STARTUP))
 		goto out_delete_net;
 
 	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, false)) {
