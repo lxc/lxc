@@ -197,12 +197,12 @@ typedef enum lxc_mount_options_t {
 __hidden extern const char *lxc_mount_options_info[LXC_MOUNT_MAX];
 
 struct lxc_mount_options {
-	int create_dir : 1;
-	int create_file : 1;
-	int optional : 1;
-	int relative : 1;
-	int recursive : 1;
-	int bind : 1;
+	unsigned int create_dir : 1;
+	unsigned int create_file : 1;
+	unsigned int optional : 1;
+	unsigned int relative : 1;
+	unsigned int recursive : 1;
+	unsigned int bind : 1;
 	char userns_path[PATH_MAX];
 	unsigned long mnt_flags;
 	unsigned long prop_flags;
@@ -517,8 +517,6 @@ __hidden extern int lxc_idmapped_mounts_parent(struct lxc_handler *handler);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
-__hidden extern int lxc_send_ttys_to_parent(struct lxc_handler *handler);
-__hidden extern int lxc_send_devpts_to_parent(struct lxc_handler *handler);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
 __hidden extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 __hidden extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
@@ -582,7 +580,8 @@ static inline int chown_mapped_root(const char *path, const struct lxc_conf *con
 	return userns_exec_mapped_root(path, -EBADF, conf);
 }
 
-__hidden int lxc_setup_devpts_parent(struct lxc_handler *handler);
+__hidden extern int lxc_sync_fds_parent(struct lxc_handler *handler);
+__hidden extern int lxc_sync_fds_child(struct lxc_handler *handler);
 
 static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
 {

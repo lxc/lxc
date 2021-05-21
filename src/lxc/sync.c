@@ -68,10 +68,6 @@ static inline const char *start_sync_to_string(int state)
 		return "configure";
 	case START_SYNC_POST_CONFIGURE:
 		return "post-configure";
-	case START_SYNC_CGROUP:
-		return "cgroup";
-	case START_SYNC_CGROUP_UNSHARE:
-		return "cgroup-unshare";
 	case START_SYNC_CGROUP_LIMITS:
 		return "cgroup-limits";
 	case START_SYNC_IDMAPPED_MOUNTS:

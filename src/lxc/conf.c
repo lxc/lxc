@@ -1184,7 +1184,7 @@ on_error:
 	return -1;
 }
 
-int lxc_send_ttys_to_parent(struct lxc_handler *handler)
+static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
 	int ret = -1;
 
@@ -1635,7 +1635,7 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 	return retmap;
 }
 
-int lxc_setup_devpts_parent(struct lxc_handler *handler)
+static int lxc_setup_devpts_parent(struct lxc_handler *handler)
 {
 	int ret;
 
@@ -1750,7 +1750,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_send_devpts_to_parent(struct lxc_handler *handler)
+static int lxc_send_devpts_to_parent(struct lxc_handler *handler)
 {
 	int ret;
 
@@ -2927,7 +2927,6 @@ out:
 	ret = lxc_abstract_unix_send_credential(handler->data_sock[0], NULL, 0);
 	if (ret < 0)
 		return syserror("Failed to inform child that we are done setting up mounts");
-	TRACE("AAAA");
 
 	return fret;
 }
@@ -4013,6 +4012,97 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 	}
 }
 
+static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
+{
+	int i;
+	struct lxc_terminal_info *tty;
+	int ret = -1;
+	int sock = handler->data_sock[1];
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_tty_info *ttys = &conf->ttys;
+
+	if (!conf->ttys.max)
+		return 0;
+
+	ttys->tty = malloc(sizeof(*ttys->tty) * ttys->max);
+	if (!ttys->tty)
+		return -1;
+
+	for (i = 0; i < conf->ttys.max; i++) {
+		int ttyx = -EBADF, ttyy = -EBADF;
+
+		ret = lxc_abstract_unix_recv_two_fds(sock, &ttyx, &ttyy);
+		if (ret < 0)
+			break;
+
+		tty = &ttys->tty[i];
+		tty->busy = -1;
+		tty->ptx = ttyx;
+		tty->pty = ttyy;
+		TRACE("Received pty with ptx fd %d and pty fd %d from child", tty->ptx, tty->pty);
+	}
+
+	if (ret < 0)
+		SYSERROR("Failed to receive %zu ttys from child", ttys->max);
+	else
+		TRACE("Received %zu ttys from child", ttys->max);
+
+	return ret;
+}
+
+int lxc_sync_fds_parent(struct lxc_handler *handler)
+{
+	int ret;
+
+	ret = lxc_seccomp_recv_notifier_fd(&handler->conf->seccomp, handler->data_sock[1]);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to receive seccomp notify fd from child");
+
+	ret = lxc_setup_devpts_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to receive devpts fd from child");
+
+	/* Read tty fds allocated by child. */
+	ret = lxc_recv_ttys_from_child(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to receive tty info from child process");
+
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_recv_name_and_ifindex_from_child(handler);
+		if (ret < 0)
+			return syserror_ret(ret, "Failed to receive names and ifindices for network devices from child");
+	}
+
+	TRACE("Finished syncing file descriptors with child");
+	return 0;
+}
+
+int lxc_sync_fds_child(struct lxc_handler *handler)
+{
+	int ret;
+
+	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, handler->data_sock[0]);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send seccomp notify fd to parent");
+
+	ret = lxc_send_devpts_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send seccomp devpts fd to parent");
+
+	ret = lxc_send_ttys_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send tty file descriptors to parent");
+
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
+		if (ret < 0)
+			return syserror_ret(ret, "Failed to send network device names and ifindices to parent");
+	}
+
+	TRACE("Finished syncing file descriptors with parent");
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
@@ -4040,6 +4130,10 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_recv_from_parent(handler);
+		if (ret < 0)
+			return log_error(-1, "Failed to receive veth names from parent");
+
 		ret = lxc_setup_network_in_child_namespaces(lxc_conf,
 							    &lxc_conf->network);
 		if (ret < 0)

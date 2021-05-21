@@ -70,6 +70,11 @@ UNPRIV_LOG=$(mktemp --dry-run)
 cleanup() {
 	cd /
 
+	if [ $DONE -eq 0 ]; then
+		cat "${UNPRIV_LOG}"
+	fi
+	rm -f "${UNPRIV_LOG}" || true
+
 	run_cmd lxc-stop -n c2 -k -l trace -o "${UNPRIV_LOG}" || true
 	run_cmd lxc-stop -n c1 -k -l trace -o "${UNPRIV_LOG}" || true
 	pkill -u $(id -u $TUSER) -9 || true
@@ -82,12 +87,10 @@ cleanup() {
 	deluser $TUSER
 
 	if [ $DONE -eq 0 ]; then
-		cat "${UNPRIV_LOG}"
-		rm -f "${UNPRIV_LOG}" || true
 		echo "FAIL"
 		exit 1
 	fi
-	rm -f "${UNPRIV_LOG}" || true
+
 	echo "PASS"
 }
 
