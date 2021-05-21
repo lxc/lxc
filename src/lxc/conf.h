@@ -517,8 +517,6 @@ __hidden extern int lxc_idmapped_mounts_parent(struct lxc_handler *handler);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
-__hidden extern int lxc_send_ttys_to_parent(struct lxc_handler *handler);
-__hidden extern int lxc_send_devpts_to_parent(struct lxc_handler *handler);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
 __hidden extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 __hidden extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
@@ -583,6 +581,7 @@ static inline int chown_mapped_root(const char *path, const struct lxc_conf *con
 }
 
 __hidden extern int lxc_sync_fds_parent(struct lxc_handler *handler);
+__hidden extern int lxc_sync_fds_child(struct lxc_handler *handler);
 
 static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
 {

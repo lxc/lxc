@@ -1330,30 +1330,10 @@ static int do_start(void *data)
 	if (!lxc_sync_barrier_parent(handler, START_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
 
-	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, data_sock0);
+	ret = lxc_sync_fds_child(handler);
 	if (ret < 0) {
-		SYSERROR("Failed to send seccomp notify fd to parent");
+		SYSERROR("Failed to sync file descriptors with parent");
 		goto out_warn_father;
-	}
-
-	ret = lxc_send_devpts_to_parent(handler);
-	if (ret < 0) {
-		SYSERROR("Failed to send seccomp devpts fd to parent");
-		goto out_warn_father;
-	}
-
-	ret = lxc_send_ttys_to_parent(handler);
-	if (ret < 0) {
-		SYSERROR("Failed to send tty file descriptors to parent");
-		goto out_warn_father;
-	}
-
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
-		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
-		if (ret < 0) {
-			SYSERROR("Failed to send network device names and ifindices to parent");
-			goto out_warn_father;
-		}
 	}
 
 	if (!lxc_sync_wait_parent(handler, START_SYNC_READY_START))

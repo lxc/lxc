@@ -1184,7 +1184,7 @@ on_error:
 	return -1;
 }
 
-int lxc_send_ttys_to_parent(struct lxc_handler *handler)
+static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
 	int ret = -1;
 
@@ -1750,7 +1750,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_send_devpts_to_parent(struct lxc_handler *handler)
+static int lxc_send_devpts_to_parent(struct lxc_handler *handler)
 {
 	int ret;
 
@@ -4075,6 +4075,32 @@ int lxc_sync_fds_parent(struct lxc_handler *handler)
 	}
 
 	TRACE("Finished syncing file descriptors with child");
+	return 0;
+}
+
+int lxc_sync_fds_child(struct lxc_handler *handler)
+{
+	int ret;
+
+	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, handler->data_sock[0]);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send seccomp notify fd to parent");
+
+	ret = lxc_send_devpts_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send seccomp devpts fd to parent");
+
+	ret = lxc_send_ttys_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send tty file descriptors to parent");
+
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
+		if (ret < 0)
+			return syserror_ret(ret, "Failed to send network device names and ifindices to parent");
+	}
+
+	TRACE("Finished syncing file descriptors with parent");
 	return 0;
 }
 
