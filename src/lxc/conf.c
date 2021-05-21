@@ -2927,7 +2927,6 @@ out:
 	ret = lxc_abstract_unix_send_credential(handler->data_sock[0], NULL, 0);
 	if (ret < 0)
 		return syserror("Failed to inform child that we are done setting up mounts");
-	TRACE("AAAA");
 
 	return fret;
 }
@@ -4131,6 +4130,10 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_recv_from_parent(handler);
+		if (ret < 0)
+			return log_error(-1, "Failed to receive veth names from parent");
+
 		ret = lxc_setup_network_in_child_namespaces(lxc_conf,
 							    &lxc_conf->network);
 		if (ret < 0)
