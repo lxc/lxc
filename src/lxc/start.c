@@ -1800,18 +1800,24 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("Failed to create the network");
 			goto out_delete_net;
 		}
-
-		ret = lxc_network_send_to_child(handler);
-		if (ret < 0) {
-			ERROR("Failed to send veth names to child");
-			goto out_delete_net;
-		}
 	}
+
+	/* Tell the child to continue its initialization. */
+	if (!lxc_sync_wake_child(handler, START_SYNC_POST_CONFIGURE))
+		goto out_delete_net;
 
 	ret = lxc_rootfs_prepare_parent(handler);
 	if (ret) {
 		ERROR("Failed to prepare rootfs");
 		goto out_delete_net;
+	}
+
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_network_send_to_child(handler);
+		if (ret < 0) {
+			ERROR("Failed to send veth names to child");
+			goto out_delete_net;
+		}
 	}
 
 	if (!lxc_list_empty(&conf->procs)) {
@@ -1820,12 +1826,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 	}
 
-	/* Tell the child to continue its initialization. We'll get
-	 * START_SYNC_CGROUP when it is ready for us to setup cgroups.
-	 */
-	if (!lxc_sync_barrier_child(handler, START_SYNC_POST_CONFIGURE))
-		goto out_delete_net;
-
 	if (!lxc_list_empty(&conf->limits)) {
 		ret = setup_resource_limits(&conf->limits, handler->pid);
 		if (ret < 0) {
@@ -1833,6 +1833,13 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	}
+
+	/*
+	 * Wait for the child to tell us that it's ready for us to prepare
+	 * cgroups.
+	 */
+	if (!lxc_sync_wait_child(handler, START_SYNC_CGROUP))
+		goto out_delete_net;
 
 	if (!lxc_sync_barrier_child(handler, START_SYNC_CGROUP_UNSHARE))
 		goto out_delete_net;
