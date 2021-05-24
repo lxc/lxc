@@ -151,7 +151,7 @@ and should also take a look at the [CONTRIBUTING](CONTRIBUTING) file in this
 repo.
 
 If you want to become more active it is usually also a good idea to show up in
-the LXC IRC channel `#lxc-dev` on `Freenode`. We try to do all development out
+the LXC IRC channel [#lxc-dev](https://kiwiirc.com/client/irc.libera.chat/#lxc-dev) on irc.libera.chat. We try to do all development out
 in the open and discussion of new features or bugs is done either in
 appropriate GitHub issues or on IRC.
 
@@ -201,8 +201,7 @@ We maintain an discuss forum at
 where you can get support.
 
 ### IRC
-
-You can find support by joining `#lxcontainers` on `Freenode`.
+You can find us in [#lxc](https://kiwiirc.com/client/irc.libera.chat/#lxc) on irc.libera.chat.
 
 ### Mailing Lists
 
