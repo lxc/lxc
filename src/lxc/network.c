@@ -1886,7 +1886,8 @@ static int netdev_get_flag(const char *name, int *flag)
  */
 int lxc_netdev_isup(const char *name)
 {
-	int err, flag;
+	int err;
+	int flag = 0;
 
 	err = netdev_get_flag(name, &flag);
 	if (err)
