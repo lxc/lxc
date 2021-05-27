@@ -198,6 +198,10 @@ LXC_DHCP_MAX="253"
 # container 'mail1' always get ip address 10.0.3.100.
 #LXC_DHCP_CONFILE=/etc/lxc/dnsmasq.conf
 
+# Whether to use nftables (if available) to configure required network rules.
+# Set to any value != "true" to force iptables backend instead.
+LXC_USE_NFT="true"
+
 # Uncomment the next line if you want lxcbr0's dnsmasq to resolve the .lxc
 # domain.  You can then add "server=/lxc/10.0.3.1' (or your actual $LXC_ADDR)
 # to /etc/dnsmasq.conf, after which 'container1.lxc' will resolve on your
