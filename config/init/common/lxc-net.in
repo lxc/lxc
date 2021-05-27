@@ -18,6 +18,7 @@ LXC_DHCP_MAX="253"
 LXC_DHCP_CONFILE=""
 LXC_DHCP_PING="true"
 LXC_DOMAIN=""
+LXC_USE_NFT="true"
 
 LXC_IPV6_ADDR=""
 LXC_IPV6_MASK=""
@@ -26,8 +27,15 @@ LXC_IPV6_NAT="false"
 
 [ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
 
-use_iptables_lock="-w"
-iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+use_nft() {
+    [ -n "$NFT" ] && nft list ruleset > /dev/null 2>&1 && [ "$LXC_USE_NFT" = "true" ]
+}
+
+NFT="$(which nft)"
+if ! use_nft; then
+    use_iptables_lock="-w"
+    iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+fi
 
 _netmask2cidr ()
 {
@@ -49,6 +57,58 @@ _ifup() {
     ip addr add ${CIDR_ADDR} broadcast + dev ${LXC_BRIDGE}
     ip link set dev ${LXC_BRIDGE} address $LXC_BRIDGE_MAC
     ip link set dev ${LXC_BRIDGE} up
+}
+
+start_ipv6() {
+    LXC_IPV6_ARG=""
+    if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
+        echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+        echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
+        ip -6 addr add dev ${LXC_BRIDGE} ${LXC_IPV6_ADDR}/${LXC_IPV6_MASK}
+        LXC_IPV6_ARG="--dhcp-range=${LXC_IPV6_ADDR},ra-only --listen-address ${LXC_IPV6_ADDR}"
+    fi
+}
+
+start_iptables() {
+    start_ipv6
+    if [ -n "$LXC_IPV6_ARG" ] && [ "$LXC_IPV6_NAT" = "true" ]; then
+        ip6tables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+    fi
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -I FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
+    iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+}
+
+start_nftables() {
+    start_ipv6
+    NFT_RULESET=""
+    if [ -n "$LXC_IPV6_ARG" ] && [ "$LXC_IPV6_NAT" = "true" ]; then
+        NFT_RULESET="${NFT_RULESET}
+add table ip6 lxc;
+flush table ip6 lxc;
+add chain ip6 lxc postrouting { type nat hook postrouting priority 100; };
+add rule ip6 lxc postrouting ip saddr ${LXC_IPV6_NETWORK} ip daddr != ${LXC_IPV6_NETWORK} counter masquerade;
+"
+    fi
+    NFT_RULESET="${NFT_RULESET};
+add table inet lxc;
+flush table inet lxc;
+add chain inet lxc input { type filter hook input priority 0; };
+add rule inet lxc input iifname ${LXC_BRIDGE} udp dport { 53, 67 } accept;
+add rule inet lxc input iifname ${LXC_BRIDGE} tcp dport { 53, 67 } accept;
+add chain inet lxc forward { type filter hook forward priority 0; };
+add rule inet lxc forward iifname ${LXC_BRIDGE} accept;
+add rule inet lxc forward oifname ${LXC_BRIDGE} accept;
+add table ip lxc;
+flush table ip lxc;
+add chain ip lxc postrouting { type nat hook postrouting priority 100; };
+add rule ip lxc postrouting ip saddr ${LXC_NETWORK} ip daddr != ${LXC_NETWORK} counter masquerade"
+    nft "${NFT_RULESET}"
 }
 
 start() {
@@ -91,24 +151,11 @@ start() {
 
     _ifup
 
-    LXC_IPV6_ARG=""
-    if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
-        echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
-        echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
-        ip -6 addr add dev ${LXC_BRIDGE} ${LXC_IPV6_ADDR}/${LXC_IPV6_MASK}
-        if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
-        fi
-        LXC_IPV6_ARG="--dhcp-range=${LXC_IPV6_ADDR},ra-only --listen-address ${LXC_IPV6_ADDR}"
+    if use_nft; then
+        start_nftables
+    else
+        start_iptables
     fi
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
-    iptables $use_iptables_lock -I FORWARD -i ${LXC_BRIDGE} -j ACCEPT
-    iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-    iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
-    iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
 
     LXC_DOMAIN_ARG=""
     if [ -n "$LXC_DOMAIN" ]; then
@@ -144,24 +191,47 @@ start() {
     FAILED=0
 }
 
+stop_iptables() {
+    iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+    iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+    iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+    iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
+    iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+    if [ "$LXC_IPV6_NAT" = "true" ]; then
+        ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+    fi
+}
+
+stop_nftables() {
+    # Adding table before removing them is just to avoid
+    # delete error for non-existent table
+    NFT_RULESET="add table inet lxc;
+delete table inet lxc;
+add table ip lxc;
+delete table ip lxc;
+"
+    if [ "$LXC_IPV6_NAT" = "true" ]; then
+        NFT_RULESET="${NFT_RULESET};
+add table ip6 lxc;
+delete table ip6 lxc;"
+    fi
+    nft "${NFT_RULESET}"
+}
+
 stop() {
     [ "x$USE_LXC_BRIDGE" = "xtrue" ] || { exit 0; }
 
     [ -f "${varrun}/network_up" ] || [ "$1" = "force" ] || { echo "lxc-net isn't running"; exit 1; }
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
-        _ifdown 
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
-        iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
-
-        if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+        _ifdown
+        if use_nft; then
+            stop_nftables
+        else
+            stop_iptables
         fi
 
         pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
