@@ -223,7 +223,8 @@ struct lxc_container {
 
 	/*!
 	 * \brief Change whether the container wishes all file descriptors
-	 *  to be closed on startup.
+	 *  to be closed on startup. The LISTEN_FDS environment variable
+	 *  can be set to keep inherited file descriptors open.
 	 *
 	 * \param c Container.
 	 * \param state Value for the close_all_fds bit (0 or 1).
