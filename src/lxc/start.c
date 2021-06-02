@@ -212,6 +212,31 @@ static bool match_dlog_fds(struct dirent *direntp)
 }
 #endif
 
+/* Parses the LISTEN_FDS environment variable value.
+ * The returned value is the highest fd number up to which the
+ * file descriptors must be passed to the container process.
+ *
+ * For example, if LISTEN_FDS=2 then 4 is returned and file descriptors 3 and 4
+ * MUST be passed to the container process (in addition to the standard streams)
+ * to support [socket activation][systemd-listen-fds].
+ */
+static unsigned int get_listen_fds_max(void)
+{
+	int ret;
+	unsigned int num_fds;
+	const char *val;
+
+	val = getenv("LISTEN_FDS");
+	if (!val)
+		return 0;
+
+	ret = lxc_safe_uint(val, &num_fds);
+	if (ret < 0)
+		return syserror_ret(0, "Failed to parse \"LISTEN_FDS=%s\" environment variable", val);
+
+	return log_trace(num_fds, "Parsed \"LISTEN_FDS=%s\" environment variable", val);
+}
+
 int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			int *fds_to_ignore, size_t len_fds)
 {
@@ -219,9 +244,12 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 	size_t i;
 	DIR *dir;
 	struct dirent *direntp;
+	unsigned int listen_fds_max;
 
 	if (conf && conf->close_all_fds)
 		closeall = true;
+
+	listen_fds_max = get_listen_fds_max();
 
 	/*
 	 * Disable syslog at this point to avoid the above logging
@@ -289,6 +317,12 @@ restart:
 			continue;
 
 #endif
+
+		if (fd <= listen_fds_max) {
+			INFO("Inheriting fd %d (using the LISTEN_FDS environment variable)", fd);
+			continue;
+		}
+
 		if (closeall) {
 			if (close(fd))
 				SYSINFO("Closed inherited fd %d", fd);
