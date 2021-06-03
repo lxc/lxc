@@ -8,6 +8,6 @@ Name: lxc
 Description: linux container tools
 Version: @PACKAGE_VERSION@
 URL: http://linuxcontainers.org
-Libs: -L${libdir} -llxc -lutil
+Libs: -L${libdir} -llxc -lutil -lpthread -ldl
 Libs.private: @CAP_LIBS@ @SECCOMP_LIBS@ @OPENSSL_LIBS@ @SELINUX_LIBS@ @PAM_LIBS@ @DLOG_LIBS@
 Cflags: -I${includedir}
