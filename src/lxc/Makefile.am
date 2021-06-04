@@ -274,7 +274,8 @@ liblxc_la_LIBADD = $(CAP_LIBS) \
 		   $(OPENSSL_LIBS) \
 		   $(SELINUX_LIBS) \
 		   $(SECCOMP_LIBS) \
-		   $(DLOG_LIBS)
+		   $(DLOG_LIBS) \
+		   $(LIBURING_LIBS)
 
 bin_SCRIPTS=
 
@@ -333,7 +334,8 @@ LDADD = liblxc.la \
 	@OPENSSL_LIBS@ \
 	@SECCOMP_LIBS@ \
 	@SELINUX_LIBS@ \
-	@DLOG_LIBS@
+	@DLOG_LIBS@ \
+	@LIBURING_LIBS@
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \

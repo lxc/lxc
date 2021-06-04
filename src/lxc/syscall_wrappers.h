@@ -27,10 +27,6 @@
 #include <sys/signalfd.h>
 #endif
 
-#ifdef HAVE_STRUCT_OPEN_HOW
-#include <linux/openat2.h>
-#endif
-
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
 #endif
@@ -299,11 +295,7 @@ struct lxc_open_how {
 #ifndef HAVE_OPENAT2
 static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
 {
-	/* When struct open_how is updated we should update lxc as well. */
-#ifdef HAVE_STRUCT_OPEN_HOW
-	BUILD_BUG_ON(sizeof(struct lxc_open_how) != sizeof(struct open_how));
-#endif
-	return syscall(__NR_openat2, dfd, filename, (struct open_how *)how, size);
+	return syscall(__NR_openat2, dfd, filename, how, size);
 }
 #endif /* HAVE_OPENAT2 */
 

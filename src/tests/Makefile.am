@@ -5,7 +5,8 @@ LDADD = ../lxc/liblxc.la \
 	@OPENSSL_LIBS@ \
 	@SECCOMP_LIBS@ \
 	@SELINUX_LIBS@ \
-	@DLOG_LIBS@
+	@DLOG_LIBS@ \
+	@LIBURING_LIBS@
 
 LSM_SOURCES = ../lxc/lsm/lsm.c \
 	      ../lxc/lsm/lsm.h \

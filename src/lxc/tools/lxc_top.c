@@ -594,7 +594,10 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &in_char);
+	ret = lxc_mainloop_add_handler(&descr, 0,
+				       stdin_handler,
+				       default_cleanup_handler,
+				       &in_char, "stdin_handler");
 	if (ret) {
 		fprintf(stderr, "Failed to add stdin handler\n");
 		ret = EXIT_FAILURE;
