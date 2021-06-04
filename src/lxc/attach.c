@@ -1353,7 +1353,7 @@ static int lxc_attach_terminal(const char *name, const char *lxcpath, struct lxc
 }
 
 static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
-					     struct lxc_epoll_descr *descr)
+					     struct lxc_async_descr *descr)
 {
 	int ret;
 
@@ -1395,7 +1395,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       pid_t *attached_process)
 {
 	int ret_parent = -1;
-	struct lxc_epoll_descr descr = {};
+	struct lxc_async_descr descr = {};
 	int ret;
 	char *name, *lxcpath;
 	int ipc_sockets[2];

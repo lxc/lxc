@@ -1359,7 +1359,7 @@ static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 #endif
 
 int seccomp_notify_handler(int fd, uint32_t events, void *data,
-			   struct lxc_epoll_descr *descr)
+			   struct lxc_async_descr *descr)
 {
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
@@ -1566,7 +1566,7 @@ void seccomp_conf_init(struct lxc_conf *conf)
 }
 
 int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
-			    struct lxc_epoll_descr *descr,
+			    struct lxc_async_descr *descr,
 			    struct lxc_handler *handler)
 {
 #if HAVE_DECL_SECCOMP_NOTIFY_FD

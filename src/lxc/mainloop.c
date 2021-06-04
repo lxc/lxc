@@ -22,7 +22,7 @@ struct mainloop_handler {
 
 #define MAX_EVENTS 10
 
-int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
+int lxc_mainloop(struct lxc_async_descr *descr, int timeout_ms)
 {
 	int i, nfds, ret;
 	struct mainloop_handler *handler;
@@ -59,7 +59,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 	}
 }
 
-int lxc_mainloop_add_handler_events(struct lxc_epoll_descr *descr, int fd,
+int lxc_mainloop_add_handler_events(struct lxc_async_descr *descr, int fd,
 				    int events,
 				    lxc_mainloop_callback_t callback,
 				    void *data)
@@ -94,14 +94,14 @@ int lxc_mainloop_add_handler_events(struct lxc_epoll_descr *descr, int fd,
 	return 0;
 }
 
-int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
+int lxc_mainloop_add_handler(struct lxc_async_descr *descr, int fd,
 			     lxc_mainloop_callback_t callback, void *data)
 {
 	return lxc_mainloop_add_handler_events(descr, fd, EPOLLIN, callback,
 					       data);
 }
 
-int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
+int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd)
 {
 	struct mainloop_handler *handler;
 	struct lxc_list *iterator;
@@ -124,7 +124,7 @@ int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd)
 	return ret_errno(EINVAL);
 }
 
-int lxc_mainloop_open(struct lxc_epoll_descr *descr)
+int lxc_mainloop_open(struct lxc_async_descr *descr)
 {
 	descr->epfd = epoll_create1(EPOLL_CLOEXEC);
 	if (descr->epfd < 0)
@@ -134,7 +134,7 @@ int lxc_mainloop_open(struct lxc_epoll_descr *descr)
 	return 0;
 }
 
-void lxc_mainloop_close(struct lxc_epoll_descr *descr)
+void lxc_mainloop_close(struct lxc_async_descr *descr)
 {
 	struct lxc_list *iterator, *next;
 
