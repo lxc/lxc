@@ -1927,7 +1927,7 @@ static int cg_legacy_freeze(struct cgroup_ops *ops)
 }
 
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
-				    struct lxc_epoll_descr *descr)
+				    struct lxc_async_descr *descr)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
@@ -1960,9 +1960,9 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 				const char *wait_error)
 {
 	__do_close int fd = -EBADF;
-	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_epoll_descr descr;
+	struct lxc_async_descr descr;
 	struct hierarchy *h;
 
 	h = ops->unified;
@@ -3653,9 +3653,9 @@ static int do_cgroup_freeze(int unified_fd,
 			    const char *wait_error)
 {
 	__do_close int events_fd = -EBADF;
-	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_epoll_descr descr = {};
+	struct lxc_async_descr descr = {};
 
 	if (timeout != 0) {
 		ret = lxc_mainloop_open(&descr);

@@ -137,11 +137,11 @@ __hidden __access_r_nosize(3) extern int lxc_cmd_add_state_client(const char *na
 __hidden extern int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 						lxc_state_t state);
 
-struct lxc_epoll_descr;
+struct lxc_async_descr;
 struct lxc_handler;
 
 __hidden extern int lxc_server_init(const char *name, const char *lxcpath, const char *suffix);
-__hidden extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+__hidden extern int lxc_cmd_mainloop_add(const char *name, struct lxc_async_descr *descr,
 					 struct lxc_handler *handler);
 __hidden extern int lxc_try_cmd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_console_log(const char *name, const char *lxcpath,

@@ -549,7 +549,7 @@ static void ct_realloc(int active_cnt)
 }
 
 static int stdin_handler(int fd, uint32_t events, void *data,
-			 struct lxc_epoll_descr *descr)
+			 struct lxc_async_descr *descr)
 {
 	char *in_char = data;
 
@@ -569,7 +569,7 @@ static int stdin_handler(int fd, uint32_t events, void *data,
 
 int main(int argc, char *argv[])
 {
-	struct lxc_epoll_descr descr;
+	struct lxc_async_descr descr;
 	int ret, ct_print_cnt;
 	char in_char;
 

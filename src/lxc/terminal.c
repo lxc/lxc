@@ -69,7 +69,7 @@ static void lxc_terminal_winch(struct lxc_terminal_state *ts)
 }
 
 int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
-			     struct lxc_epoll_descr *descr)
+			     struct lxc_async_descr *descr)
 {
 	ssize_t ret;
 	struct signalfd_siginfo siginfo;
@@ -329,7 +329,7 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 }
 
 int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
-		       struct lxc_epoll_descr *descr)
+		       struct lxc_async_descr *descr)
 {
 	struct lxc_terminal *terminal = data;
 	char buf[LXC_TERMINAL_BUFFER_SIZE];
@@ -411,7 +411,7 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
 	return 0;
 }
 
-int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
+int lxc_terminal_mainloop_add(struct lxc_async_descr *descr,
 			      struct lxc_terminal *terminal)
 {
 	int ret;
@@ -1116,7 +1116,7 @@ int lxc_terminal_set_stdfds(int fd)
 }
 
 int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
-			  struct lxc_epoll_descr *descr)
+			  struct lxc_async_descr *descr)
 {
 	int ret;
 	char c;
@@ -1150,7 +1150,7 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 }
 
 int lxc_terminal_ptx_cb(int fd, uint32_t events, void *cbdata,
-			   struct lxc_epoll_descr *descr)
+			   struct lxc_async_descr *descr)
 {
 	int r, w;
 	char buf[LXC_TERMINAL_BUFFER_SIZE];
@@ -1180,7 +1180,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		int escape)
 {
 	int ptxfd, ret, ttyfd;
-	struct lxc_epoll_descr descr;
+	struct lxc_async_descr descr;
 	struct termios oldtios;
 	struct lxc_terminal_state *ts;
 	struct lxc_terminal terminal = {

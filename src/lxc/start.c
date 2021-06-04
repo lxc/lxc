@@ -378,7 +378,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 }
 
 static int signal_handler(int fd, uint32_t events, void *data,
-			  struct lxc_epoll_descr *descr)
+			  struct lxc_async_descr *descr)
 {
 	int ret;
 	siginfo_t info;
@@ -577,7 +577,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
 	bool has_console = true;
-	struct lxc_epoll_descr descr, descr_console;
+	struct lxc_async_descr descr, descr_console;
 
 	if (handler->conf->console.path &&
 	    strequal(handler->conf->console.path, "none"))
