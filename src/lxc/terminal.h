@@ -244,8 +244,6 @@ __hidden extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbda
 
 __hidden extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);
-__hidden extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
-				       struct lxc_async_descr *descr);
 
 __hidden extern int lxc_make_controlling_terminal(int fd);
 __hidden extern int lxc_terminal_prepare_login(int fd);

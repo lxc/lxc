@@ -1587,8 +1587,10 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 		goto out;
 	}
 
-	ret = lxc_mainloop_add_handler(descr, recv_fd, seccomp_notify_handler,
-				       handler);
+	ret = lxc_mainloop_add_handler(descr, recv_fd,
+				       seccomp_notify_handler,
+				       seccomp_notify_cleanup_handler,
+				       handler, "seccomp_notify_handler");
 	if (ret < 0) {
 		rsp.ret = -errno;
 		goto out;
@@ -1900,11 +1902,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 }
 
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
-			       struct lxc_async_descr *descr, const lxc_cmd_t cmd)
+			       const lxc_cmd_t cmd)
 {
-	lxc_terminal_free(handler->conf, fd);
-	lxc_mainloop_del_handler(descr, fd);
-
 	if (cmd == LXC_CMD_ADD_STATE_CLIENT) {
 		struct lxc_list *cur, *next;
 
@@ -1937,11 +1936,25 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		 * was already reached by the time we were ready to add it. So
 		 * fallthrough and clean it up.
 		 */
-		TRACE("Closing state client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
+		TRACE("Deleted state client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
 	}
 
-	TRACE("Closing client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
+	/*
+	 * We're not closing the client fd here. They will instead be notified
+	 * from the mainloop when it calls the cleanup handler. This will cause
+	 * a slight delay but is semantically cleaner then what we used to do.
+	 */
+}
+
+static int lxc_cmd_cleanup_handler(int fd, void *data)
+{
+	struct lxc_handler *handler = data;
+
+	lxc_terminal_free(handler->conf, fd);
 	close(fd);
+	TRACE("Closing client fd %d for \"%s\"", fd, __FUNCTION__);
+	return 0;
+
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
@@ -1965,20 +1978,20 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 			__lxc_cmd_rsp_send(fd, &rsp);
 		}
 
-		goto out_close;
+		goto out;
 	}
 
 	if (ret == 0)
-		goto out_close;
+		goto out;
 
 	if (ret != sizeof(req)) {
 		WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-		goto out_close;
+		goto out;
 	}
 
 	if ((req.datalen > LXC_CMD_DATA_MAX) && (req.cmd != LXC_CMD_CONSOLE_LOG)) {
 		ERROR("Received command data length %d is too large for command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
-		goto out_close;
+		goto out;
 	}
 
 	if (req.datalen > 0) {
@@ -1986,7 +1999,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		ret = lxc_recv_nointr(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-			goto out_close;
+			goto out;
 		}
 
 		req.data = reqdata;
@@ -1995,20 +2008,20 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	ret = lxc_cmd_process(fd, &req, handler, descr);
 	if (ret < 0) {
 		DEBUG("Failed to process command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
-		goto out_close;
-	} else if (ret == LXC_CMD_REAP_CLIENT_FD) {
-		TRACE("Processed command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
-		goto out_close;
-	} else {
-		TRACE("Processed command %s; keeping client fd %d", lxc_cmd_str(req.cmd), fd);
+		goto out;
 	}
 
-out:
+	if (ret == LXC_CMD_REAP_CLIENT_FD) {
+		TRACE("Processed command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
+		goto out;
+	}
+
+	TRACE("Processed command %s; keeping client fd %d", lxc_cmd_str(req.cmd), fd);
 	return LXC_MAINLOOP_CONTINUE;
 
-out_close:
-	lxc_cmd_fd_cleanup(fd, handler, descr, req.cmd);
-	goto out;
+out:
+	lxc_cmd_fd_cleanup(fd, handler, req.cmd);
+	return LXC_MAINLOOP_DISARM;
 }
 
 static int lxc_cmd_accept(int fd, uint32_t events, void *data,
@@ -2029,7 +2042,10 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to enable necessary credentials on command socket");
 
-	ret = lxc_mainloop_add_handler(descr, connection, lxc_cmd_handler, data);
+	ret = lxc_mainloop_add_oneshot_handler(descr, connection,
+					       lxc_cmd_handler,
+					       lxc_cmd_cleanup_handler,
+					       data, "lxc_cmd_handler");
 	if (ret)
 		return log_error(ret, "Failed to add command handler");
 
@@ -2068,7 +2084,10 @@ int lxc_cmd_mainloop_add(const char *name, struct lxc_async_descr *descr,
 {
 	int ret;
 
-	ret = lxc_mainloop_add_handler(descr, handler->conf->maincmd_fd, lxc_cmd_accept, handler);
+	ret = lxc_mainloop_add_handler(descr, handler->conf->maincmd_fd,
+				       lxc_cmd_accept,
+				       default_cleanup_handler,
+				       handler, "lxc_cmd_accept");
 	if (ret < 0)
 		return log_error(ret, "Failed to add handler for command socket fd %d", handler->conf->maincmd_fd);
 

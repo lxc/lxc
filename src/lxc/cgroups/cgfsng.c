@@ -1987,7 +1987,11 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
-		ret = lxc_mainloop_add_handler_events(&descr, fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		ret = lxc_mainloop_add_handler_events(&descr, fd, EPOLLPRI,
+						      freezer_cgroup_events_cb,
+						      default_cleanup_handler,
+						      INT_TO_PTR(state_num),
+						      "freezer_cgroup_events_cb");
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
@@ -3669,7 +3673,11 @@ static int do_cgroup_freeze(int unified_fd,
 		if (events_fd < 0)
 			return log_error_errno(-errno, errno, "Failed to open cgroup.events file");
 
-		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI,
+						      freezer_cgroup_events_cb,
+						      default_cleanup_handler,
+						      INT_TO_PTR(state_num),
+						      "freezer_cgroup_events_cb");
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}

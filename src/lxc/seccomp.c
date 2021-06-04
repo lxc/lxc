@@ -1358,6 +1358,23 @@ static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 }
 #endif
 
+int seccomp_notify_cleanup_handler(int fd, void *data)
+{
+	struct lxc_handler *hdlr = data;
+	struct lxc_conf *conf = hdlr->conf;
+
+	/* TODO: Make sure that we don't need to free any memory in here. */
+	if (fd == conf->seccomp.notifier.notify_fd)
+		fd = move_fd(conf->seccomp.notifier.notify_fd);
+
+	/*
+	 * If this isn't the main notify_fd it means that someone registered a
+	 * seccomp notify handler through the command socket (e.g. for attach)
+	 * and so we won't touch the container's config.
+	 */
+	return 0;
+}
+
 int seccomp_notify_handler(int fd, uint32_t events, void *data,
 			   struct lxc_async_descr *descr)
 {
@@ -1384,11 +1401,8 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	char *cookie = conf->seccomp.notifier.cookie;
 	__u64 req_id;
 
-	if (events & EPOLLHUP) {
-		lxc_mainloop_del_handler(descr, fd);
-		close(fd);
-		return log_trace(0, "Removing seccomp notifier fd %d", fd);
-	}
+	if (events & EPOLLHUP)
+		return log_trace(LXC_MAINLOOP_DISARM, "Removing seccomp notifier fd %d", fd);
 
 	memset(req, 0, conf->seccomp.notifier.sizes.seccomp_notif);
 	ret = seccomp_notify_receive(fd, req);
@@ -1604,9 +1618,11 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 			return -1;
 		}
 
-		ret = lxc_mainloop_add_handler(descr,
-					       seccomp->notifier.notify_fd,
-					       seccomp_notify_handler, handler);
+		ret = lxc_mainloop_add_handler(descr, seccomp->notifier.notify_fd,
+					       seccomp_notify_handler,
+					       seccomp_notify_cleanup_handler,
+					       handler,
+					       "seccomp_notify_handler");
 		if (ret < 0) {
 			ERROR("Failed to add seccomp notify handler for %d to mainloop",
 			      notify_fd);

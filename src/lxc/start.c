@@ -398,6 +398,9 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (ret == 0 && info.si_pid == hdlr->pid)
 		hdlr->init_died = true;
 
+	TRACE("Received signal ssi_signo(%d) for ssi_pid(%d), si_signo(%d), si_pid(%d)",
+	      siginfo.ssi_signo, siginfo.ssi_pid, info.si_signo, info.si_pid);
+
 	/* Try to figure out a reasonable exit status to report. */
 	if (hdlr->init_died) {
 		switch (info.si_code) {
@@ -576,12 +579,11 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
-	bool has_console = true;
+	struct lxc_terminal *console = &handler->conf->console;
 	struct lxc_async_descr descr, descr_console;
 
-	if (handler->conf->console.path &&
-	    strequal(handler->conf->console.path, "none"))
-		has_console = false;
+	if (!wants_console(console))
+		console = NULL;
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret < 0) {
@@ -589,7 +591,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_sigfd;
 	}
 
-	if (has_console) {
+	if (console) {
 		ret = lxc_mainloop_open(&descr_console);
 		if (ret < 0) {
 			ERROR("Failed to create console mainloop");
@@ -597,7 +599,10 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_mainloop_add_handler(&descr, handler->sigfd, signal_handler, handler);
+	ret = lxc_mainloop_add_handler(&descr, handler->sigfd,
+				       signal_handler,
+				       default_cleanup_handler,
+				       handler, "signal_handler");
 	if (ret < 0) {
 		ERROR("Failed to add signal handler for %d to mainloop", handler->sigfd);
 		goto out_mainloop_console;
@@ -609,22 +614,12 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
-	if (has_console) {
-		struct lxc_terminal *console = &handler->conf->console;
-
+	if (console) {
 		ret = lxc_terminal_mainloop_add(&descr, console);
 		if (ret < 0) {
 			ERROR("Failed to add console handlers to mainloop");
 			goto out_mainloop_console;
 		}
-
-		ret = lxc_terminal_mainloop_add(&descr_console, console);
-		if (ret < 0) {
-			ERROR("Failed to add console handlers to console mainloop");
-			goto out_mainloop_console;
-		}
-
-		handler->conf->console.descr = &descr;
 	}
 
 	ret = lxc_cmd_mainloop_add(name, &descr, handler);
@@ -640,11 +635,14 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	if (ret < 0 || !handler->init_died)
 		goto out_mainloop_console;
 
-	if (has_console)
-		ret = lxc_mainloop(&descr_console, 0);
+	if (console) {
+		ret = lxc_terminal_mainloop_add(&descr_console, console);
+		if (ret == 0)
+			ret = lxc_mainloop(&descr_console, 0);
+	}
 
 out_mainloop_console:
-	if (has_console) {
+	if (console) {
 		lxc_mainloop_close(&descr_console);
 		TRACE("Closed console mainloop");
 	}
