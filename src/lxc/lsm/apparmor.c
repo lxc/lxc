@@ -1184,7 +1184,7 @@ static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, cons
 	ret = lxc_write_nointr(label_fd, command, len - 1);
 
 	INFO("Set AppArmor label to \"%s\"", label);
-	return 0;
+	return ret;
 }
 
 /*
