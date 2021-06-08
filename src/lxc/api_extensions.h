@@ -45,6 +45,7 @@ static char *api_extensions[] = {
 	"seccomp_notify_fd_active",
 	"seccomp_proxy_send_notify_fd",
 	"idmapped_mounts",
+	"idmapped_mounts_v2",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
