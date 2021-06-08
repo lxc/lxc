@@ -347,6 +347,7 @@ int main(int argc, char *argv[])
 	if (!cmd_groups_list)
 		cmd_groups_list = accumulate_list( "" , ",", NULL );
 
+	failed = 0;
 	lxc_list_for_each(cmd_group, cmd_groups_list) {
 		/* Because we may take several passes through the container list
 		 * We'll switch on if the container pointer is NULL and if we
@@ -411,8 +412,10 @@ int main(int argc, char *argv[])
 					}
 					else {
 						if (!c->shutdown(c, my_args.timeout)) {
-							if (!c->stop(c))
+							if (!c->stop(c)) {
+								failed++;
 								ERROR("Error shutting down container: %s", c->name);
+							}
 						}
 					}
 				}
@@ -424,8 +427,10 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->stop(c))
+						if (!c->stop(c)) {
+							failed++;
 							ERROR("Error killing container: %s", c->name);
+						}
 					}
 				}
 			} else if (my_args.reboot) {
@@ -437,10 +442,12 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->reboot(c))
+						if (!c->reboot(c)) {
+							failed++;
 							ERROR("Error rebooting container: %s", c->name);
-						else
+						} else {
 							sleep(get_config_integer(c, "lxc.start.delay"));
+						}
 					}
 				}
 			} else {
@@ -452,10 +459,12 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->start(c, 0, NULL))
+						if (!c->start(c, 0, NULL)) {
+							failed++;
 							ERROR("Error starting container: %s", c->name);
-						else
+						} else {
 							sleep(get_config_integer(c, "lxc.start.delay"));
+						}
 					}
 				}
 			}
@@ -479,12 +488,9 @@ int main(int argc, char *argv[])
 	/* clean up any lingering detritus, if container exists here
 	 * then it must have failed to start.
 	 */
-	failed = 0;
 	for (i = 0; i < count; i++) {
-		if (containers[i]) {
-			failed++;
+		if (containers[i])
 			lxc_container_put(containers[i]);
-		}
 		if (c_groups_lists && c_groups_lists[i])
 			toss_list(c_groups_lists[i]);
 	}
