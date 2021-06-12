@@ -404,6 +404,9 @@ char **lxc_string_split_quoted(char *string)
 	if (state == 'a')
 		complete_word(&result, nextword, p, &result_capacity, &result_count);
 
+	if (result == NULL)
+		return calloc(1, sizeof(char *));
+
 	return realloc(result, (result_count + 1) * sizeof(char *));
 }
 
@@ -442,6 +445,9 @@ char **lxc_string_split_and_trim(const char *string, char _sep)
 
 		result_count++;
 	}
+
+	if (result == NULL)
+		return calloc(1, sizeof(char *));
 
 	/* if we allocated too much, reduce it */
 	return realloc(result, (result_count + 1) * sizeof(char *));
