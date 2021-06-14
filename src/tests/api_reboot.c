@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 	/* reboot 10 times */
 	for (i = 0; i < 10; i++) {
 		/* Give the init system some time to setup it's signal handlers
-		 * otherwise we will hang indefinitely.
+		 * otherwise we will wait indefinitely.
 		 */
 		sleep(5);
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Give the init system some time to setup it's signal handlers
-	 * otherwise we will hang indefinitely.
+	 * otherwise we will wait indefinitely.
 	 */
 	sleep(5);
 
