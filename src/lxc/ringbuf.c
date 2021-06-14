@@ -95,7 +95,7 @@ int lxc_ringbuf_write(struct lxc_ringbuf *buf, const char *msg, size_t len)
 	char *w_addr;
 	uint64_t free;
 
-	/* sanity check: a write should never exceed the ringbuffer's total size */
+	/* consistency check: a write should never exceed the ringbuffer's total size */
 	if (len > buf->size)
 		return -EFBIG;
 

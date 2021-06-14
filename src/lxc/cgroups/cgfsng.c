@@ -1910,7 +1910,7 @@ __cgfsng_ops static bool cgfsng_criu_get_hierarchies(struct cgroup_ops *ops,
 	if (!ops->hierarchies)
 		return ret_set_errno(false, ENOENT);
 
-	/* sanity check n */
+	/* consistency check n */
 	for (i = 0; i < n; i++)
 		if (!ops->hierarchies[i])
 			return ret_set_errno(false, ENOENT);
