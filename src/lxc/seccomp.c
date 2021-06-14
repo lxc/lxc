@@ -1513,7 +1513,7 @@ retry:
 	}
 
 	if (resp->id != req_id) {
-		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)",
+		ERROR("Proxy returned response with invalid id(%llu) != id(%llu)",
 		      (long long unsigned int)resp->id, (long long unsigned int)req_id);
 		resp->id = req_id;
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
@@ -1528,7 +1528,7 @@ retry:
 	}
 
 	if (resp->id != req_id) {
-		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)",
+		ERROR("Proxy returned response with invalid id(%llu) != id(%llu)",
 		      (long long unsigned int)resp->id, (long long unsigned int)req_id);
 		resp->id = req_id;
 	}
