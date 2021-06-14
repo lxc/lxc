@@ -77,7 +77,7 @@ lxc.cgroup2.devices.allow = c 10:229 rwm
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
 
-# Blacklist some syscalls which are not safe in privileged
+# Block some syscalls which are not safe in privileged
 # containers
 lxc.seccomp.profile = @LXCTEMPLATECONFIG@/common.seccomp
 
