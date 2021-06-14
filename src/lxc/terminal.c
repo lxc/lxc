@@ -251,7 +251,7 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 		/* This isn't a regular file. so rotating the file seems a
 		 * dangerous thing to do, size limits are also very
 		 * questionable. Let's not risk anything and tell the user that
-		 * he's requesting us to do weird stuff.
+		 * they're requesting us to do weird stuff.
 		 */
 		if (terminal->log_rotate > 0 || terminal->log_size > 0)
 			return -EINVAL;
