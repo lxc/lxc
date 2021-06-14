@@ -17,7 +17,7 @@ lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
 
 lxc.net.0.type = phys
 lxc.net.0.flags = up
-lxc.net.0.link = dummy0
+lxc.net.0.link = random0
 lxc.net.0.hwaddr = 4a:49:43:49:79:ff
 lxc.net.0.ipv4.address = 10.2.3.6/24
 lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297
