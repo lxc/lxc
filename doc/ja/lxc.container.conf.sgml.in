@@ -3844,7 +3844,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         lxc.net.1.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
         lxc.net.2.type = phys
         lxc.net.2.flags = up
-        lxc.net.2.link = dummy0
+        lxc.net.2.link = random0
         lxc.net.2.hwaddr = 4a:49:43:49:79:ff
         lxc.net.2.ipv4.address = 10.2.3.6/24
         lxc.net.2.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297

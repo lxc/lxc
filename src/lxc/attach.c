@@ -997,7 +997,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		if (!token)
 			continue;
 
-		/* next: dummy password field */
+		/* next: placeholder password field */
 		token = strtok_r(NULL, ":", &saveptr);
 		if (!token)
 			continue;
@@ -1009,7 +1009,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		    value == LONG_MAX)
 			continue;
 
-		/* dummy sanity check: user id matches */
+		/* placeholder conherence check: user id matches */
 		if ((uid_t)value != uid)
 			continue;
 

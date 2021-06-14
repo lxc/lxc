@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 
 	/*
 	 * The lxc parser requires that my_args.name is set. So let's satisfy
-	 * that condition by setting a dummy name which is never used.
+	 * that condition by setting a placeholder name which is never used.
 	 */
 	my_args.name  = "";
 	if (lxc_arguments_parse(&my_args, argc, argv))
