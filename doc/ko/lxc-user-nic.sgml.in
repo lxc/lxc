@@ -76,7 +76,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <!--
       It will consult the configuration file <filename>@LXC_USERNIC_CONF@</filename>
       to determine the number of interfaces which the calling user is allowed to
-      create, and which bridge he may attach them to.  It tracks the
+      create, and which bridge they may attach them to.  It tracks the
       number of interfaces each user has created using the file
       <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
       user is privileged over the network namespace to which the interface

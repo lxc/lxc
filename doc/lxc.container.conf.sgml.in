@@ -1125,7 +1125,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         the container at some <filename>path</filename>, and then mounts
         under <filename>path</filename>, then a TOCTTOU attack would be
         possible where the container user modifies a symbolic link under
-        his home directory at just the right time.
+        their home directory at just the right time.
       </para>
       <variablelist>
         <varlistentry>
