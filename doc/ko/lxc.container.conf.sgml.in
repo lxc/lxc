@@ -1060,7 +1060,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         the container at some <filename>path</filename>, and then mounts
         under <filename>path</filename>, then a TOCTTOU attack would be
         possible where the container user modifies a symbolic link under
-        his home directory at just the right time.
+        their home directory at just the right time.
         -->
         주의 - 보통 LXC는 마운트 대상과 상대 경로로 된 바인드 마운트 소스들이 컨테이너의 루트 아래에 있도록 보장할 것이다. 이는 호스트 디렉토리와 파일들을 겹쳐서 마운트하는 유형의 공격을 피하기 위한 것이다. (절대 경로로 된 마운트 소스 내에 존재하는 심볼릭 링크들은 무시될 것이다.)
         하지만, 만약 컨테이너 설정에서 컨테이너 사용자가 제어할 수 있는, 예를 들어 /home/joe와 같은 디렉토리를 컨테이너 내의 <filename>path</filename>에 먼저 마운트 하고 나서,  <filename>path</filename> 내에 또 마운트를 하는 경우가 있다면,
@@ -2613,7 +2613,7 @@ mknod errno 0
 	lxc.net.1.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
 	lxc.net.2.type = phys
 	lxc.net.2.flags = up
-	lxc.net.2.link = dummy0
+	lxc.net.2.link = random0
 	lxc.net.2.hwaddr = 4a:49:43:49:79:ff
 	lxc.net.2.ipv4.address = 10.2.3.6/24
 	lxc.net.2.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297

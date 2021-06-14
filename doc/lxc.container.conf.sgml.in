@@ -1125,7 +1125,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         the container at some <filename>path</filename>, and then mounts
         under <filename>path</filename>, then a TOCTTOU attack would be
         possible where the container user modifies a symbolic link under
-        his home directory at just the right time.
+        their home directory at just the right time.
       </para>
       <variablelist>
         <varlistentry>
@@ -3100,7 +3100,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         lxc.net.1.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
         lxc.net.2.type = phys
         lxc.net.2.flags = up
-        lxc.net.2.link = dummy0
+        lxc.net.2.link = random0
         lxc.net.2.hwaddr = 4a:49:43:49:79:ff
         lxc.net.2.ipv4.address = 10.2.3.6/24
         lxc.net.2.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297

@@ -42,7 +42,7 @@ if modprobe -q overlayfs; then
         mkdir ${MOUNTDIR}/{lowerdir,upperdir,workdir,overlayfs}
         mount -t overlayfs -o lowerdir="${MOUNTDIR}/lowerdir",upperdir="${MOUNTDIR}/upperdir",workdir="${MOUNTDIR}/workdir" none "${MOUNTDIR}/overlayfs"
 
-        CORRECT_LINK_TARGET="${MOUNTDIR}/overlayfs/dummy_file"
+        CORRECT_LINK_TARGET="${MOUNTDIR}/overlayfs/placeholder_file"
         exec 9> "${CORRECT_LINK_TARGET}"
 
         DETECTED_LINK_TARGET=$(readlink -q /proc/$$/fd/9)

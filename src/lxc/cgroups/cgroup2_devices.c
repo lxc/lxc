@@ -528,7 +528,7 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 bool bpf_devices_cgroup_supported(void)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
-	const struct bpf_insn dummy[] = {
+	const struct bpf_insn insn[] = {
 		BPF_MOV64_IMM(BPF_REG_0, 1),
 		BPF_EXIT_INSN(),
 	};
@@ -546,7 +546,7 @@ bool bpf_devices_cgroup_supported(void)
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to initialize bpf program");
 
-	ret = bpf_program_add_instructions(prog, dummy, ARRAY_SIZE(dummy));
+	ret = bpf_program_add_instructions(prog, insn, ARRAY_SIZE(insn));
 	if (ret < 0)
 		return log_trace(false, "Failed to add new instructions to bpf device cgroup program");
 

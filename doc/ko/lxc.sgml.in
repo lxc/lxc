@@ -755,7 +755,7 @@ rootfs
 	state change and exit. This is useful for scripting to
 	synchronize the launch of a container or the end. The
 	parameter is an ORed combination of different states. The
-	following example shows how to wait for a container if he went
+	following example shows how to wait for a container if they went
 	to the background.
 
 	<programlisting>

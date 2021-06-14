@@ -1722,11 +1722,11 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		DEBUG("Removed existing \"/dev/ptmx\" file");
 	}
 
-	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
+	/* Create placeholder /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
 	ret = mknodat(rootfs->dfd_dev, "ptmx", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create dummy \"/dev/ptmx\" file as bind mount target");
-	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
+		return log_error_errno(-1, errno, "Failed to create \"/dev/ptmx\" file as bind mount target");
+	DEBUG("Created \"/dev/ptmx\" file as bind mount target");
 
 	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
 	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
@@ -1736,7 +1736,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		/* Fallthrough and try to create a symlink. */
 		ERROR("Failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 
-	/* Remove the dummy /dev/ptmx file we created above. */
+	/* Remove the placeholder /dev/ptmx file we created above. */
 	ret = unlinkat(rootfs->dfd_dev, "ptmx", 0);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\"");
@@ -3411,7 +3411,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	}
 
 	/* Check if we really need to use newuidmap and newgidmap.
-	* If the user is only remapping his own {g,u}id, we don't need it.
+	* If the user is only remapping their own {g,u}id, we don't need it.
 	*/
 	if (use_shadow && lxc_list_len(idmap) == 2) {
 		use_shadow = false;
@@ -3761,7 +3761,7 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 	if (!file_exists(destpath)) {
 		ret = mknod(destpath, S_IFREG | 0000, 0);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create dummy \"%s\" file as bind mount target", destpath);
+			return log_error_errno(-1, errno, "Failed to create \"%s\" file as bind mount target", destpath);
 	}
 
 	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
