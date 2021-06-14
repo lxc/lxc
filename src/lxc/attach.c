@@ -1464,7 +1464,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	 * just fork()s away without exec'ing directly after, the socket fd will
 	 * exist in the forked process from the other thread and any close() in
 	 * our own child process will not really cause the socket to close
-	 * properly, potentially causing the parent to hang.
+	 * properly, potentially causing the parent to get stuck.
 	 *
 	 * For this reason, while IPC is still active, we have to use shutdown()
 	 * if the child exits prematurely in order to signal that the socket is
