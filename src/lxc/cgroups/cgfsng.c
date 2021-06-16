@@ -3086,6 +3086,55 @@ static bool legacy_hierarchy_delegated(int dfd_base)
 	return true;
 }
 
+/**
+ * systemd guarantees that the order of co-mounted controllers is stable. On
+ * some systems the order of the controllers might be reversed though.
+ *
+ * For example, this is how the order is mismatched on CentOS 7:
+ *
+ *      [root@localhost ~]# cat /proc/self/cgroup
+ *      11:perf_event:/
+ *      10:pids:/
+ *      9:freezer:/
+ * >>>> 8:cpuacct,cpu:/
+ *      7:memory:/
+ *      6:blkio:/
+ *      5:devices:/
+ *      4:hugetlb:/
+ * >>>> 3:net_prio,net_cls:/
+ *      2:cpuset:/
+ *      1:name=systemd:/user.slice/user-0.slice/session-c1.scope
+ *
+ * whereas the mountpoint:
+ *
+ *      | |-/sys/fs/cgroup                    tmpfs         tmpfs      ro,nosuid,nodev,noexec,mode=755
+ *      | | |-/sys/fs/cgroup/systemd          cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd
+ *      | | |-/sys/fs/cgroup/cpuset           cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,cpuset
+ * >>>> | | |-/sys/fs/cgroup/net_cls,net_prio cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,net_prio,net_cls
+ *      | | |-/sys/fs/cgroup/hugetlb          cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,hugetlb
+ *      | | |-/sys/fs/cgroup/devices          cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,devices
+ *      | | |-/sys/fs/cgroup/blkio            cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,blkio
+ *      | | |-/sys/fs/cgroup/memory           cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,memory
+ * >>>> | | |-/sys/fs/cgroup/cpu,cpuacct      cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,cpuacct,cpu
+ *      | | |-/sys/fs/cgroup/freezer          cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,freezer
+ *      | | |-/sys/fs/cgroup/pids             cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,pids
+ *      | | `-/sys/fs/cgroup/perf_event       cgroup        cgroup     rw,nosuid,nodev,noexec,relatime,perf_event
+ *
+ * Ensure that we always use the systemd-guaranteed stable order when checking
+ * for the mountpoint.
+ */
+__attribute__((returns_nonnull)) __attribute__((nonnull))
+static const char *stable_order(const char *controllers)
+{
+	if (strequal(controllers, "cpuacct,cpu"))
+		return "cpu,cpuacct";
+
+	if (strequal(controllers, "net_prio,net_cls"))
+		return "net_cls,net_prio";
+
+	return unprefix(controllers);
+}
+
 static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				bool unprivileged)
 {
@@ -3180,12 +3229,13 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			*__current_cgroup = '\0';
 			__current_cgroup++;
 
-			controllers = strdup(unprefix(__controllers));
+			controllers = strdup(stable_order(__controllers));
 			if (!controllers)
 				return ret_errno(ENOMEM);
 
 			dfd_mnt = open_at(ops->dfd_mnt,
-					  controllers, PROTECT_OPATH_DIRECTORY,
+					  controllers,
+					  PROTECT_OPATH_DIRECTORY,
 					  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 			if (dfd_mnt < 0) {
 				if (errno != ENOENT)
