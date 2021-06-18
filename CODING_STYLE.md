@@ -111,7 +111,7 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
   punctuation sign.
 - They should be descriptive, without being needlessly long. It is best to just
   use already existing error messages as examples.
-- The commit message itself is not subject to rule 4), i.e. it should not be
+- The error message itself is not subject to rule 4), i.e. it should not be
   wrapped at 80chars. This is to make it easy to grep for it.
 - Examples of acceptable error messages are:
   ```C
