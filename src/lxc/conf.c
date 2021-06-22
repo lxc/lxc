@@ -2217,6 +2217,12 @@ static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t siz
 {
 	size_t ret;
 
+	/* Propagation opts are parsed separately and must not go into data. */
+	for (struct mount_opt *mo = &propagation_opt[0]; mo->name != NULL; mo++) {
+		if (strnequal(opt, mo->name, strlen(mo->name)))
+			return 0;
+	}
+
 	/* If '=' is contained in opt, the option must go into data. */
 	if (!strchr(opt, '=')) {
 		/*
