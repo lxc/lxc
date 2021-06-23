@@ -2270,8 +2270,10 @@ static bool add_to_array(char ***names, char *cname, int pos)
 
 	*names = newnames;
 	newnames[pos] = strdup(cname);
-	if (!newnames[pos])
+	if (!newnames[pos]) {
+		*names = (char**)realloc(*names, (pos) * sizeof(char *));
 		return false;
+	}
 
 	/* Sort the array as we will use binary search on it. */
 	qsort(newnames, pos + 1, sizeof(char *),
@@ -2320,7 +2322,12 @@ static bool remove_from_array(char ***names, char *cname, int size)
 {
 	char **result = get_from_array(names, cname, size);
 	if (result != NULL) {
-		free(result);
+		int i;
+		for (i = 0; (*names)[i] != *result && i < size; i++) {
+		}
+		free(*result);
+		memmove(*names+i, *names+i+1, (size-i-1) * sizeof(char*));
+		*names = (char**)realloc(*names, (size-1) * sizeof(char *));
 		return true;
 	}
 
@@ -5659,7 +5666,7 @@ int list_all_containers(const char *lxcpath, char ***nret,
 {
 	int i, ret, active_cnt, ct_cnt, ct_list_cnt;
 	char **active_name;
-	char **ct_name;
+	char **ct_name = NULL;
 	struct lxc_container **ct_list = NULL;
 
 	ct_cnt = list_defined_containers(lxcpath, &ct_name, NULL);
