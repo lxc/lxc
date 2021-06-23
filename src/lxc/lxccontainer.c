@@ -2326,7 +2326,7 @@ static bool remove_from_array(char ***names, char *cname, int size)
 		char **newnames = (char**)realloc(*names, (size-1) * sizeof(char *));
 		if (!newnames) {
 			ERROR("Out of memory");
-			return false;
+			return true;
 		}
 
 		*names = newnames;
