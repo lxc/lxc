@@ -2262,7 +2262,7 @@ static inline int container_cmp(struct lxc_container **first,
 
 static bool add_to_array(char ***names, char *cname, int pos)
 {
-	char **newnames = realloc(*names, (pos+1) * sizeof(char *));
+	char **newnames = (char**)realloc(*names, (pos+1) * sizeof(char *));
 	if (!newnames) {
 		ERROR("Out of memory");
 		return false;
@@ -2270,10 +2270,8 @@ static bool add_to_array(char ***names, char *cname, int pos)
 
 	*names = newnames;
 	newnames[pos] = strdup(cname);
-	if (!newnames[pos]) {
-		*names = (char**)realloc(*names, (pos) * sizeof(char *));
+	if (!newnames[pos])
 		return false;
-	}
 
 	/* Sort the array as we will use binary search on it. */
 	qsort(newnames, pos + 1, sizeof(char *),
@@ -2322,12 +2320,16 @@ static bool remove_from_array(char ***names, char *cname, int size)
 {
 	char **result = get_from_array(names, cname, size);
 	if (result != NULL) {
-		int i;
-		for (i = 0; (*names)[i] != *result && i < size; i++) {
-		}
+		size_t i = result - *names;
 		free(*result);
 		memmove(*names+i, *names+i+1, (size-i-1) * sizeof(char*));
-		*names = (char**)realloc(*names, (size-1) * sizeof(char *));
+		char **newnames = (char**)realloc(*names, (size-1) * sizeof(char *));
+		if (!newnames) {
+			ERROR("Out of memory");
+			return false;
+		}
+
+		*names = newnames;
 		return true;
 	}
 
