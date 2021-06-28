@@ -56,11 +56,11 @@ LXC_PATH=
 LXC_ROOTFS=
 
 if [ -z "${DOWNLOAD_KEYSERVER:-}" ]; then
-  DOWNLOAD_KEYSERVER="hkp://pool.sks-keyservers.net"
+  DOWNLOAD_KEYSERVER="hkp://keyserver.ubuntu.com"
 
   # Deal with GPG over http proxy
   if [ -n "${http_proxy:-}" ]; then
-    DOWNLOAD_KEYSERVER="hkp://p80.pool.sks-keyservers.net:80"
+    DOWNLOAD_KEYSERVER="hkp://keyserver.ubuntu.com:80"
     DOWNLOAD_GPG_PROXY="--keyserver-options http-proxy=\"${http_proxy}\""
   fi
 fi
