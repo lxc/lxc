@@ -5,14 +5,18 @@
 #endif
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "compiler.h"
 #include "config.h"
+#include "error.h"
 #include "file_utils.h"
 #include "initutils.h"
 #include "macro.h"
 #include "memory_utils.h"
+#include "process_utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -307,4 +311,347 @@ int setproctitle(char *title)
 		(void)strlcpy((char *)arg_start, title, len);
 
 	return ret;
+}
+
+static void prevent_forking(void)
+{
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
+	char path[PATH_MAX];
+	size_t len = 0;
+
+	f = fopen("/proc/self/cgroup", "re");
+	if (!f)
+		return;
+
+	while (getline(&line, &len, f) != -1) {
+		__do_close int fd = -EBADF;
+		int ret;
+		char *p, *p2;
+
+		p = strchr(line, ':');
+		if (!p)
+			continue;
+		p++;
+		p2 = strchr(p, ':');
+		if (!p2)
+			continue;
+		*p2 = '\0';
+
+		/* This is a cgroup v2 entry. Skip it. */
+		if ((p2 - p) == 0)
+			continue;
+
+		if (strcmp(p, "pids") != 0)
+			continue;
+		p2++;
+
+		p2 += lxc_char_left_gc(p2, strlen(p2));
+		p2[lxc_char_right_gc(p2, strlen(p2))] = '\0';
+
+		ret = snprintf(path, sizeof(path),
+			       "/sys/fs/cgroup/pids/%s/pids.max", p2);
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
+			fprintf(stderr, "Failed to create string\n");
+			return;
+		}
+
+		fd = open(path, O_WRONLY | O_CLOEXEC);
+		if (fd < 0) {
+			fprintf(stderr, "Failed to open \"%s\"\n", path);
+			return;
+		}
+
+		ret = write(fd, "1", 1);
+		if (ret != 1)
+			fprintf(stderr, "Failed to write to \"%s\"\n", path);
+
+		return;
+	}
+}
+
+static void kill_children(pid_t pid)
+{
+	__do_fclose FILE *f = NULL;
+	char path[PATH_MAX];
+	int ret;
+
+	ret = snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
+	if (ret < 0 || (size_t)ret >= sizeof(path)) {
+		fprintf(stderr, "Failed to create string\n");
+		return;
+	}
+
+	f = fopen(path, "re");
+	if (!f) {
+		fprintf(stderr, "Failed to open %s\n", path);
+		return;
+	}
+
+	while (!feof(f)) {
+		pid_t find_pid;
+
+		if (fscanf(f, "%d ", &find_pid) != 1) {
+			fprintf(stderr, "Failed to retrieve pid\n");
+			return;
+		}
+
+		(void)kill_children(find_pid);
+		(void)kill(find_pid, SIGKILL);
+	}
+}
+
+static void remove_self(void)
+{
+	int ret;
+	ssize_t n;
+	char path[PATH_MAX] = {0};
+
+	n = readlink("/proc/self/exe", path, sizeof(path));
+	if (n < 0 || n >= PATH_MAX)
+		return;
+	path[n] = '\0';
+
+	ret = umount2(path, MNT_DETACH);
+	if (ret < 0)
+		return;
+
+	ret = unlink(path);
+	if (ret < 0)
+		return;
+}
+
+static sig_atomic_t was_interrupted;
+
+static void interrupt_handler(int sig)
+{
+	if (!was_interrupted)
+		was_interrupted = sig;
+}
+
+__noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
+{
+	int i, logfd, ret;
+	pid_t pid;
+	struct sigaction act;
+	sigset_t mask, omask;
+	int have_status = 0, exit_with = 1, shutdown = 0;
+
+	/* Mask all the signals so we are safe to install a signal handler and
+	 * to fork.
+	 */
+	ret = sigfillset(&mask);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&mask, SIGILL);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&mask, SIGSEGV);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&mask, SIGBUS);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = pthread_sigmask(SIG_SETMASK, &mask, &omask);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigfillset(&act.sa_mask);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&act.sa_mask, SIGILL);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&act.sa_mask, SIGSEGV);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&act.sa_mask, SIGBUS);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&act.sa_mask, SIGSTOP);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = sigdelset(&act.sa_mask, SIGKILL);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	act.sa_flags = 0;
+	act.sa_handler = interrupt_handler;
+
+	for (i = 1; i < NSIG; i++) {
+		/* Exclude some signals: ILL, SEGV and BUS are likely to reveal
+		 * a bug and we want a core. STOP and KILL cannot be handled
+		 * anyway: they're here for documentation. 32 and 33 are not
+		 * defined.
+		 */
+		if (i == SIGILL || i == SIGSEGV || i == SIGBUS ||
+		    i == SIGSTOP || i == SIGKILL || i == 32 || i == 33)
+			continue;
+
+		ret = sigaction(i, &act, NULL);
+		if (ret < 0) {
+			if (errno == EINVAL)
+				continue;
+
+			if (!quiet)
+				fprintf(stderr, "Failed to change signal action\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	remove_self();
+
+	pid = fork();
+	if (pid < 0)
+		exit(EXIT_FAILURE);
+
+	if (!pid) {
+		/* restore default signal handlers */
+		for (i = 1; i < NSIG; i++) {
+			sighandler_t sigerr;
+
+			if (i == SIGILL || i == SIGSEGV || i == SIGBUS ||
+			    i == SIGSTOP || i == SIGKILL || i == 32 || i == 33)
+				continue;
+
+			sigerr = signal(i, SIG_DFL);
+			if (sigerr == SIG_ERR && !quiet)
+				fprintf(stderr, "Failed to reset to default action for signal \"%d\": %d\n", i, pid);
+		}
+
+		ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
+		if (ret < 0) {
+			if (quiet)
+				fprintf(stderr, "Failed to set signal mask\n");
+			exit(EXIT_FAILURE);
+		}
+
+		(void)setsid();
+
+		(void)ioctl(STDIN_FILENO, TIOCSCTTY, 0);
+
+		ret = execvp(argv[0], argv);
+		if (!quiet)
+			fprintf(stderr, "Failed to exec \"%s\"\n", argv[0]);
+		exit(ret);
+	}
+	logfd = open("/dev/console", O_WRONLY | O_NOCTTY | O_CLOEXEC);
+	if (logfd >= 0) {
+		ret = dup3(logfd, STDERR_FILENO, O_CLOEXEC);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+	}
+
+	(void)setproctitle("init");
+
+	/* Let's process the signals now. */
+	ret = sigdelset(&omask, SIGALRM);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
+	if (ret < 0) {
+		if (!quiet)
+			fprintf(stderr, "Failed to set signal mask\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* No need of other inherited fds but stderr. */
+	close(STDIN_FILENO);
+	close(STDOUT_FILENO);
+
+	for (;;) {
+		int status;
+		pid_t waited_pid;
+
+		switch (was_interrupted) {
+		case 0:
+		/* Some applications send SIGHUP in order to get init to reload
+		 * its configuration. We don't want to forward this onto the
+		 * application itself, because it probably isn't expecting this
+		 * signal since it was expecting init to do something with it.
+		 *
+		 * Instead, let's explicitly ignore it here. The actual
+		 * terminal case is handled in the monitor's handler, which
+		 * sends this task a SIGTERM in the case of a SIGHUP, which is
+		 * what we want.
+		 */
+		case SIGHUP:
+			break;
+		case SIGPWR:
+		case SIGTERM:
+			if (!shutdown) {
+				pid_t mypid = lxc_raw_getpid();
+
+				shutdown = 1;
+				prevent_forking();
+				if (mypid != 1) {
+					kill_children(mypid);
+				} else {
+					ret = kill(-1, SIGTERM);
+					if (ret < 0 && !quiet)
+						fprintf(stderr, "Failed to send SIGTERM to all children\n");
+				}
+				alarm(1);
+			}
+			break;
+		case SIGALRM: {
+			pid_t mypid = lxc_raw_getpid();
+
+			prevent_forking();
+			if (mypid != 1) {
+				kill_children(mypid);
+			} else {
+				ret = kill(-1, SIGKILL);
+				if (ret < 0 && !quiet)
+					fprintf(stderr, "Failed to send SIGTERM to all children\n");
+			}
+			break;
+		}
+		default:
+			kill(pid, was_interrupted);
+			break;
+		}
+		ret = EXIT_SUCCESS;
+
+		was_interrupted = 0;
+		waited_pid = wait(&status);
+		if (waited_pid < 0) {
+			if (errno == ECHILD)
+				goto out;
+
+			if (errno == EINTR)
+				continue;
+
+			if (!quiet)
+				fprintf(stderr, "Failed to wait on child %d\n", pid);
+			ret = -1;
+			goto out;
+		}
+
+		/* Reset timer each time a process exited. */
+		if (shutdown)
+			alarm(1);
+
+		/* Keep the exit code of the started application (not wrapped
+		 * pid) and continue to wait for the end of the orphan group.
+		 */
+		if (waited_pid == pid && !have_status) {
+			exit_with = lxc_error_set_and_log(waited_pid, status);
+			have_status = 1;
+		}
+	}
+out:
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	exit(exit_with);
 }

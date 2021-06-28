@@ -16,64 +16,18 @@
 #include "start.h"
 #include "process_utils.h"
 #include "utils.h"
+#include "initutils.h"
 
 lxc_log_define(execute, start);
 
 static int execute_start(struct lxc_handler *handler, void* data)
 {
-	int argc_add, j;
-	char **argv;
-	int argc = 0, i = 0;
+	int argc = 0;
 	struct execute_args *my_args = data;
 
 	while (my_args->argv[argc++]);
 
-	/* lxc-init -n name -- [argc] NULL -> 5 */
-	argc_add = 5;
-	if (my_args->quiet)
-		argc_add++;
-
-	if (!handler->conf->rootfs.path)
-		argc_add += 2;
-
-	argv = malloc((argc + argc_add) * sizeof(*argv));
-	if (!argv) {
-		SYSERROR("Allocating init args failed");
-		goto out1;
-	}
-
-	if (my_args->init_path)
-		argv[i++] = my_args->init_path;
-	else
-		argv[i++] = "lxc-init";
-
-	argv[i++] = "-n";
-	argv[i++] = (char *)handler->name;
-
-	if (my_args->quiet)
-		argv[i++] = "--quiet";
-
-	if (!handler->conf->rootfs.path) {
-		argv[i++] = "-P";
-		argv[i++] = (char *)handler->lxcpath;
-	}
-
-	argv[i++] = "--";
-	for (j = 0; j < argc; j++)
-		argv[i++] = my_args->argv[j];
-	argv[i++] = NULL;
-
-	NOTICE("Exec'ing \"%s\"", my_args->argv[0]);
-
-	if (my_args->init_fd >= 0)
-		execveat(my_args->init_fd, "", argv, environ, AT_EMPTY_PATH);
-	else
-		execvp(argv[0], argv);
-	SYSERROR("Failed to exec %s", argv[0]);
-
-	free(argv);
-out1:
-	return 1;
+	lxc_container_init(argc, my_args->argv, my_args->quiet);
 }
 
 static int execute_post_start(struct lxc_handler *handler, void* data)
