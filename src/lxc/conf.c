@@ -3727,58 +3727,6 @@ static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 	TRACE("Turned all mount table entries into dependent mount");
 }
 
-static int lxc_execute_bind_init(struct lxc_handler *handler)
-{
-	int ret;
-	char *p;
-	char path[PATH_MAX], destpath[PATH_MAX];
-	struct lxc_conf *conf = handler->conf;
-
-	/* If init exists in the container, don't bind mount a static one */
-	p = choose_init(conf->rootfs.mount);
-	if (p) {
-		__do_free char *old = p;
-
-		p = strdup(old + strlen(conf->rootfs.mount));
-		if (!p)
-			return -ENOMEM;
-
-		INFO("Found existing init at \"%s\"", p);
-		goto out;
-	}
-
-	ret = strnprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
-	if (ret < 0)
-		return -1;
-
-	if (!file_exists(path))
-		return log_error_errno(-1, errno, "The file \"%s\" does not exist on host", path);
-
-	ret = strnprintf(destpath, sizeof(path), "%s" P_tmpdir "%s", conf->rootfs.mount, "/.lxc-init");
-	if (ret < 0)
-		return -1;
-
-	if (!file_exists(destpath)) {
-		ret = mknod(destpath, S_IFREG | 0000, 0);
-		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create \"%s\" file as bind mount target", destpath);
-	}
-
-	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to bind mount lxc.init.static into container");
-
-	p = strdup(destpath + strlen(conf->rootfs.mount));
-	if (!p)
-		return -ENOMEM;
-
-	INFO("Bind mounted lxc.init.static into container at \"%s\"", path);
-out:
-	((struct execute_args *)handler->data)->init_fd = -1;
-	((struct execute_args *)handler->data)->init_path = p;
-	return 0;
-}
-
 /* This does the work of remounting / if it is shared, calling the container
  * pre-mount hooks, and mounting the rootfs.
  */
@@ -3844,15 +3792,6 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 
 		return true;
 	}
-
-	return true;
-}
-
-static bool execveat_supported(void)
-{
-	execveat(-1, "", NULL, NULL, AT_EMPTY_PATH);
-	if (errno == ENOSYS)
-		return false;
 
 	return true;
 }
@@ -4175,28 +4114,6 @@ int lxc_setup(struct lxc_handler *handler)
 					   PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (lxc_conf->rootfs.dfd_dev < 0 && errno != ENOENT)
 		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
-
-	if (lxc_conf->is_execute) {
-		if (execveat_supported()) {
-			int fd;
-			char path[STRLITERALLEN(SBINDIR) + STRLITERALLEN("/init.lxc.static") + 1];
-
-			ret = strnprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
-			if (ret < 0)
-				return log_error(-1, "Path to init.lxc.static too long");
-
-			fd = open(path, O_NOCTTY | O_NOFOLLOW | O_CLOEXEC | O_PATH);
-			if (fd < 0)
-				return log_error_errno(-1, errno, "Unable to open lxc.init.static");
-
-			((struct execute_args *)handler->data)->init_fd = fd;
-			((struct execute_args *)handler->data)->init_path = NULL;
-		} else {
-			ret = lxc_execute_bind_init(handler);
-			if (ret < 0)
-				return log_error(-1, "Failed to bind-mount the lxc init system");
-		}
-	}
 
 	/* Now mount only cgroups, if wanted. Before, /sys could not have been
 	 * mounted. It is guaranteed to be mounted now either through

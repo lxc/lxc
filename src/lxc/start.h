@@ -136,8 +136,6 @@ struct lxc_handler {
 };
 
 struct execute_args {
-	char *init_path;
-	int init_fd;
 	char *const *argv;
 	int quiet;
 };
