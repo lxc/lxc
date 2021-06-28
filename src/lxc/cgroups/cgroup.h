@@ -326,6 +326,9 @@ static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
 {
 	__u32 idx;
 
+	if (!ops || !ops->hierarchies)
+		return ret_errno(ENOENT);
+
 	for (idx = 0; ops->hierarchies[idx]; idx++) {
 		if (idx >= CGROUP_CTX_MAX_FD)
 			return ret_errno(E2BIG);
