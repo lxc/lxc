@@ -4121,6 +4121,8 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 		ret = lxc_send_nointr(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
+
+		TRACE("Sent network device %s with ifindex %d to parent", maybe_empty(netdev->name), netdev->ifindex);
 	}
 
 	if (!lxc_list_empty(network))
@@ -4155,6 +4157,8 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 		ret = lxc_recv_nointr(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
 		if (ret < 0)
 			return -1;
+
+		TRACE("Received network device %s with ifindex %d from child", maybe_empty(netdev->name), netdev->ifindex);
 	}
 
 	return 0;
