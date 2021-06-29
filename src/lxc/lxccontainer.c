@@ -2262,7 +2262,7 @@ static inline int container_cmp(struct lxc_container **first,
 
 static bool add_to_array(char ***names, char *cname, int pos)
 {
-	char **newnames = realloc(*names, (pos+1) * sizeof(char *));
+	char **newnames = (char**)realloc(*names, (pos+1) * sizeof(char *));
 	if (!newnames) {
 		ERROR("Out of memory");
 		return false;
@@ -2320,7 +2320,16 @@ static bool remove_from_array(char ***names, char *cname, int size)
 {
 	char **result = get_from_array(names, cname, size);
 	if (result != NULL) {
-		free(result);
+		size_t i = result - *names;
+		free(*result);
+		memmove(*names+i, *names+i+1, (size-i-1) * sizeof(char*));
+		char **newnames = (char**)realloc(*names, (size-1) * sizeof(char *));
+		if (!newnames) {
+			ERROR("Out of memory");
+			return true;
+		}
+
+		*names = newnames;
 		return true;
 	}
 
@@ -5659,7 +5668,7 @@ int list_all_containers(const char *lxcpath, char ***nret,
 {
 	int i, ret, active_cnt, ct_cnt, ct_list_cnt;
 	char **active_name;
-	char **ct_name;
+	char **ct_name = NULL;
 	struct lxc_container **ct_list = NULL;
 
 	ct_cnt = list_defined_containers(lxcpath, &ct_name, NULL);
