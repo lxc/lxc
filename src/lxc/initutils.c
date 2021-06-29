@@ -458,8 +458,10 @@ restart:
 		if (fd == STDERR_FILENO || fd == fddir)
 			break;
 
-		if (close(fd))
+		if (close(fd)) {
+			closedir(dir);
 			return -errno;
+		}
 
 		closedir(dir);
 		goto restart;
