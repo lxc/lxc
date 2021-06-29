@@ -429,6 +429,46 @@ static void interrupt_handler(int sig)
 		was_interrupted = sig;
 }
 
+static int close_inherited(void)
+{
+	int fddir;
+	DIR *dir;
+	struct dirent *direntp;
+
+restart:
+	dir = opendir("/proc/self/fd");
+	if (!dir)
+		return -errno;
+
+	fddir = dirfd(dir);
+
+	while ((direntp = readdir(dir))) {
+		int fd, ret;
+
+		if (strcmp(direntp->d_name, ".") == 0)
+			continue;
+
+		if (strcmp(direntp->d_name, "..") == 0)
+			continue;
+
+		ret = lxc_safe_int(direntp->d_name, &fd);
+		if (ret < 0)
+			continue;
+
+		if (fd == STDERR_FILENO || fd == fddir)
+			break;
+
+		if (close(fd))
+			return -errno;
+
+		closedir(dir);
+		goto restart;
+	}
+
+	closedir(dir);
+	return 0;
+}
+
 __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 {
 	int i, logfd, ret;
@@ -565,9 +605,22 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 		exit(EXIT_FAILURE);
 	}
 
-	/* No need of other inherited fds but stderr. */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
+	ret = close_range(STDERR_FILENO + 1, UINT_MAX, CLOSE_RANGE_UNSHARE);
+	if (ret) {
+		/*
+		 * Fallback to close_inherited() when the syscall is not
+		 * available or when CLOSE_RANGE_UNSHARE isn't supported.
+		 * On a regular kernel CLOSE_RANGE_UNSHARE should always be
+		 * available but openSUSE Leap 15.3 seems to have a partial
+		 * backport without CLOSE_RANGE_UNSHARE support.
+		 */
+		if (errno == ENOSYS || errno == EINVAL)
+			ret = close_inherited();
+	}
+	if (ret) {
+		fprintf(stderr, "Aborting attach to prevent leaking file descriptors into container\n");
+		exit(EXIT_FAILURE);
+	}
 
 	for (;;) {
 		int status;
