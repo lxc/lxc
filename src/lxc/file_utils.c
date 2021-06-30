@@ -181,15 +181,30 @@ ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
 	return ret;
 }
 
-ssize_t lxc_read_nointr(int fd, void *buf, size_t count)
+ssize_t lxc_read_nointr(int fd_sock, void *buf, size_t size)
 {
-	ssize_t ret;
+	ssize_t n = 0;
 
-	do {
-		ret = read(fd, buf, count);
-	} while (ret < 0 && errno == EINTR);
+	while (size > 0) {
+		ssize_t ret = read(fd_sock, buf, size);
+		if (ret == -1) {
+			if (errno == EINTR)
+				continue;
 
-	return ret;
+			if (errno == EAGAIN)
+				return ret_errno(EINVAL);
+
+			return ret;
+		}
+		if (ret == 0)
+			break;
+
+		n += ret;
+		buf = (char *)buf + ret;
+		size -= ret;
+	}
+
+	return n;
 }
 
 ssize_t lxc_recv_nointr(int sockfd, void *buf, size_t len, int flags)
