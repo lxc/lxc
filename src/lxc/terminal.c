@@ -902,6 +902,7 @@ static int lxc_terminal_create_foreign(struct lxc_conf *conf, struct lxc_termina
 		goto err;
 	}
 
+	TRACE("Created foreign terminal");
 	return 0;
 
 err:
@@ -947,6 +948,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath, str
 		goto err;
 	}
 
+	TRACE("Created native terminal");
 	return 0;
 
 err:
