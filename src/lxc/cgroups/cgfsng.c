@@ -3194,8 +3194,15 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				dfd_base = open_at(dfd_mnt, current_cgroup,
 						   PROTECT_OPATH_DIRECTORY,
 						   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-				if (dfd_base < 0)
-					return syserror("Failed to open %d/%s", dfd_mnt, current_cgroup);
+				if (dfd_base < 0) {
+					if (errno != ENOENT)
+						return syserror("Failed to open %d/%s",
+								dfd_mnt, current_cgroup);
+
+					SYSTRACE("Current cgroup %d/%s does not exist (funky cgroup layout?)",
+						 dfd_mnt, current_cgroup);
+					continue;
+				}
 				dfd = dfd_base;
 			}
 
@@ -3265,9 +3272,15 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				dfd_base = open_at(dfd_mnt, current_cgroup,
 						   PROTECT_OPATH_DIRECTORY,
 						   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-				if (dfd_base < 0)
-					return syserror("Failed to open %d/%s",
-							dfd_mnt, current_cgroup);
+				if (dfd_base < 0) {
+					if (errno != ENOENT)
+						return syserror("Failed to open %d/%s",
+								dfd_mnt, current_cgroup);
+
+					SYSTRACE("Current cgroup %d/%s does not exist (funky cgroup layout?)",
+						 dfd_mnt, current_cgroup);
+					continue;
+				}
 				dfd = dfd_base;
 			}
 
