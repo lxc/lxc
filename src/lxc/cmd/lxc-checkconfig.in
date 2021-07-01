@@ -24,11 +24,8 @@ is_set() {
     return $?
 }
 
-is_enabled() {
-    mandatory=$2
-
-    is_set $1
-    RES=$?
+show_enabled() {
+    RES=$1
     RET=1
     if [ $RES -eq 0 ]; then
         $SETCOLOR_SUCCESS && echo -n "enabled" && $SETCOLOR_NORMAL
@@ -41,6 +38,23 @@ is_enabled() {
         fi
     fi
     return $RET
+}
+
+is_enabled() {
+    mandatory=$2
+
+    is_set $1
+    show_enabled $?
+}
+
+has_cgroup_ns() {
+    mandatory=no
+
+    if [ -f "/proc/self/ns/cgroup" ]; then
+	    show_enabled 0
+    else
+	    show_enabled 1
+    fi
 }
 
 is_probed() {
@@ -144,6 +158,9 @@ echo "--- Control groups ---"
 echo -n "Cgroups: " && is_enabled CONFIG_CGROUPS
 echo
 
+echo -n "Cgroup namespace: " && has_cgroup_ns
+echo
+
 print_cgroups() {
   # print all mountpoints for cgroup filesystems
   awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
@@ -179,7 +196,7 @@ if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
     echo -n "Cgroup v1 clone_children flag: " &&
     $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
 else
-    echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS yes
+    echo -n "Cgroup ns_cgroup: " && is_enabled CONFIG_CGROUP_NS yes
     echo
 fi
 
