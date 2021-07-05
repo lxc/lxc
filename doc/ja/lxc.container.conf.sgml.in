@@ -543,6 +543,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               specify what kind of network virtualization to be used
               for the container.
+              Must be specified before any other option(s) on the net device.
               Multiple networks can be specified by using an additional index
               <option>i</option>
               after all <option>lxc.net.*</option> keys. For example,
@@ -554,7 +555,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               will belong to <option>lxc.net.0.type</option>.
               Currently, the different virtualization types can be:
               -->
-              コンテナがどの種類のネットワーク仮想化を使うかを指定します。すべての <option>lxc.net.*</option> キーに、追加のインデックス <option>i</option> を使うと、複数のネットワークを指定できます。例えば、<option>lxc.net.0.type = veth</option> と <option>lxc.net.1.type = veth</option> は、同じタイプの異なるネットワークを 2 つ指定します。
+              コンテナがどの種類のネットワーク仮想化を使うかを指定します。ネットワークデバイスの他のオプションを設定する前に指定しなければいけません。
+              すべての <option>lxc.net.*</option> キーに、追加のインデックス <option>i</option> を使うと、複数のネットワークを指定できます。例えば、<option>lxc.net.0.type = veth</option> と <option>lxc.net.1.type = veth</option> は、同じタイプの異なるネットワークを 2 つ指定します。
               同じインデックスを指定したキーはすべて同じネットワークの指定になります。例えば、<option>lxc.net.0.link = br0</option> は <option>lxc.net.0.type</option> と同じネットワークの設定になります。
               現時点では、以下のネットワーク仮想化のタイプが使えます:
             </para>
