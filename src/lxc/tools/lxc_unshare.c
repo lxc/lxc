@@ -416,7 +416,7 @@ int main(int argc, char *argv[])
 			if (lpid == 0) {
 				char buf[256];
 
-				ret = snprintf(buf, 256, "%d", lpid);
+				ret = snprintf(buf, 256, "%d", pid);
 				if (ret < 0 || ret >= 256)
 					_exit(EXIT_FAILURE);
 
@@ -425,8 +425,7 @@ int main(int argc, char *argv[])
 			}
 
 			if (wait_for_pid(lpid) != 0)
-				SYSERROR("Could not move interface \"%s\" into container %d",
-				         ifname, lpid);
+				SYSERROR("Could not move interface \"%s\" into container %d", ifname, lpid);
 		}
 
 		free_ifname_list();
