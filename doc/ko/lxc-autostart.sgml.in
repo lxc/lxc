@@ -182,7 +182,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
             <varlistentry>
                 <term>
-                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                    <option>-g,--groups <replaceable>GROUP</replaceable></option>
                 </term>
                 <listitem>
                     <para>
