@@ -1609,8 +1609,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	specified via <option>lxc.cgroup.devices.allow</option> and
 	<option>lxc.cgroup.devices.deny</option> whereas for the
 	cgroup2 eBPF-based device controller
-	<option>lxc.cgroup.devices.allow</option> and
-	<option>lxc.cgroup.devices.deny</option> must be used.
+	<option>lxc.cgroup2.devices.allow</option> and
+	<option>lxc.cgroup2.devices.deny</option> must be used.
       </para>
       <para>
         <itemizedlist>
