@@ -19,3 +19,6 @@ lxc.tty.dir =
 
 # Setup the default mounts
 lxc.mount.auto = sys:rw
+
+# Lastly, include all the configs from @LXCTEMPLATECONFIG@/userns.conf.d/
+lxc.include = @LXCTEMPLATECONFIG@/userns.conf.d/
