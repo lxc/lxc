@@ -2545,7 +2545,7 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 
 	dir = opendir(dirp);
 	if (!dir)
-		return -errno;
+		return errno == ENOENT ? 0 : -errno;
 
 	while ((direntp = readdir(dir))) {
 		const char *fnam;
@@ -2582,7 +2582,7 @@ static int set_config_includefiles(const char *key, const char *value,
 		return 0;
 	}
 
-	if (is_dir(value))
+	if (value[strlen(value)-1] == '/' || is_dir(value))
 		return do_includedir(value, lxc_conf);
 
 	return lxc_config_read(value, lxc_conf, true);
