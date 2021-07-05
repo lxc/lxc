@@ -391,7 +391,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
       <varlistentry>
 	<term>
-	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	  <option>-u, --uid <replaceable>uid</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
