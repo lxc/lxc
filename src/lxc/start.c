@@ -1692,9 +1692,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 			TRACE("Spawned container directly into target cgroup via cgroup2 fd %d", cgroup_fd);
 		}
 
-		/* Kernel might be too old for clone3(). */
+		/* Kernel might be too old for clone3() and CLONE_PIDFD. */
 		if (handler->pid < 0) {
 			SYSTRACE("Failed to spawn container via clone3()");
+			handler->clone_flags &= ~CLONE_PIDFD;
 
 		/*
 		 * In contrast to all other architectures arm64 verifies that
