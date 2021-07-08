@@ -286,7 +286,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	  <option>-u, --uid <replaceable>uid</replaceable></option>
 	</term>
 	<listitem>
 	  <para>

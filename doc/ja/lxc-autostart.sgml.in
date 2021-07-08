@@ -182,7 +182,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
             <varlistentry>
                 <term>
-                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                    <option>-g,--groups <replaceable>GROUP</replaceable></option>
                 </term>
                 <listitem>
                     <para>

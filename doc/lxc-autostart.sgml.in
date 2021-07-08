@@ -150,7 +150,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
             <varlistentry>
                 <term>
-                    <option>-g,--group <replaceable>GROUP</replaceable></option>
+                    <option>-g,--groups <replaceable>GROUP</replaceable></option>
                 </term>
                 <listitem>
                     <para>
