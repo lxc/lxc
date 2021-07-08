@@ -663,7 +663,11 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 	if (errno != ENOSYS)
 		return -errno;
 
-	return openat(dfd, path, o_flags, mode);
+	fd = openat(dfd, path, o_flags, mode);
+	if (fd < 0)
+		return -errno;
+
+	return move_fd(fd);
 }
 
 int fd_make_nonblocking(int fd)
