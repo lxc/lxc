@@ -3,7 +3,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -187,111 +186,23 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	return 0;
 }
 
-static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
+static int lxc_unix_epoch_to_local(char *buf, size_t bufsize, const struct timespec *time)
 {
-	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
-	    d_in_s, hours, h_in_s, minutes, seconds;
-	char nanosec[INTTYPE_TO_STRLEN(int64_t)];
+#define MAX_NANO 999
 	int ret;
+    struct tm now_tm;
+    long nanosec = time->tv_nsec;
 
-	/*
-	 * See https://howardhinnant.github.io/date_algorithms.html for an
-	 * explanation of the algorithm used here.
-	 */
+    while (nanosec > MAX_NANO) {
+        nanosec /= 10;
+    }
 
-	/* Convert Epoch in seconds to number of days. */
-	epoch_to_days = time->tv_sec / 86400;
+    localtime_r(&(time->tv_sec), &now_tm);
 
-	/* Shift the Epoch from 1970-01-01 to 0000-03-01. */
-	z = epoch_to_days + 719468;
-
-	/*
-	 * Compute the era from the serial date by simply dividing by the number
-	 * of days in an era (146097).
-	 */
-	era = (z >= 0 ? z : z - 146096) / 146097;
-
-	/*
-	 * The day-of-era (doe) can then be found by subtracting the era number
-	 * times the number of days per era, from the serial date.
-	 */
-	doe = (z - era * 146097);
-
-	/*
-	 * From the day-of-era (doe), the year-of-era (yoe, range [0, 399]) can
-	 * be computed.
-	 */
-	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-
-	/* Given year-of-era, and era, one can now compute the year. */
-	year = yoe + era * 400;
-
-	/*
-	 * Also the day-of-year, again with the year beginning on Mar. 1, can be
-	 * computed from the day-of-era and year-of-era.
-	 */
-	doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-
-	/* Given day-of-year, find the month number. */
-	mp = (5 * doy + 2) / 153;
-
-	/*
-	 * From day-of-year and month-of-year we can now easily compute
-	 * day-of-month.
-	 */
-	day = doy - (153 * mp + 2) / 5 + 1;
-
-	/*
-	 * Transform the month number from the [0, 11] / [Mar, Feb] system to
-	 * the civil system: [1, 12] to find the correct month.
-	 */
-	month = mp + (mp < 10 ? 3 : -9);
-
-	/*
-	 * The algorithm assumes that a year begins on 1 March, so add 1 before
-	 * that.
-	 */
-	if (month < 3)
-		year++;
-
-	/* Transform days in the epoch to seconds. */
-	d_in_s = epoch_to_days * 86400;
-
-	/*
-	 * To find the current hour simply substract the Epoch_to_days from the
-	 * total Epoch and divide by the number of seconds in an hour.
-	 */
-	hours = (time->tv_sec - d_in_s) / 3600;
-
-	/* Transform hours to seconds. */
-	h_in_s = hours * 3600;
-
-	/*
-	 * Calculate minutes by subtracting the seconds for all days in the
-	 * epoch and for all hours in the epoch and divide by the number of
-	 * minutes in an hour.
-	 */
-	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
-
-	/*
-	 * Calculate the seconds by subtracting the seconds for all days in the
-	 * epoch, hours in the epoch and minutes in the epoch.
-	 */
-	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
-
-	/* Make string from nanoseconds. */
-	ret = strnprintf(nanosec, sizeof(nanosec), "%"PRId64, (int64_t)time->tv_nsec);
-	if (ret < 0)
-		return ret_errno(EIO);
-
-	/*
-	 * Create final timestamp for the log and shorten nanoseconds to 3
-	 * digit precision.
-	 */
 	ret = strnprintf(buf, bufsize,
-		       "%" PRId64 "%02" PRId64 "%02" PRId64 "%02" PRId64
-		       "%02" PRId64 "%02" PRId64 ".%.3s",
-		       year, month, day, hours, minutes, seconds, nanosec);
+            "%d%02d%02d%02d%02d%02d.%03ld",
+		       now_tm.tm_year + 1900, now_tm.tm_mon + 1, now_tm.tm_mday,
+               now_tm.tm_hour, now_tm.tm_min, now_tm.tm_sec, nanosec);
 	if (ret < 0)
 		return ret_errno(EIO);
 
@@ -342,7 +253,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (fd_to_use < 0)
 		return 0;
 
-	ret = lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp);
+	ret = lxc_unix_epoch_to_local(date_time, LXC_LOG_TIME_SIZE, &event->timestamp);
 	if (ret)
 		return ret;
 
