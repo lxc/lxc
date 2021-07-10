@@ -100,7 +100,6 @@ static bool zfs_list_entry(const char *path, char *output, size_t inlen)
 	while (fgets(output, inlen, f->f)) {
 		if (strstr(output, path)) {
 			found = true;
-			break;
 		}
 	}
 	(void)lxc_pclose(f);
