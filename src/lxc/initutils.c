@@ -3,11 +3,12 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
+#include <pthread.h>
+#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include "compiler.h"
 #include "config.h"
