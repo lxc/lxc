@@ -931,7 +931,17 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath, str
 
 	terminal->pty = ioctl(terminal->ptx, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (terminal->pty < 0) {
-		SYSWARN("Failed to allocate new pty device");
+		switch (errno) {
+		case ENOTTY:
+			SYSTRACE("Pure fd-based terminal allocation not possible");
+			break;
+		case ENOSPC:
+			SYSTRACE("Exceeding number of allocatable terminals");
+			break;
+		default:
+			SYSWARN("Failed to allocate new pty device");
+			break;
+		}
 		goto err;
 	}
 
