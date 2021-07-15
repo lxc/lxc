@@ -83,10 +83,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  Set log priority to
 	  <replaceable>LEVEL</replaceable>. The default log
 	  priority is <literal>ERROR</literal>. Possible values are :
-	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>FATAL</literal>, <literal>ALERT</literal>,
+	  <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>.
+	  <literal>DEBUG</literal>, <literal>TRACE</literal>.
 	</para>
 	<para>
 	Note that this option is setting the priority of the events
