@@ -1076,7 +1076,7 @@ static int do_start(void *data)
 	lxc_sync_fini_parent(handler);
 
 	if (lxc_abstract_unix_recv_one_fd(data_sock1, &status_fd, NULL, 0) < 0) {
-		ERROR("Failed to receive status file descriptor to child process");
+		ERROR("Failed to receive status file descriptor from parent process");
 		goto out_warn_father;
 	}
 
