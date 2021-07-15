@@ -121,7 +121,7 @@ bool lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
 
 bool lxc_sync_wake_child(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Child waking parent with sequence %s", start_sync_to_string(sequence));
+	TRACE("Parent waking child with sequence %s", start_sync_to_string(sequence));
 	return sync_wake(handler->sync_sock[1], sequence);
 }
 
