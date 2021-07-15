@@ -121,6 +121,9 @@ int lxc_abstract_unix_send_fds_iov(int fd, const int *sendfds, int num_sendfds,
 	struct cmsghdr *cmsg = NULL;
 	size_t cmsgbufsize = CMSG_SPACE(num_sendfds * sizeof(int));
 
+	if (num_sendfds <= 0)
+		return ret_errno(EINVAL);
+
 	cmsgbuf = malloc(cmsgbufsize);
 	if (!cmsgbuf)
 		return ret_errno(-ENOMEM);
