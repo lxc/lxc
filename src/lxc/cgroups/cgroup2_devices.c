@@ -538,6 +538,10 @@ bool bpf_devices_cgroup_supported(void)
 		return log_trace(false,
 				 "The bpf device cgroup requires real root");
 
+	ret = bpf(BPF_PROG_LOAD, NULL, sizeof(union bpf_attr));
+	if (ret < 0 && errno == ENOSYS)
+		return log_trace(false, "The bpf syscall is not available");
+
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 	if (!prog)
 		return log_trace(false, "Failed to allocate new bpf device cgroup program");
