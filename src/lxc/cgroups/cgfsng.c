@@ -794,8 +794,12 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (fd_limit < 0)
 			return syserror_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
+		limit_path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
+		h->dfd_lim = move_fd(fd_limit);
+		h->path_lim = move_ptr(limit_path);
+
 		TRACE("Created limit cgroup %d->%d(%s)",
-		      fd_limit, h->dfd_base, cgroup_limit_dir);
+		      h->dfd_lim, h->dfd_base, cgroup_limit_dir);
 
 		/*
 		 * With isolation the devices legacy cgroup needs to be
@@ -807,44 +811,39 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		    !ops->setup_limits_legacy(ops, conf, true))
 			return log_error(false, "Failed to setup legacy device limits");
 
-		limit_path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
-		path = must_make_path(limit_path, cgroup_leaf, NULL);
+		path = must_make_path(h->path_lim, cgroup_leaf, NULL);
 
 		/*
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
 		 * cgroup the container actually resides in, is below fd_limit.
 		 */
-		fd_final = __cgroup_tree_create(fd_limit, cgroup_leaf, 0755, cpuset_v1, false);
+		fd_final = __cgroup_tree_create(h->dfd_lim, cgroup_leaf, 0755, cpuset_v1, false);
 		if (fd_final < 0) {
 			/* Ensure we don't leave any garbage behind. */
 			if (cgroup_tree_prune(h->dfd_base, cgroup_limit_dir))
 				SYSWARN("Failed to destroy %d(%s)", h->dfd_base, cgroup_limit_dir);
 			else
 				TRACE("Removed cgroup tree %d(%s)", h->dfd_base, cgroup_limit_dir);
+			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 		}
+		h->dfd_con = move_fd(fd_final);
+		h->path_con = move_ptr(path);
+
 	} else {
 		path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
-	}
-	if (fd_final < 0)
-		return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+		if (fd_final < 0)
+			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
-	if (payload) {
-		h->dfd_con = move_fd(fd_final);
-		h->path_con = move_ptr(path);
-
-		if (fd_limit < 0)
+		if (payload) {
+			h->dfd_con = move_fd(fd_final);
 			h->dfd_lim = h->dfd_con;
-		else
-			h->dfd_lim = move_fd(fd_limit);
-
-		if (limit_path)
-			h->path_lim = move_ptr(limit_path);
-		else
+			h->path_con = move_ptr(path);
 			h->path_lim = h->path_con;
-	} else {
-		h->dfd_mon = move_fd(fd_final);
+		} else {
+			h->dfd_mon = move_fd(fd_final);
+		}
 	}
 
 	return true;
