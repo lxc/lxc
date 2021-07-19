@@ -942,6 +942,19 @@ static bool append_ttyname(char **pp, char *name)
 	return true;
 }
 
+static int open_ttymnt_at(int dfd, const char *path)
+{
+	int fd;
+
+	fd = open_at(dfd, path, PROTECT_OPEN | O_CREAT | O_EXCL,
+		     PROTECT_LOOKUP_BENEATH, 0);
+	if (fd < 0 && (errno == ENXIO || errno == EEXIST))
+		fd = open_at(dfd, path, PROTECT_OPATH_FILE,
+			     PROTECT_LOOKUP_BENEATH, 0);
+
+	return fd;
+}
+
 static int lxc_setup_ttys(struct lxc_conf *conf)
 {
 	int ret;
@@ -968,9 +981,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			tty_name = tty_path + strlen(ttydir) + 1;
 
 			/* create bind-mount target */
-			fd_to = open_at(rootfs->dfd_dev, tty_path,
-					PROTECT_OPEN_W | O_CREAT,
-					PROTECT_LOOKUP_BENEATH, 0);
+			fd_to = open_ttymnt_at(rootfs->dfd_dev, tty_path);
 			if (fd_to < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to create tty mount target %d(%s)",
@@ -1011,9 +1022,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 				return ret_errno(-EIO);
 
 			/* If we populated /dev, then we need to create /dev/tty<idx>. */
-			fd_to = open_at(rootfs->dfd_dev, rootfs->buf,
-					PROTECT_OPEN_W | O_CREAT,
-					PROTECT_LOOKUP_BENEATH, 0);
+			fd_to = open_ttymnt_at(rootfs->dfd_dev, rootfs->buf);
 			if (fd_to < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to create tty mount target %d(%s)",
