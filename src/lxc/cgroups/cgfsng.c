@@ -779,7 +779,6 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			       const char *cgroup_leaf, bool payload)
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
-	__do_free char *path = NULL, *limit_path = NULL;
 	bool cpuset_v1 = false;
 
 	/*
@@ -794,9 +793,8 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (fd_limit < 0)
 			return syserror_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
-		limit_path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
+		h->path_lim = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 		h->dfd_lim = move_fd(fd_limit);
-		h->path_lim = move_ptr(limit_path);
 
 		TRACE("Created limit cgroup %d->%d(%s)",
 		      h->dfd_lim, h->dfd_base, cgroup_limit_dir);
@@ -810,8 +808,6 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (string_in_list(h->controllers, "devices") &&
 		    !ops->setup_limits_legacy(ops, conf, true))
 			return log_error(false, "Failed to setup legacy device limits");
-
-		path = must_make_path(h->path_lim, cgroup_leaf, NULL);
 
 		/*
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
@@ -827,11 +823,9 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 		}
 		h->dfd_con = move_fd(fd_final);
-		h->path_con = move_ptr(path);
+		h->path_con = must_make_path(h->path_lim, cgroup_leaf, NULL);
 
 	} else {
-		path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
-
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_final < 0)
 			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
@@ -839,7 +833,8 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (payload) {
 			h->dfd_con = move_fd(fd_final);
 			h->dfd_lim = h->dfd_con;
-			h->path_con = move_ptr(path);
+			h->path_con = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
+
 			h->path_lim = h->path_con;
 		} else {
 			h->dfd_mon = move_fd(fd_final);
