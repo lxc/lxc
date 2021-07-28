@@ -1663,9 +1663,58 @@ static int lxc_setup_devpts_parent(struct lxc_handler *handler)
 	return 0;
 }
 
-static int lxc_setup_devpts_child(struct lxc_handler *handler)
+static int lxc_prepare_devpts_child(struct lxc_handler *handler)
 {
-	__do_close int devpts_fd = -EBADF;
+	__do_close int fd_fs = -EBADF, fd_fsmnt = -EBADF;
+	struct lxc_conf *conf = handler->conf;
+	int ret;
+
+	if (!can_use_mount_api())
+		return 0;
+
+	if (conf->pty_max <= 0)
+		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
+
+	fd_fs = fs_prepare("devpts", -EBADF, "", 0, 0);
+	if (fd_fs < 0)
+		return syserror("Failed to prepare filesystem context for devpts");
+
+	ret = fs_set_property(fd_fs, "gid", "5");
+	if (ret < 0)
+		SYSTRACE("Failed to set \"gid=5\" on devpts filesystem context %d", fd_fs);
+
+	ret = fs_set_flag(fd_fs, "newinstance");
+	if (ret < 0)
+		return syserror("Failed to set \"newinstance\" property on devpts filesystem context %d", fd_fs);
+
+	ret = fs_set_property(fd_fs, "ptmxmode", "0666");
+	if (ret < 0)
+		return syserror("Failed to set \"ptmxmode=0666\" property on devpts filesystem context %d", fd_fs);
+
+	ret = fs_set_property(fd_fs, "mode", "0620");
+	if (ret < 0)
+		return syserror("Failed to set \"mode=0620\" property on devpts filesystem context %d", fd_fs);
+
+	ret = fs_set_property(fd_fs, "max", fdstr(conf->pty_max));
+	if (ret < 0)
+		return syserror("Failed to set \"max=%zu\" property on devpts filesystem context %d", conf->pty_max, fd_fs);
+
+	ret = fsconfig(fd_fs, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
+	if (ret < 0)
+		return syserror("Failed to finalize filesystem context %d", fd_fs);
+
+	fd_fsmnt = fsmount(fd_fs, FSMOUNT_CLOEXEC, MOUNT_ATTR_NOSUID | MOUNT_ATTR_NOEXEC);
+	if (fd_fsmnt < 0)
+		return syserror("Failed to create new mount for filesystem context %d", fd_fs);
+
+	TRACE("Created detached devpts mount %d", fd_fsmnt);
+	handler->conf->devpts_fd = move_fd(fd_fsmnt);
+
+	return 0;
+}
+
+static int lxc_finalize_devpts_child(struct lxc_handler *handler)
+{
 	int ret;
 	char **opts;
 	char devpts_mntopts[256];
@@ -1677,51 +1726,65 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	if (conf->pty_max <= 0)
 		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
 
-	ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
-		       default_devpts_mntopts, conf->pty_max);
-	if (ret < 0)
-		return -1;
+	/*
+	 * Fallback codepath in case the new mount API can't be used to create
+	 * detached mounts.
+	 */
+	if (conf->devpts_fd >= 0) {
+		ret = move_mount(conf->devpts_fd, "", rootfs->dfd_dev, "pts", MOVE_MOUNT_F_EMPTY_PATH);
+		if (ret)
+			return syserror("Failed to attach devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
 
-	(void)umount2("/dev/pts", MNT_DETACH);
+		DEBUG("Attached detached devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
+	} else {
+		__do_close int devpts_fd = -EBADF;
 
-	/* Create mountpoint for devpts instance. */
-	ret = mkdirat(rootfs->dfd_dev, "pts", 0755);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
+		ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
+				default_devpts_mntopts, conf->pty_max);
+		if (ret < 0)
+			return -1;
 
-	/* gid=5 && max= */
-	mntopt_sets[0] = devpts_mntopts;
+		(void)umount2("/dev/pts", MNT_DETACH);
 
-	/* !gid=5 && max= */
-	mntopt_sets[1] = devpts_mntopts + STRLITERALLEN("gid=5") + 1;
+		/* Create mountpoint for devpts instance. */
+		ret = mkdirat(rootfs->dfd_dev, "pts", 0755);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
 
-	/* gid=5 && !max= */
-	mntopt_sets[2] = default_devpts_mntopts;
+		/* gid=5 && max= */
+		mntopt_sets[0] = devpts_mntopts;
 
-	/* !gid=5 && !max= */
-	mntopt_sets[3] = default_devpts_mntopts + STRLITERALLEN("gid=5") + 1;
+		/* !gid=5 && max= */
+		mntopt_sets[1] = devpts_mntopts + STRLITERALLEN("gid=5") + 1;
 
-	/* end */
-	mntopt_sets[4] = NULL;
+		/* gid=5 && !max= */
+		mntopt_sets[2] = default_devpts_mntopts;
 
-	for (ret = -1, opts = mntopt_sets; opts && *opts; opts++) {
-		/* mount new devpts instance */
-		ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, *opts);
-		if (ret == 0)
-			break;
+		/* !gid=5 && !max= */
+		mntopt_sets[3] = default_devpts_mntopts + STRLITERALLEN("gid=5") + 1;
+
+		/* end */
+		mntopt_sets[4] = NULL;
+
+		for (ret = -1, opts = mntopt_sets; opts && *opts; opts++) {
+			/* mount new devpts instance */
+			ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, *opts);
+			if (ret == 0)
+				break;
+		}
+
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to mount new devpts instance");
+
+		devpts_fd = open_at(rootfs->dfd_dev, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+		if (devpts_fd < 0) {
+			devpts_fd = -EBADF;
+			TRACE("Failed to create detached devpts mount");
+		}
+
+		handler->conf->devpts_fd = move_fd(devpts_fd);
+		DEBUG("Mounted new devpts instance with options \"%s\"", *opts);
 	}
-
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
-	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
-
-	devpts_fd = open_at(rootfs->dfd_dev, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (devpts_fd < 0) {
-		devpts_fd = -EBADF;
-		TRACE("Failed to create detached devpts mount");
-	}
-
-	handler->conf->devpts_fd = move_fd(devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = unlinkat(rootfs->dfd_dev, "ptmx", 0);
@@ -4155,6 +4218,10 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to mount transient procfs instance for LSMs");
 
+	ret = lxc_prepare_devpts_child(handler);
+	if (ret < 0)
+		return log_error(-1, "Failed to prepare new devpts instance");
+
 	ret = lxc_setup_console(handler, &lxc_conf->rootfs, &lxc_conf->console,
 				lxc_conf->ttys.dir);
 	if (ret < 0)
@@ -4172,7 +4239,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->autodev > 0)
 		(void)lxc_setup_boot_id();
 
-	ret = lxc_setup_devpts_child(handler);
+	ret = lxc_finalize_devpts_child(handler);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup new devpts instance");
 
