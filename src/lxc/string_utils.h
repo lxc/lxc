@@ -168,12 +168,12 @@ static inline const char *proc_self_fd(int fd)
 	return buf;
 }
 
-static inline const char *fdstr(int fd)
+static inline const char *fdstr(__s64 fd)
 {
 	static const char *fdstr_invalid = "-EBADF";
-	static char buf[INTTYPE_TO_STRLEN(int)];
+	static char buf[INTTYPE_TO_STRLEN(__s64)];
 
-	if (strnprintf(buf, sizeof(buf), "%d", fd) < 0)
+	if (strnprintf(buf, sizeof(buf), "%lld", fd) < 0)
 		return fdstr_invalid;
 
 	return buf;

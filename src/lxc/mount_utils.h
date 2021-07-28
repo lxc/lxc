@@ -164,6 +164,7 @@ __hidden extern int fs_prepare(const char *fs_name, int dfd_from,
 			       const char *path_from, __u64 o_flags_from,
 			       __u64 resolve_flags_from);
 __hidden extern int fs_set_property(int fd_fs, const char *key, const char *val);
+__hidden extern int fs_set_flag(int fd_fs, const char *key);
 __hidden extern int fs_attach(int fd_fs, int dfd_to, const char *path_to,
 			      __u64 o_flags_to, __u64 resolve_flags_to,
 			      unsigned int attr_flags);
