@@ -3255,6 +3255,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.ptx = -EBADF;
 	new->console.pty = -EBADF;
 	new->console.name[0] = '\0';
+	new->devpts_fd = -EBADF;
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;
 	new->monitor_signal_pdeath = SIGKILL;
