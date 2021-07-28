@@ -2674,7 +2674,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 
 	if (mnt_opts->create_dir || mnt_opts->create_file ||
 	    mnt_opts->optional || mnt_opts->relative)
-		return syserror_set(-EINVAL, "Invalid LXC specifc mount option for rootfs mount");
+		return syserror_set(-EINVAL, "Invalid LXC specific mount option for rootfs mount");
 
 	mnt_opts->data		= move_ptr(mdata);
 	rootfs->options		= move_ptr(opts);

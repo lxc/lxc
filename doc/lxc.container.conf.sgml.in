@@ -1556,7 +1556,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	ignore <option>lxc.cgroup.</option> settings on systems that only use
 	the unified hierarchy. Conversely, it will ignore
 	<option>lxc.cgroup2.</option> options on systems that only use legacy
-	hierachies.
+	hierarchies.
       </para>
 
       <para>
@@ -1569,7 +1569,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	however do not fall into the category of distributing a system
 	resource, instead they are often referred to as "utility" controllers.
 	One utility controller is the device controller. Instead of
-	distributing a system resource it allows to manage device access.
+	distributing a system resource it allows one to manage device access.
       </para>
 
       <para>
@@ -1642,7 +1642,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
           <listitem>
 	    <para>
-	      Specifying any of the aformentioned two rules will cause all
+	      Specifying any of the aforementioned two rules will cause all
 	      previous rules to be cleared, i.e. the device list will be reset.
 	    </para>
 	  </listitem>

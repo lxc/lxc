@@ -2079,7 +2079,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         ignore <option>lxc.cgroup.</option> settings on systems that only use
         the unified hierarchy. Conversely, it will ignore
         <option>lxc.cgroup2.</option> options on systems that only use legacy
-        hierachies.
+        hierarchies.
         -->
         LXC は cgroup1（レガシー階層構造）と cgroup2（単一階層構造）に対する設定を、異なる設定プレフィックスを使って区別しています。
         cgroup1 に対する設定を変更するには <option>lxc.cgroup.</option> というプレフィックスを使う必要があり、cgroup2 の設定を変更するには <option>lxc.cgroup2.</option> を使う必要があります。
@@ -2097,7 +2097,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         however do not fall into the category of distributing a system
         resource, instead they are often referred to as "utility" controllers.
         One utility controller is the device controller. Instead of
-        distributing a system resource it allows to manage device access.
+        distributing a system resource it allows one to manage device access.
         -->
         cgroup 階層の本質は、プロセスを階層的に構造化する方法です。通常は、cgroup 階層では 1 つ以上の「コントローラー」が有効になっています。
         通常、cgroup 階層の「コントローラー」は階層に従って特定のタイプのシステムリソースを分配する役割を果たします。
@@ -2210,7 +2210,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              Specifying any of the aformentioned two rules will cause all
+              Specifying any of the aforementioned two rules will cause all
               previous rules to be cleared, i.e. the device list will be reset.
               -->
               前述の 2 つのルールのいずれかを指定すると、それ以前に指定していたルールがすべてクリアされます。つまり、デバイスリストがリセットされます。
