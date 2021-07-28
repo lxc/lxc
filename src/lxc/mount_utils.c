@@ -197,6 +197,18 @@ int fs_set_property(int fd_fs, const char *key, const char *val)
 	return 0;
 }
 
+int fs_set_flag(int fd_fs, const char *key)
+{
+	int ret;
+
+	ret = fsconfig(fd_fs, FSCONFIG_SET_FLAG, key, NULL, 0);
+	if (ret < 0)
+		return syserror("Failed to set \"%s\" flag on filesystem context %d", key, fd_fs);
+
+	TRACE("Set \"%s\" flag on filesystem context %d", key, fd_fs);
+	return 0;
+}
+
 int fs_attach(int fd_fs,
 	      int dfd_to, const char *path_to,
 	      __u64 o_flags_to, __u64 resolve_flags_to,

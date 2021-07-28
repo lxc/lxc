@@ -950,7 +950,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath, str
 	}
 
 	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
-	if (ret < 0) {
+	if (ret) {
 		SYSWARN("Failed to retrieve name of terminal pty");
 		goto err;
 	}
