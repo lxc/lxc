@@ -909,10 +909,12 @@ err:
 	return -ENODEV;
 }
 
-static int lxc_terminal_create_native(const char *name, const char *lxcpath, struct lxc_conf *conf,
+static int lxc_terminal_create_native(const char *name, const char *lxcpath,
+				      struct lxc_conf *conf,
 				      struct lxc_terminal *terminal)
 {
-	__do_close int devpts_fd = -EBADF;
+	__do_close int devpts_fd = -EBADF, fd_pty = -EBADF;
+	int pty_nr = -1;
 	int ret;
 
 	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
@@ -949,9 +951,28 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath, str
 		goto err;
 	}
 
-	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
+	ret = ioctl(terminal->ptx, TIOCGPTN, &pty_nr);
 	if (ret) {
 		SYSWARN("Failed to retrieve name of terminal pty");
+		goto err;
+	}
+
+	fd_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPATH_FILE,
+			PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (fd_pty < 0) {
+		SYSWARN("Failed to open terminal pty fd by path %d/%d", devpts_fd, pty_nr);
+		goto err;
+	}
+
+	if (!same_file_lax(terminal->pty, fd_pty)) {
+		SYSWARN("Terminal file descriptor changed");
+		goto err;
+	}
+
+	ret = strnprintf(terminal->name, sizeof(terminal->name), "dev/pts/%d",
+			pty_nr);
+	if (ret < 0) {
+		SYSWARN("Failed to create terminal pty name");
 		goto err;
 	}
 
