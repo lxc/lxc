@@ -1784,7 +1784,7 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 
 		for (ret = -1, opts = mntopt_sets; opts && *opts; opts++) {
 			/* mount new devpts instance */
-			ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, *opts);
+			ret = mount_beneath_fd(rootfs->dfd_dev, "", "pts", "devpts", MS_NOSUID | MS_NOEXEC, *opts);
 			if (ret == 0)
 				break;
 		}
@@ -1817,7 +1817,7 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 	DEBUG("Created \"/dev/ptmx\" file as bind mount target");
 
 	/* Main option: use a bind-mount to please AppArmor  */
-	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
+	ret = mount_beneath_fd(rootfs->dfd_dev, "pts/ptmx", "ptmx", NULL, MS_BIND, NULL);
 	if (!ret)
 		return log_debug(0, "Bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 	else
