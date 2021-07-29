@@ -2042,6 +2042,9 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 		ret = lxc_setup_ttydir_console(rootfs, console, ttydir);
 	else
 		ret = lxc_setup_dev_console(rootfs, console);
+	if (ret < 0)
+		return syserror("Failed to setup console");
+
 	fd_pty = move_fd(console->pty);
 
 	/*
