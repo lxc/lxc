@@ -1679,6 +1679,10 @@ static int lxc_prepare_devpts_child(struct lxc_handler *handler)
 	if (fd_fs < 0)
 		return syserror("Failed to prepare filesystem context for devpts");
 
+	ret = fs_set_property(fd_fs, "source", "devpts");
+	if (ret < 0)
+		SYSTRACE("Failed to set \"source=devpts\" on devpts filesystem context %d", fd_fs);
+
 	ret = fs_set_property(fd_fs, "gid", "5");
 	if (ret < 0)
 		SYSTRACE("Failed to set \"gid=5\" on devpts filesystem context %d", fd_fs);
