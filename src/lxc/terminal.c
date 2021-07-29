@@ -909,34 +909,27 @@ err:
 	return -ENODEV;
 }
 
-static int lxc_terminal_create_native(const char *name, const char *lxcpath,
-				      struct lxc_conf *conf,
-				      struct lxc_terminal *terminal)
+int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
+			int *ret_ptx, int *ret_pty, char buf[static PATH_MAX])
 {
-	__do_close int devpts_fd = -EBADF, fd_pty = -EBADF;
+	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
 	int ret;
 
-	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
-	if (devpts_fd < 0)
-		return log_error_errno(-1, errno, "Failed to receive devpts fd");
-
-	terminal->ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
-	if (terminal->ptx < 0) {
+	fd_ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (fd_ptx < 0) {
 		if (errno == ENOSPC)
 			return systrace("Exceeded number of allocatable terminals");
 
 		return syserror("Failed to open terminal multiplexer device");
 	}
 
-	ret = unlockpt(terminal->ptx);
-	if (ret < 0) {
-		SYSWARN("Failed to unlock multiplexer device device");
-		goto err;
-	}
+	ret = unlockpt(fd_ptx);
+	if (ret < 0)
+		return syswarn_set(-ENODEV, "Failed to unlock multiplexer device device");
 
-	terminal->pty = ioctl(terminal->ptx, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
-	if (terminal->pty < 0) {
+	fd_pty = ioctl(fd_ptx, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (fd_pty < 0) {
 		switch (errno) {
 		case ENOTTY:
 			SYSTRACE("Pure fd-based terminal allocation not possible");
@@ -948,45 +941,54 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 			SYSWARN("Failed to allocate new pty device");
 			break;
 		}
-		goto err;
+
+		return ret_errno(ENODEV);
 	}
 
-	ret = ioctl(terminal->ptx, TIOCGPTN, &pty_nr);
-	if (ret) {
-		SYSWARN("Failed to retrieve name of terminal pty");
-		goto err;
-	}
+	ret = ioctl(fd_ptx, TIOCGPTN, &pty_nr);
+	if (ret)
+		return syswarn_set(-ENODEV, "Failed to retrieve name of terminal pty");
 
-	fd_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPATH_FILE,
-			PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
-	if (fd_pty < 0) {
-		SYSWARN("Failed to open terminal pty fd by path %d/%d", devpts_fd, pty_nr);
-		goto err;
-	}
+	fd_opath_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPATH_FILE,
+			       PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (fd_opath_pty < 0)
+		return syswarn_set(-ENODEV, "Failed to open terminal pty fd by path %d/%d", devpts_fd, pty_nr);
 
-	if (!same_file_lax(terminal->pty, fd_pty)) {
-		SYSWARN("Terminal file descriptor changed");
-		goto err;
-	}
+	if (!same_file_lax(fd_pty, fd_opath_pty))
+		return syswarn_set(-ENODEV, "Terminal file descriptor changed");
 
-	ret = strnprintf(terminal->name, sizeof(terminal->name), "dev/pts/%d",
-			pty_nr);
-	if (ret < 0) {
-		SYSWARN("Failed to create terminal pty name");
-		goto err;
-	}
+	ret = strnprintf(buf, PATH_MAX, "dev/pts/%d", pty_nr);
+	if (ret < 0)
+		return syswarn_set(-ENODEV, "Failed to create terminal pty name");
+
+	*ret_ptx = move_fd(fd_ptx);
+	*ret_pty = move_fd(fd_pty);
+	return 0;
+}
+
+static int lxc_terminal_create_native(const char *name, const char *lxcpath,
+				      struct lxc_conf *conf,
+				      struct lxc_terminal *terminal)
+{
+	__do_close int devpts_fd = -EBADF;
+	int ret;
+
+	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
+	if (devpts_fd < 0)
+		return log_error_errno(-1, errno, "Failed to receive devpts fd");
+
+	ret = lxc_devpts_terminal(devpts_fd, conf, &terminal->ptx,
+				  &terminal->pty, terminal->name);
+	if (ret < 0)
+		return ret;
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
-		SYSWARN("Failed to allocate proxy terminal");
-		goto err;
+		lxc_terminal_delete(terminal);
+		return syswarn_set(-ENODEV, "Failed to allocate proxy terminal");
 	}
 
 	return 0;
-
-err:
-	lxc_terminal_delete(terminal);
-	return -ENODEV;
 }
 
 int lxc_terminal_create(const char *name, const char *lxcpath,

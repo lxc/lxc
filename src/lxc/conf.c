@@ -961,6 +961,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
+	char tty_source[LXC_PROC_PID_FD_LEN], tty_target[LXC_PROC_PID_FD_LEN];
 
 	if (!conf->rootfs.path)
 		return 0;
@@ -1002,7 +1003,15 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
 						    false);
 			} else {
-				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
+				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
+				if (ret < 0)
+					return ret;
+
+				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
+				if (ret < 0)
+					return ret;
+
+				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
 			}
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
@@ -1037,11 +1046,15 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH, 0,
 						    false);
 			} else {
-				ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/tty%d", i + 1);
+				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
 				if (ret < 0)
-					return ret_errno(-EIO);
+					return ret;
 
-				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
+				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
+				if (ret < 0)
+					return ret;
+
+				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
 			}
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
@@ -1076,33 +1089,12 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	for (size_t i = 0; i < conf->ttys.max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		tty->ptx = -EBADF;
-		tty->pty = -EBADF;
-		ret = openpty(&tty->ptx, &tty->pty, NULL, NULL, NULL);
+		ret = lxc_devpts_terminal(conf->devpts_fd, conf, &tty->ptx, &tty->pty, tty->name);
 		if (ret < 0) {
 			conf->ttys.max = i;
-			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
+			return syserror_set(-ENOTTY, "Failed to create tty %zu", i);
 		}
-
-		ret = ttyname_r(tty->pty, tty->name, sizeof(tty->name));
-		if (ret < 0) {
-			conf->ttys.max = i;
-			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pty", i);
-		}
-
 		DEBUG("Created tty with ptx fd %d and pty fd %d", tty->ptx, tty->pty);
-
-		/* Prevent leaking the file descriptors to the container */
-		ret = fd_cloexec(tty->ptx, true);
-		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on ptx fd %d of tty device \"%s\"",
-				tty->ptx, tty->name);
-
-		ret = fd_cloexec(tty->pty, true);
-		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on pty fd %d of tty device \"%s\"",
-				tty->pty, tty->name);
-
 		tty->busy = -1;
 	}
 
@@ -4228,6 +4220,10 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup console");
 
+	ret = lxc_create_ttys(handler);
+	if (ret < 0)
+		return log_error(-1, "Failed to create ttys");
+
 	ret = lxc_setup_dev_symlinks(&lxc_conf->rootfs);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup \"/dev\" symlinks");
@@ -4239,10 +4235,6 @@ int lxc_setup(struct lxc_handler *handler)
 	/* Setting the boot-id is best-effort for now. */
 	if (lxc_conf->autodev > 0)
 		(void)lxc_setup_boot_id();
-
-	ret = lxc_create_ttys(handler);
-	if (ret < 0)
-		return -1;
 
 	ret = setup_personality(lxc_conf->personality);
 	if (ret < 0)
