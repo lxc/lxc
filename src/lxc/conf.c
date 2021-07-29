@@ -1645,7 +1645,7 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 	return retmap;
 }
 
-static int lxc_setup_devpts_parent(struct lxc_handler *handler)
+static int lxc_recv_devpts_from_child(struct lxc_handler *handler)
 {
 	int ret;
 
@@ -4089,7 +4089,7 @@ int lxc_sync_fds_parent(struct lxc_handler *handler)
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to receive seccomp notify fd from child");
 
-	ret = lxc_setup_devpts_parent(handler);
+	ret = lxc_recv_devpts_from_child(handler);
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to receive devpts fd from child");
 
