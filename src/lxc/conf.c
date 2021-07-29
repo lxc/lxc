@@ -1830,7 +1830,7 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\"");
 
 	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
-	ret = symlinkat("/dev/pts/ptmx", rootfs->dfd_dev, "/dev/ptmx");
+	ret = symlinkat("/dev/pts/ptmx", rootfs->dfd_dev, "dev/ptmx");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 
