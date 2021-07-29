@@ -1816,7 +1816,7 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to create \"/dev/ptmx\" file as bind mount target");
 	DEBUG("Created \"/dev/ptmx\" file as bind mount target");
 
-	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
+	/* Main option: use a bind-mount to please AppArmor  */
 	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
 	if (!ret)
 		return log_debug(0, "Bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
