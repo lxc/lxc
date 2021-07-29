@@ -1667,13 +1667,26 @@ static int lxc_prepare_devpts_child(struct lxc_handler *handler)
 {
 	__do_close int fd_fs = -EBADF, fd_fsmnt = -EBADF;
 	struct lxc_conf *conf = handler->conf;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 	int ret;
-
-	if (!can_use_mount_api())
-		return 0;
 
 	if (conf->pty_max <= 0)
 		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
+
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
+			 "/proc/self/fd/%d/pts", rootfs->dfd_dev);
+	if (ret < 0)
+		return syserror("Failed to create path");
+
+	(void)umount2(rootfs->buf, MNT_DETACH);
+
+	/* Create mountpoint for devpts instance. */
+	ret = mkdirat(rootfs->dfd_dev, "pts", 0755);
+	if (ret < 0 && errno != EEXIST)
+		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
+
+	if (!can_use_mount_api())
+		return 0;
 
 	fd_fs = fs_prepare("devpts", -EBADF, "", 0, 0);
 	if (fd_fs < 0)
@@ -1710,10 +1723,14 @@ static int lxc_prepare_devpts_child(struct lxc_handler *handler)
 	fd_fsmnt = fsmount(fd_fs, FSMOUNT_CLOEXEC, MOUNT_ATTR_NOSUID | MOUNT_ATTR_NOEXEC);
 	if (fd_fsmnt < 0)
 		return syserror("Failed to create new mount for filesystem context %d", fd_fs);
-
 	TRACE("Created detached devpts mount %d", fd_fsmnt);
-	handler->conf->devpts_fd = move_fd(fd_fsmnt);
 
+	ret = move_mount(fd_fsmnt, "", rootfs->dfd_dev, "pts", MOVE_MOUNT_F_EMPTY_PATH);
+	if (ret)
+		return syserror("Failed to attach devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
+
+	DEBUG("Attached detached devpts mount %d to %d/pts", fd_fsmnt, rootfs->dfd_dev);
+	handler->conf->devpts_fd = move_fd(fd_fsmnt);
 	return 0;
 }
 
@@ -1730,18 +1747,13 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 	if (conf->pty_max <= 0)
 		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
 
-	/*
-	 * Fallback codepath in case the new mount API can't be used to create
-	 * detached mounts.
-	 */
-	if (conf->devpts_fd >= 0) {
-		ret = move_mount(conf->devpts_fd, "", rootfs->dfd_dev, "pts", MOVE_MOUNT_F_EMPTY_PATH);
-		if (ret)
-			return syserror("Failed to attach devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
-
-		DEBUG("Attached detached devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
-	} else {
+	if (!can_use_mount_api()) {
 		__do_close int devpts_fd = -EBADF;
+
+		/*
+		 * Fallback codepath in case the new mount API can't be used to
+		 * create detached mounts.
+		 */
 
 		ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
 				default_devpts_mntopts, conf->pty_max);
@@ -1776,7 +1788,6 @@ static int lxc_finalize_devpts_child(struct lxc_handler *handler)
 			if (ret == 0)
 				break;
 		}
-
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 
