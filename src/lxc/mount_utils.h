@@ -12,6 +12,8 @@
 #include "memory_utils.h"
 #include "syscall_wrappers.h"
 
+struct lxc_rootfs;
+
 /* open_tree() flags */
 
 #ifndef AT_RECURSIVE
@@ -189,7 +191,6 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
 				  int dfd_to, const char *path_to,
 				  __u64 o_flags_to, __u64 resolve_flags_to,
 				  unsigned int attr_flags, bool recursive);
-
 __hidden extern int fd_mount_idmapped(int dfd_from, const char *path_from,
 				      __u64 o_flags_from, __u64 resolve_flags_from,
 				      int dfd_to, const char *path_to,
@@ -220,5 +221,8 @@ __hidden extern unsigned long add_required_remount_flags(const char *s,
 
 __hidden extern bool can_use_mount_api(void);
 __hidden extern bool can_use_bind_mounts(void);
+__hidden extern int mount_beneath_fd(int fd, const char *source,
+				     const char *target, const char *fs_name,
+				     unsigned int flags, const void *data);
 
 #endif /* __LXC_MOUNT_UTILS_H */

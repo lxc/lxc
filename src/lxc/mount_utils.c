@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "conf.h"
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
@@ -603,4 +604,34 @@ bool can_use_bind_mounts(void)
 	}
 
 	return supported == 1;
+}
+
+int mount_beneath_fd(int fd, const char *source, const char *target,
+		     const char *fs_name, unsigned int flags, const void *data)
+{
+	int ret;
+	char buf_source[PATH_MAX], buf_target[PATH_MAX];
+
+	if (abspath(source) || abspath(target))
+		return ret_errno(EINVAL);
+
+	ret = strnprintf(buf_target, sizeof(buf_target), "/proc/self/fd/%d/%s", fd, target);
+	if (ret < 0)
+		return syserror("Failed to create path");
+
+	if (is_empty_string(source)) {
+		ret = mount(fs_name ?: "", buf_target, fs_name, flags, data);
+	} else {
+		ret = strnprintf(buf_source, sizeof(buf_source), "/proc/self/fd/%d/%s", fd, source);
+		if (ret < 0)
+			return syserror("Failed to create path");
+
+		source = buf_source;
+		ret = mount(source, buf_target, fs_name, flags, data);
+	}
+	if (ret < 0)
+		return syserror("Failed to mount \"%s\" to \"%s\"", source, buf_target);
+
+	TRACE("Mounted \"%s\" to \"%s\"", source, buf_target);
+	return 0;
 }
