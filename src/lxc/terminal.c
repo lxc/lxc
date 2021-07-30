@@ -767,6 +767,8 @@ void lxc_terminal_delete(struct lxc_terminal *terminal)
 		close(terminal->pty);
 	terminal->pty = -1;
 
+	terminal->pty_nr = -1;
+
 	if (terminal->log_fd >= 0)
 		close(terminal->log_fd);
 	terminal->log_fd = -1;
@@ -909,12 +911,14 @@ err:
 	return -ENODEV;
 }
 
-int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
-			int *ret_ptx, int *ret_pty, char buf[static PATH_MAX])
+int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_nr)
 {
 	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
 	int ret;
+
+	if (devpts_fd < 0)
+		return ret_errno(EBADF);
 
 	fd_ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (fd_ptx < 0) {
@@ -957,17 +961,48 @@ int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
 	if (!same_file_lax(fd_pty, fd_opath_pty))
 		return syswarn_set(-ENODEV, "Terminal file descriptor changed");
 
-	ret = strnprintf(buf, PATH_MAX, "dev/pts/%d", pty_nr);
-	if (ret < 0)
-		return syswarn_set(-ENODEV, "Failed to create terminal pty name");
-
 	*ret_ptx = move_fd(fd_ptx);
 	*ret_pty = move_fd(fd_pty);
+	*ret_pty_nr = pty_nr;
 	return 0;
 }
 
+int lxc_terminal_parent(struct lxc_conf *conf)
+{
+	__do_close int fd_devpts = -EBADF;
+	struct lxc_terminal *console = &conf->console;
+	int ret;
+
+	if (!wants_console(&conf->console))
+		return 0;
+
+	/* Allocate console from the container's devpts. */
+	if (conf->pty_max > 1)
+		return 0;
+
+	/* Allocate console for the container from the host's devpts. */
+	fd_devpts = open_at(-EBADF,
+			    "/dev/pts",
+			    PROTECT_OPATH_DIRECTORY,
+			    PROTECT_LOOKUP_ABSOLUTE_XDEV,
+			    0);
+	if (fd_devpts < 0)
+		return syserror("Failed to open devpts instance");
+
+	ret = lxc_devpts_terminal(fd_devpts, &console->ptx,
+				  &console->pty, &console->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to allocate console");
+
+	ret = strnprintf(console->name, sizeof(console->name),
+			 "/dev/pts/%d", console->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to create console path");
+
+	return lxc_terminal_map_ids(conf, &conf->console);
+}
+
 static int lxc_terminal_create_native(const char *name, const char *lxcpath,
-				      struct lxc_conf *conf,
 				      struct lxc_terminal *terminal)
 {
 	__do_close int devpts_fd = -EBADF;
@@ -977,10 +1012,15 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 	if (devpts_fd < 0)
 		return log_error_errno(-1, errno, "Failed to receive devpts fd");
 
-	ret = lxc_devpts_terminal(devpts_fd, conf, &terminal->ptx,
-				  &terminal->pty, terminal->name);
+	ret = lxc_devpts_terminal(devpts_fd, &terminal->ptx, &terminal->pty,
+				  &terminal->pty_nr);
 	if (ret < 0)
 		return ret;
+
+	ret = strnprintf(terminal->name, sizeof(terminal->name),
+			 "/dev/pts/%d", terminal->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to create path");
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
@@ -994,7 +1034,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 int lxc_terminal_create(const char *name, const char *lxcpath,
 			struct lxc_conf *conf, struct lxc_terminal *terminal)
 {
-	if (!lxc_terminal_create_native(name, lxcpath, conf, terminal))
+	if (!lxc_terminal_create_native(name, lxcpath, terminal))
 		return 0;
 
 	return lxc_terminal_create_foreign(conf, terminal);
@@ -1008,9 +1048,9 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	if (terminal->path && strequal(terminal->path, "none"))
 		return log_info(0, "No terminal requested");
 
-	ret = lxc_terminal_create_foreign(conf, terminal);
+	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0)
-		return -1;
+		goto err;
 
 	ret = lxc_terminal_create_log_file(terminal);
 	if (ret < 0)
@@ -1270,6 +1310,7 @@ void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 void lxc_terminal_init(struct lxc_terminal *terminal)
 {
 	memset(terminal, 0, sizeof(*terminal));
+	terminal->pty_nr = -1;
 	terminal->pty = -EBADF;
 	terminal->ptx = -EBADF;
 	terminal->peer = -EBADF;

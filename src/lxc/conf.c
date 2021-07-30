@@ -961,7 +961,6 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
-	char tty_source[LXC_PROC_PID_FD_LEN], tty_target[LXC_PROC_PID_FD_LEN];
 
 	if (!conf->rootfs.path)
 		return 0;
@@ -994,7 +993,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to unlink %d(%s)",
 						       rootfs->dfd_dev, tty_name);
 
-			if (can_use_mount_api()) {
+			if (can_use_mount_api())
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1002,17 +1001,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
 						    false);
-			} else {
-				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
-				if (ret < 0)
-					return ret;
-
-				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
-				if (ret < 0)
-					return ret;
-
-				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
-			}
+			else
+				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1037,7 +1027,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to create tty mount target %d(%s)",
 						       rootfs->dfd_dev, rootfs->buf);
 
-			if (can_use_mount_api()) {
+			if (can_use_mount_api())
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1045,17 +1035,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH, 0,
 						    false);
-			} else {
-				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
-				if (ret < 0)
-					return ret;
-
-				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
-				if (ret < 0)
-					return ret;
-
-				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
-			}
+			else
+				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1087,14 +1068,17 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 		return -ENOMEM;
 
 	for (size_t i = 0; i < conf->ttys.max; i++) {
+		int pty_nr = -1;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ret = lxc_devpts_terminal(conf->devpts_fd, conf, &tty->ptx, &tty->pty, tty->name);
+		ret = lxc_devpts_terminal(conf->devpts_fd, &tty->ptx,
+					  &tty->pty, &pty_nr);
 		if (ret < 0) {
 			conf->ttys.max = i;
 			return syserror_set(-ENOTTY, "Failed to create tty %zu", i);
 		}
-		DEBUG("Created tty with ptx fd %d and pty fd %d", tty->ptx, tty->pty);
+		DEBUG("Created tty with ptx fd %d and pty fd %d and index %d",
+		      tty->ptx, tty->pty, pty_nr);
 		tty->busy = -1;
 	}
 
@@ -1845,13 +1829,8 @@ static int setup_personality(personality_t persona)
 	return 0;
 }
 
-static inline bool wants_console(const struct lxc_terminal *terminal)
-{
-	return !terminal->path || !strequal(terminal->path, "none");
-}
-
-static int lxc_bind_mount_console(const struct lxc_terminal *console,
-				  int dfd_to, const char *path_to)
+static int bind_mount_console(int fd_devpts, struct lxc_rootfs *rootfs,
+			      struct lxc_terminal *console, int fd_to)
 {
 	__do_close int fd_pty = -EBADF;
 
@@ -1872,34 +1851,34 @@ static int lxc_bind_mount_console(const struct lxc_terminal *console,
 	 * created a detached mount based on the newly opened O_PATH file
 	 * descriptor and then safely mount.
 	 */
-	fd_pty = open_at(-EBADF, console->name, PROTECT_OPATH_FILE,
-			 PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	fd_pty = open_at_same(console->pty, fd_devpts, fdstr(console->pty_nr),
+			      PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (fd_pty < 0)
-		return log_error_errno(-errno, errno, "Failed to open \"%s\"", console->name);
-
-	if (!same_file_lax(console->pty, fd_pty))
-		return log_error_errno(-EINVAL, EINVAL, "Console file descriptor changed");
+		return syserror("Failed to open \"%s\"", console->name);
 
 	/*
 	 * Note, there are intentionally no open or lookup restrictions since
 	 * we're operating directly on the fd.
 	 */
-	return fd_bind_mount(fd_pty, "", 0, 0,
-			     dfd_to, path_to, PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH,
-			     0, false);
+	if (can_use_mount_api())
+		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, false);
+
+	return mount_fd(fd_pty, fd_to, "none", MS_BIND, 0);
 }
 
-static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
-				 const struct lxc_terminal *console)
+static int lxc_setup_dev_console(int fd_devpts, struct lxc_rootfs *rootfs,
+				 struct lxc_terminal *console)
 {
+	__do_close int fd_console = -EBADF;
 	int ret;
-	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	/*
 	 * When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
 	if (exists_file_at(rootfs->dfd_dev, "console")) {
+		char *rootfs_path = rootfs->path ? rootfs->mount : "";
+
 		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
 		if (ret < 0)
 			return -1;
@@ -1915,105 +1894,122 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	 * For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
-	ret = mknodat(rootfs->dfd_dev, "console", S_IFREG | 0000, 0);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create console");
+	fd_console = open_at(rootfs->dfd_dev,
+			     "console",
+			     PROTECT_OPEN | O_CREAT,
+			     PROTECT_LOOKUP_BENEATH,
+			     0000);
+	if (fd_console < 0)
+		return syserror("Failed to create \"%d/console\"", rootfs->dfd_dev);
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
+		return syserror("Failed to change console mode");
 
-	if (can_use_mount_api()) {
-		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, "console");
-	} else {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
-		if (ret < 0)
-			return ret;
-
-		ret = safe_mount(console->name, rootfs->buf, "none", MS_BIND, NULL, rootfs_path);
-	}
+	ret = bind_mount_console(fd_devpts, rootfs, console, fd_console);
 	if (ret < 0)
-		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, rootfs->buf);
+		return syserror("Failed to mount \"%d(%s)\" on \"%d\"",
+				console->pty, console->name, fd_console);
 
-	DEBUG("Mounted pty device %d(%s) onto \"/dev/console\"", console->pty, console->name);
+	TRACE("Setup console \"%s\"", console->name);
 	return 0;
 }
 
-static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
-				    const struct lxc_terminal *console,
+static int lxc_setup_ttydir_console(int fd_devpts, struct lxc_rootfs *rootfs,
+				    struct lxc_terminal *console,
 				    char *ttydir)
 {
+	__do_close int fd_ttydir = -EBADF, fd_dev_console = -EBADF,
+		       fd_reg_console = -EBADF, fd_reg_ttydir_console = -EBADF;
 	int ret;
-	char path[PATH_MAX], lxcpath[PATH_MAX];
-	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
-	/* create rootfs/dev/<ttydir> directory */
-	ret = strnprintf(path, sizeof(path), "%s/dev/%s", rootfs_path, ttydir);
-	if (ret < 0)
-		return -1;
-
-	ret = mkdir(path, 0755);
-	if (ret && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create \"%s\"", path);
- 	DEBUG("Created directory for console and tty devices at \"%s\"", path);
-
-	ret = strnprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs_path, ttydir);
-	if (ret < 0)
-		return -1;
-
-	ret = mknod(lxcpath, S_IFREG | 0000, 0);
+	/* create dev/<ttydir> */
+	ret = mkdirat(rootfs->dfd_dev, ttydir, 0755);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create \"%s\"", lxcpath);
+		return syserror("Failed to create \"%d/%s\"", rootfs->dfd_dev, ttydir);
 
-	ret = strnprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
+	fd_ttydir = open_at(rootfs->dfd_dev,
+			    ttydir,
+			    PROTECT_OPATH_DIRECTORY,
+			    PROTECT_LOOKUP_BENEATH,
+			    0);
+	if (fd_ttydir < 0)
+		return syserror("Failed to open \"%d/%s\"", rootfs->dfd_dev, ttydir);
+
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/console", ttydir);
 	if (ret < 0)
 		return -1;
 
-	if (file_exists(path)) {
-		ret = lxc_unstack_mountpoint(path, false);
+	/* create dev/<ttydir>/console */
+	fd_reg_ttydir_console = open_at(fd_ttydir,
+					"console",
+					PROTECT_OPEN | O_CREAT,
+					PROTECT_LOOKUP_BENEATH,
+					0000);
+	if (fd_reg_ttydir_console < 0)
+		return syserror("Failed to create \"%d/console\"", fd_ttydir);
+
+	if (file_exists(rootfs->buf)) {
+		char *rootfs_path = rootfs->path ? rootfs->mount : "";
+
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
 		if (ret < 0)
-			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", path);
+			return -1;
+
+		ret = lxc_unstack_mountpoint(rootfs->buf, false);
+		if (ret < 0)
+			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", rootfs->buf);
 		else
-			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, rootfs->buf);
 	}
 
-	ret = mknod(path, S_IFREG | 0000, 0);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create console");
+	/* create dev/console */
+	fd_reg_console = open_at(rootfs->dfd_dev,
+				"console",
+				 PROTECT_OPEN | O_CREAT,
+				 PROTECT_LOOKUP_BENEATH,
+				 0000);
+	if (fd_reg_console < 0)
+		return syserror("Failed to create \"%d/console\"", rootfs->dfd_dev);
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
+		return syserror("Failed to change console mode");
 
-	/* bind mount console->name to '/dev/<ttydir>/console' */
-	if (can_use_mount_api()) {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/console", ttydir);
-		if (ret < 0)
-			return ret;
-
-		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, rootfs->buf);
-	} else {
-		ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
-	}
+	/* bind mount console to '/dev/<ttydir>/console' */
+	ret = bind_mount_console(fd_devpts, rootfs, console, fd_reg_ttydir_console);
 	if (ret < 0)
-		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, lxcpath);
-	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
+		return syserror("Failed to mount \"%d(%s)\" on \"%d\"",
+				console->pty, console->name, fd_reg_ttydir_console);
 
-	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
-	if (can_use_mount_api()) {
-		ret = fd_bind_mount(rootfs->dfd_dev, rootfs->buf,
-				    PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH_XDEV,
-				    rootfs->dfd_dev, "console",
-				    PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH,
-				    0, false);
-	} else {
-		ret = safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs_path);
-	}
+	fd_dev_console = open_at_same(console->pty,
+				      fd_ttydir,
+				      "console",
+				      PROTECT_OPATH_FILE,
+				      PROTECT_LOOKUP_BENEATH_XDEV,
+				      0);
+	if (fd_dev_console < 0)
+		return syserror("Failed to open \"%d/console\"", fd_ttydir);
+
+	/* bind mount '/dev/<ttydir>/console' to '/dev/console' */
+	if (can_use_mount_api())
+		ret = fd_bind_mount(fd_dev_console,
+				    "",
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH_XDEV,
+				    fd_reg_console,
+				    "",
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH,
+				    0,
+				    false);
+	else
+		ret = mount_fd(fd_dev_console, fd_reg_console, "none", MS_BIND, 0);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount \"%s\" on \"%s\"", console->name, lxcpath);
-	DEBUG("Mounted \"%s\" onto \"%s\"", lxcpath, path);
+		return syserror("Failed to mount \"%d\" on \"%d\"",
+				fd_dev_console, fd_reg_console);
 
-	DEBUG("Console has been setup under \"%s\" and mounted to \"%s\"", lxcpath, path);
+	TRACE("Setup console \"%s\"", console->name);
 	return 0;
 }
 
@@ -2021,20 +2017,52 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 			     struct lxc_rootfs *rootfs,
 			     struct lxc_terminal *console, char *ttydir)
 {
-	__do_close int fd_pty = -EBADF;
-	int ret;
+	__do_close int fd_devpts_host = -EBADF;
+	int fd_devpts = handler->conf->devpts_fd;
+	int ret = -1;
 
 	if (!wants_console(console))
 		return log_trace(0, "Skipping console setup");
 
+	if (console->pty < 0)  {
+		/*
+		 * Allocate a console from the container's devpts instance. We
+		 * have checked on the host that we have enough pty devices
+		 * available.
+		 */
+		ret = lxc_devpts_terminal(handler->conf->devpts_fd, &console->ptx,
+					  &console->pty, &console->pty_nr);
+		if (ret < 0)
+			return syserror("Failed to allocate console from container's devpts instance");
+
+		ret = strnprintf(console->name, sizeof(console->name),
+				"/dev/pts/%d", console->pty_nr);
+		if (ret < 0)
+			return syserror("Failed to create console path");
+	} else {
+		/*
+		 * We're using a console from the host's devpts instance. Open
+		 * it again so we can later verify that the console we're
+		 * supposed to use is still the same as the one we opened on
+		 * the host.
+		 */
+		fd_devpts_host = open_at(rootfs->dfd_host,
+					 "dev/pts",
+					 PROTECT_OPATH_DIRECTORY,
+					 PROTECT_LOOKUP_BENEATH_XDEV,
+					 0);
+		if (fd_devpts_host < 0)
+			return syserror("Failed to open host devpts");
+
+		fd_devpts = fd_devpts_host;
+	}
+
 	if (ttydir)
-		ret = lxc_setup_ttydir_console(rootfs, console, ttydir);
+		ret = lxc_setup_ttydir_console(fd_devpts, rootfs, console, ttydir);
 	else
-		ret = lxc_setup_dev_console(rootfs, console);
+		ret = lxc_setup_dev_console(fd_devpts, rootfs, console);
 	if (ret < 0)
 		return syserror("Failed to setup console");
-
-	fd_pty = move_fd(console->pty);
 
 	/*
 	 * Some init's such as busybox will set sane tty settings on stdin,
@@ -2043,13 +2071,20 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
-	if (fd_pty >= 0) {
+	if (console->pty >= 0) {
 		if (handler->daemonize || !handler->conf->is_execute)
-			ret = set_stdfds(fd_pty);
+			ret = set_stdfds(console->pty);
 		else
-			ret = lxc_terminal_set_stdfds(fd_pty);
+			ret = lxc_terminal_set_stdfds(console->pty);
 		if (ret < 0)
-			return syserror("Failed to redirect std{in,out,err} to pty file descriptor %d", fd_pty);
+			return syserror("Failed to redirect std{in,out,err} to pty file descriptor %d", console->pty);
+
+		/*
+		 * If the console has been allocated from the host's devpts
+		 * we're done and we don't need to send fds to the parent.
+		 */
+		if (fd_devpts_host >= 0)
+			lxc_terminal_delete(console);
 	}
 
 	return ret;
@@ -3246,6 +3281,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.proxy.pty = -1;
 	new->console.ptx = -EBADF;
 	new->console.pty = -EBADF;
+	new->console.pty_nr = -1;
 	new->console.name[0] = '\0';
 	new->devpts_fd = -EBADF;
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
@@ -4055,6 +4091,56 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	return ret;
 }
 
+static int lxc_send_console_to_parent(struct lxc_handler *handler)
+{
+	struct lxc_terminal *console = &handler->conf->console;
+	int ret;
+
+	if (!wants_console(console))
+		return 0;
+
+	/* We've already allocated a console from the host's devpts instance. */
+	if (console->pty < 0)
+		return 0;
+
+	ret = __lxc_abstract_unix_send_two_fds(handler->data_sock[0],
+					       console->ptx, console->pty,
+					       console,
+					       sizeof(struct lxc_terminal));
+	if (ret < 0)
+		return syserror("Fail to send console to parent");
+
+	TRACE("Sent console to parent");
+	return 0;
+}
+
+static int lxc_recv_console_from_child(struct lxc_handler *handler)
+{
+	__do_close int fd_ptx = -EBADF, fd_pty = -EBADF;
+	struct lxc_terminal *console = &handler->conf->console;
+	int ret;
+
+	if (!wants_console(console))
+		return 0;
+
+	/* We've already allocated a console from the host's devpts instance. */
+	if (console->pty >= 0)
+		return 0;
+
+	ret = __lxc_abstract_unix_recv_two_fds(handler->data_sock[1],
+					       &fd_ptx, &fd_pty,
+					       console,
+					       sizeof(struct lxc_terminal));
+	if (ret < 0)
+		return syserror("Fail to receive console from child");
+
+	console->ptx = move_fd(fd_ptx);
+	console->pty = move_fd(fd_pty);
+
+	TRACE("Received console from child");
+	return 0;
+}
+
 int lxc_sync_fds_parent(struct lxc_handler *handler)
 {
 	int ret;
@@ -4077,6 +4163,10 @@ int lxc_sync_fds_parent(struct lxc_handler *handler)
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to receive names and ifindices for network devices from child");
 	}
+
+	ret = lxc_recv_console_from_child(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to receive console from child");
 
 	TRACE("Finished syncing file descriptors with child");
 	return 0;
@@ -4103,6 +4193,10 @@ int lxc_sync_fds_child(struct lxc_handler *handler)
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to send network device names and ifindices to parent");
 	}
+
+	ret = lxc_send_console_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send console to parent");
 
 	TRACE("Finished syncing file descriptors with parent");
 	return 0;

@@ -58,6 +58,7 @@ struct lxc_terminal_state {
 };
 
 struct lxc_terminal {
+	int pty_nr;
 	int pty;
 	int ptx;
 	int peer;
@@ -252,8 +253,13 @@ __hidden extern void lxc_terminal_conf_free(struct lxc_terminal *terminal);
 __hidden extern void lxc_terminal_info_init(struct lxc_terminal_info *terminal);
 __hidden extern void lxc_terminal_init(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_signal_sigmask_safe_blocked(struct lxc_terminal *terminal);
-__hidden extern int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
-					int *ret_ptx, int *ret_pty,
-					char buf[static PATH_MAX]);
+__hidden extern int lxc_devpts_terminal(int devpts_fd, int *ret_ptx,
+					int *ret_pty, int *ret_pty_nr);
+__hidden extern int lxc_terminal_parent(struct lxc_conf *conf);
+
+static inline bool wants_console(const struct lxc_terminal *terminal)
+{
+	return !terminal->path || !strequal(terminal->path, "none");
+}
 
 #endif /* __LXC_TERMINAL_H */
