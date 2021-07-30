@@ -1925,47 +1925,48 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 				    const struct lxc_terminal *console,
 				    char *ttydir)
 {
+	__do_close int fd_console = -EBADF, fd_ttydir_console = -EBADF;
 	int ret;
 	char path[PATH_MAX], lxcpath[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
-	/* create rootfs/dev/<ttydir> directory */
-	ret = strnprintf(path, sizeof(path), "%s/dev/%s", rootfs_path, ttydir);
-	if (ret < 0)
-		return -1;
-
-	ret = mkdir(path, 0755);
-	if (ret && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create \"%s\"", path);
- 	DEBUG("Created directory for console and tty devices at \"%s\"", path);
-
-	ret = strnprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs_path, ttydir);
-	if (ret < 0)
-		return -1;
-
-	ret = mknod(lxcpath, S_IFREG | 0000, 0);
+	/* create dev/<ttydir> */
+	ret = mkdirat(rootfs->dfd_dev, ttydir, 0755);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create \"%s\"", lxcpath);
+		return syserror("Failed to create \"%d/%s\"", rootfs->dfd_dev, ttydir);
+	TRACE("Created directory \"%d/%s\" for console and tty devices", rootfs->dfd_dev, ttydir);
 
-	ret = strnprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/console", ttydir);
 	if (ret < 0)
 		return -1;
 
-	if (file_exists(path)) {
-		ret = lxc_unstack_mountpoint(path, false);
+	/* create dev/<ttydir>/console */
+	fd_ttydir_console = open_at(rootfs->dfd_dev, rootfs->buf, PROTECT_OPEN | O_CREAT,
+			     PROTECT_LOOKUP_BENEATH, 0000);
+	if (fd_ttydir_console < 0)
+		return syserror("Failed to create console");
+
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+	if (ret < 0)
+		return -1;
+
+	if (file_exists(rootfs->buf)) {
+		ret = lxc_unstack_mountpoint(rootfs->buf, false);
 		if (ret < 0)
-			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", path);
+			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", rootfs->buf);
 		else
-			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, rootfs->buf);
 	}
 
-	ret = mknod(path, S_IFREG | 0000, 0);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create console");
+	/* create dev/<ttydir>/console */
+	fd_console = open_at(rootfs->dfd_dev, "console", PROTECT_OPEN | O_CREAT,
+			     PROTECT_LOOKUP_BENEATH, 0000);
+	if (fd_console < 0)
+		return syserror("Failed to create console");
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
+		return syserror("Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
 	if (can_use_mount_api()) {
@@ -1975,7 +1976,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 
 		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, rootfs->buf);
 	} else {
-		ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
+		ret = mount_fd(console->pty, fd_ttydir_console, "none", MS_BIND, 0);
 	}
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, lxcpath);
@@ -1989,7 +1990,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 				    PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH,
 				    0, false);
 	} else {
-		ret = safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs_path);
+		ret = mount_fd(fd_ttydir_console, fd_console, "none", MS_BIND, 0);
 	}
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to mount \"%s\" on \"%s\"", console->name, lxcpath);
