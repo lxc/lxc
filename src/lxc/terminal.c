@@ -767,6 +767,8 @@ void lxc_terminal_delete(struct lxc_terminal *terminal)
 		close(terminal->pty);
 	terminal->pty = -1;
 
+	terminal->pty_nr = -1;
+
 	if (terminal->log_fd >= 0)
 		close(terminal->log_fd);
 	terminal->log_fd = -1;
@@ -910,7 +912,7 @@ err:
 }
 
 int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
-			int *ret_ptx, int *ret_pty, char buf[static PATH_MAX])
+			int *ret_ptx, int *ret_pty, int *ret_pty_nr)
 {
 	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
@@ -957,12 +959,9 @@ int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
 	if (!same_file_lax(fd_pty, fd_opath_pty))
 		return syswarn_set(-ENODEV, "Terminal file descriptor changed");
 
-	ret = strnprintf(buf, PATH_MAX, "dev/pts/%d", pty_nr);
-	if (ret < 0)
-		return syswarn_set(-ENODEV, "Failed to create terminal pty name");
-
 	*ret_ptx = move_fd(fd_ptx);
 	*ret_pty = move_fd(fd_pty);
+	*ret_pty_nr = pty_nr;
 	return 0;
 }
 
@@ -978,9 +977,14 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 		return log_error_errno(-1, errno, "Failed to receive devpts fd");
 
 	ret = lxc_devpts_terminal(devpts_fd, conf, &terminal->ptx,
-				  &terminal->pty, terminal->name);
+				  &terminal->pty, &terminal->pty_nr);
 	if (ret < 0)
 		return ret;
+
+	ret = strnprintf(terminal->name, sizeof(terminal->name),
+			 "/dev/pts/%d", terminal->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to create path");
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
@@ -1270,6 +1274,7 @@ void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 void lxc_terminal_init(struct lxc_terminal *terminal)
 {
 	memset(terminal, 0, sizeof(*terminal));
+	terminal->pty_nr = -1;
 	terminal->pty = -EBADF;
 	terminal->ptx = -EBADF;
 	terminal->peer = -EBADF;

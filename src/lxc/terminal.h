@@ -58,6 +58,7 @@ struct lxc_terminal_state {
 };
 
 struct lxc_terminal {
+	int pty_nr;
 	int pty;
 	int ptx;
 	int peer;
@@ -254,6 +255,6 @@ __hidden extern void lxc_terminal_init(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_signal_sigmask_safe_blocked(struct lxc_terminal *terminal);
 __hidden extern int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
 					int *ret_ptx, int *ret_pty,
-					char buf[static PATH_MAX]);
+					int *ret_pty_nr);
 
 #endif /* __LXC_TERMINAL_H */
