@@ -961,7 +961,6 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
-	char tty_source[LXC_PROC_PID_FD_LEN], tty_target[LXC_PROC_PID_FD_LEN];
 
 	if (!conf->rootfs.path)
 		return 0;
@@ -994,7 +993,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to unlink %d(%s)",
 						       rootfs->dfd_dev, tty_name);
 
-			if (can_use_mount_api()) {
+			if (can_use_mount_api())
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1002,17 +1001,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
 						    false);
-			} else {
-				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
-				if (ret < 0)
-					return ret;
-
-				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
-				if (ret < 0)
-					return ret;
-
-				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
-			}
+			else
+				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1037,7 +1027,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to create tty mount target %d(%s)",
 						       rootfs->dfd_dev, rootfs->buf);
 
-			if (can_use_mount_api()) {
+			if (can_use_mount_api())
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1045,17 +1035,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH, 0,
 						    false);
-			} else {
-				ret = strnprintf(tty_source, sizeof(tty_source), "/proc/self/fd/%d", tty->pty);
-				if (ret < 0)
-					return ret;
-
-				ret = strnprintf(tty_target, sizeof(tty_target), "/proc/self/fd/%d", fd_to);
-				if (ret < 0)
-					return ret;
-
-				ret = mount(tty_source, tty_target, "none", MS_BIND, 0);
-			}
+			else
+				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
