@@ -670,6 +670,21 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 	return move_fd(fd);
 }
 
+int open_at_same(int fd_same, int dfd, const char *path, unsigned int o_flags,
+		 unsigned int resolve_flags, mode_t mode)
+{
+	__do_close int fd = -EBADF;
+
+	fd = open_at(dfd, path, o_flags, resolve_flags, mode);
+	if (fd < 0)
+		return -errno;
+
+	if (!same_file_lax(fd_same, fd))
+		return ret_errno(EINVAL);
+
+	return move_fd(fd);
+}
+
 int fd_make_nonblocking(int fd)
 {
 	int flags;
