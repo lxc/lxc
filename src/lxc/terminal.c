@@ -911,8 +911,7 @@ err:
 	return -ENODEV;
 }
 
-int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
-			int *ret_ptx, int *ret_pty, int *ret_pty_nr)
+int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_nr)
 {
 	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
@@ -966,7 +965,6 @@ int lxc_devpts_terminal(int devpts_fd, struct lxc_conf *conf,
 }
 
 static int lxc_terminal_create_native(const char *name, const char *lxcpath,
-				      struct lxc_conf *conf,
 				      struct lxc_terminal *terminal)
 {
 	__do_close int devpts_fd = -EBADF;
@@ -976,8 +974,8 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 	if (devpts_fd < 0)
 		return log_error_errno(-1, errno, "Failed to receive devpts fd");
 
-	ret = lxc_devpts_terminal(devpts_fd, conf, &terminal->ptx,
-				  &terminal->pty, &terminal->pty_nr);
+	ret = lxc_devpts_terminal(devpts_fd, &terminal->ptx, &terminal->pty,
+				  &terminal->pty_nr);
 	if (ret < 0)
 		return ret;
 
@@ -998,7 +996,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 int lxc_terminal_create(const char *name, const char *lxcpath,
 			struct lxc_conf *conf, struct lxc_terminal *terminal)
 {
-	if (!lxc_terminal_create_native(name, lxcpath, conf, terminal))
+	if (!lxc_terminal_create_native(name, lxcpath, terminal))
 		return 0;
 
 	return lxc_terminal_create_foreign(conf, terminal);

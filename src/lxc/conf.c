@@ -1071,7 +1071,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 		int pty_nr = -1;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ret = lxc_devpts_terminal(conf->devpts_fd, conf, &tty->ptx,
+		ret = lxc_devpts_terminal(conf->devpts_fd, &tty->ptx,
 					  &tty->pty, &pty_nr);
 		if (ret < 0) {
 			conf->ttys.max = i;
