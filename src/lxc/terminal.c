@@ -917,6 +917,9 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_
 	int pty_nr = -1;
 	int ret;
 
+	if (devpts_fd < 0)
+		return ret_errno(EBADF);
+
 	fd_ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (fd_ptx < 0) {
 		if (errno == ENOSPC)
@@ -962,6 +965,41 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_
 	*ret_pty = move_fd(fd_pty);
 	*ret_pty_nr = pty_nr;
 	return 0;
+}
+
+int lxc_terminal_parent(struct lxc_conf *conf)
+{
+	__do_close int fd_devpts = -EBADF;
+	struct lxc_terminal *console = &conf->console;
+	int ret;
+
+	if (!wants_console(&conf->console))
+		return 0;
+
+	/* Allocate console from the container's devpts. */
+	if (conf->pty_max > 1)
+		return 0;
+
+	/* Allocate console for the container from the host's devpts. */
+	fd_devpts = open_at(-EBADF,
+			    "/dev/pts",
+			    PROTECT_OPATH_DIRECTORY,
+			    PROTECT_LOOKUP_ABSOLUTE_XDEV,
+			    0);
+	if (fd_devpts < 0)
+		return syserror("Failed to open devpts instance");
+
+	ret = lxc_devpts_terminal(fd_devpts, &console->ptx,
+				  &console->pty, &console->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to allocate console");
+
+	ret = strnprintf(console->name, sizeof(console->name),
+			 "/dev/pts/%d", console->pty_nr);
+	if (ret < 0)
+		return syserror("Failed to create console path");
+
+	return lxc_terminal_map_ids(conf, &conf->console);
 }
 
 static int lxc_terminal_create_native(const char *name, const char *lxcpath,
@@ -1010,9 +1048,9 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	if (terminal->path && strequal(terminal->path, "none"))
 		return log_info(0, "No terminal requested");
 
-	ret = lxc_terminal_create_foreign(conf, terminal);
+	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0)
-		return -1;
+		goto err;
 
 	ret = lxc_terminal_create_log_file(terminal);
 	if (ret < 0)
