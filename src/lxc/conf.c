@@ -1876,14 +1876,16 @@ static int lxc_bind_mount_console(const struct lxc_terminal *console,
 static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console)
 {
+	__do_close int fd_console = -EBADF;
 	int ret;
-	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	/*
 	 * When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
 	if (exists_file_at(rootfs->dfd_dev, "console")) {
+		char *rootfs_path = rootfs->path ? rootfs->mount : "";
+
 		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
 		if (ret < 0)
 			return -1;
@@ -1899,23 +1901,19 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	 * For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
-	ret = mknodat(rootfs->dfd_dev, "console", S_IFREG | 0000, 0);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-errno, errno, "Failed to create console");
+	fd_console = open_at(rootfs->dfd_dev, "console", PROTECT_OPEN | O_CREAT,
+			     PROTECT_LOOKUP_BENEATH, 0000);
+	if (fd_console < 0)
+		return syserror("Failed to create console");
 
 	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", 0620, console->name);
 
-	if (can_use_mount_api()) {
+	if (can_use_mount_api())
 		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, "console");
-	} else {
-		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
-		if (ret < 0)
-			return ret;
-
-		ret = safe_mount(console->name, rootfs->buf, "none", MS_BIND, NULL, rootfs_path);
-	}
+	else
+		ret = mount_fd(console->pty, fd_console, "none", MS_BIND, NULL);
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, rootfs->buf);
 
