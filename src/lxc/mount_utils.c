@@ -635,3 +635,37 @@ int mount_beneath_fd(int fd, const char *source, const char *target,
 	TRACE("Mounted \"%s\" to \"%s\"", source, buf_target);
 	return 0;
 }
+
+int mount_fd(int fd_source, int fd_target, const char *fs_name,
+	     unsigned int flags, const void *data)
+{
+	int ret;
+	char buf_source[LXC_PROC_PID_FD_LEN], buf_target[LXC_PROC_PID_FD_LEN];
+	char *source = buf_source, *target = buf_target;
+
+	if (fd_source < 0) {
+		source = NULL;
+	} else {
+		ret = strnprintf(buf_source, sizeof(buf_source),
+				 "/proc/self/fd/%d", fd_source);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (fd_target < 0) {
+		target = NULL;
+	} else {
+		ret = strnprintf(buf_target, sizeof(buf_target),
+				 "/proc/self/fd/%d", fd_target);
+		if (ret < 0)
+			return ret;
+	}
+
+	ret = mount(source, target, "none", MS_BIND, 0);
+	if (ret < 0)
+		return syserror("Failed to mount \"%s\" to \"%s\"",
+				maybe_empty(source), maybe_empty(target));
+
+	TRACE("Mounted \"%s\" to \"%s\"", maybe_empty(source), maybe_empty(target));
+	return 0;
+}

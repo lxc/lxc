@@ -224,5 +224,7 @@ __hidden extern bool can_use_bind_mounts(void);
 __hidden extern int mount_beneath_fd(int fd, const char *source,
 				     const char *target, const char *fs_name,
 				     unsigned int flags, const void *data);
+__hidden extern int mount_fd(int fd_source, int fd_target, const char *fs_name,
+			     unsigned int flags, const void *data);
 
 #endif /* __LXC_MOUNT_UTILS_H */
