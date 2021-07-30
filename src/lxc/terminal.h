@@ -255,5 +255,11 @@ __hidden extern void lxc_terminal_init(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_signal_sigmask_safe_blocked(struct lxc_terminal *terminal);
 __hidden extern int lxc_devpts_terminal(int devpts_fd, int *ret_ptx,
 					int *ret_pty, int *ret_pty_nr);
+__hidden extern int lxc_terminal_parent(struct lxc_conf *conf);
+
+static inline bool wants_console(const struct lxc_terminal *terminal)
+{
+	return !terminal->path || !strequal(terminal->path, "none");
+}
 
 #endif /* __LXC_TERMINAL_H */

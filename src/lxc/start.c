@@ -850,6 +850,10 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		return log_error(-1, "Failed to run lxc.hook.pre-start for container \"%s\"", name);
 	TRACE("Ran pre-start hooks");
 
+	ret = lxc_terminal_parent(conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to allocate terminal");
+
 	/* The signal fd has to be created before forking otherwise if the child
 	 * process exits before we setup the signal fd, the event will be lost
 	 * and the command will be stuck.
@@ -859,39 +863,30 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		return log_error(-1, "Failed to setup SIGCHLD fd handler.");
 	TRACE("Set up signal fd");
 
-	/* Do this after setting up signals since it might unblock SIGWINCH. */
-	ret = lxc_terminal_setup(conf);
-	if (ret < 0) {
-		ERROR("Failed to create console");
-		goto out_restore_sigmask;
-	}
-	TRACE("Created console");
-
 	handler->cgroup_ops = cgroup_init(handler->conf);
 	if (!handler->cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
-		goto out_delete_terminal;
+		goto out_restore_sigmask;
 	}
 	TRACE("Initialized cgroup driver");
 
 	ret = lxc_read_seccomp_config(conf);
-	if (ret < 0)
-		return log_error(-1, "Failed loading seccomp policy");
+	if (ret < 0) {
+		ERROR("Failed to read seccomp policy");
+		goto out_restore_sigmask;
+	}
 	TRACE("Read seccomp policy");
 
 	ret = handler->lsm_ops->prepare(handler->lsm_ops, conf, handler->lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to initialize LSM");
-		goto out_delete_terminal;
+		goto out_restore_sigmask;
 	}
 	TRACE("Initialized LSM");
 
 	INFO("Container \"%s\" is initialized", name);
 	handler->monitor_status_fd = move_fd(status_fd);
 	return 0;
-
-out_delete_terminal:
-	lxc_terminal_delete(&handler->conf->console);
 
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
@@ -1927,6 +1922,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	ret = lxc_sync_fds_parent(handler);
 	if (ret < 0) {
 		SYSERROR("Failed to sync file descriptors with child");
+		goto out_delete_net;
+	}
+
+	ret = lxc_terminal_setup(conf);
+	if (ret < 0) {
+		SYSERROR("Failed to create console");
 		goto out_delete_net;
 	}
 

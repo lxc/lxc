@@ -1829,12 +1829,7 @@ static int setup_personality(personality_t persona)
 	return 0;
 }
 
-static inline bool wants_console(const struct lxc_terminal *terminal)
-{
-	return !terminal->path || !strequal(terminal->path, "none");
-}
-
-static int bind_mount_console(struct lxc_rootfs *rootfs,
+static int bind_mount_console(int fd_devpts, struct lxc_rootfs *rootfs,
 			      struct lxc_terminal *console, int fd_to)
 {
 	__do_close int fd_pty = -EBADF;
@@ -1856,7 +1851,7 @@ static int bind_mount_console(struct lxc_rootfs *rootfs,
 	 * created a detached mount based on the newly opened O_PATH file
 	 * descriptor and then safely mount.
 	 */
-	fd_pty = open_at_same(console->pty, rootfs->dfd_host, deabs(console->name),
+	fd_pty = open_at_same(console->pty, fd_devpts, fdstr(console->pty_nr),
 			      PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (fd_pty < 0)
 		return syserror("Failed to open \"%s\"", console->name);
@@ -1871,7 +1866,7 @@ static int bind_mount_console(struct lxc_rootfs *rootfs,
 	return mount_fd(fd_pty, fd_to, "none", MS_BIND, 0);
 }
 
-static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
+static int lxc_setup_dev_console(int fd_devpts, struct lxc_rootfs *rootfs,
 				 struct lxc_terminal *console)
 {
 	__do_close int fd_console = -EBADF;
@@ -1911,7 +1906,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return syserror("Failed to change console mode");
 
-	ret = bind_mount_console(rootfs, console, fd_console);
+	ret = bind_mount_console(fd_devpts, rootfs, console, fd_console);
 	if (ret < 0)
 		return syserror("Failed to mount \"%d(%s)\" on \"%d\"",
 				console->pty, console->name, fd_console);
@@ -1920,7 +1915,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
+static int lxc_setup_ttydir_console(int fd_devpts, struct lxc_rootfs *rootfs,
 				    struct lxc_terminal *console,
 				    char *ttydir)
 {
@@ -1982,7 +1977,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 		return syserror("Failed to change console mode");
 
 	/* bind mount console to '/dev/<ttydir>/console' */
-	ret = bind_mount_console(rootfs, console, fd_reg_ttydir_console);
+	ret = bind_mount_console(fd_devpts, rootfs, console, fd_reg_ttydir_console);
 	if (ret < 0)
 		return syserror("Failed to mount \"%d(%s)\" on \"%d\"",
 				console->pty, console->name, fd_reg_ttydir_console);
@@ -2022,20 +2017,52 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 			     struct lxc_rootfs *rootfs,
 			     struct lxc_terminal *console, char *ttydir)
 {
-	__do_close int fd_pty = -EBADF;
-	int ret;
+	__do_close int fd_devpts_host = -EBADF;
+	int fd_devpts = handler->conf->devpts_fd;
+	int ret = -1;
 
 	if (!wants_console(console))
 		return log_trace(0, "Skipping console setup");
 
+	if (console->pty < 0)  {
+		/*
+		 * Allocate a console from the container's devpts instance. We
+		 * have checked on the host that we have enough pty devices
+		 * available.
+		 */
+		ret = lxc_devpts_terminal(handler->conf->devpts_fd, &console->ptx,
+					  &console->pty, &console->pty_nr);
+		if (ret < 0)
+			return syserror("Failed to allocate console from container's devpts instance");
+
+		ret = strnprintf(console->name, sizeof(console->name),
+				"/dev/pts/%d", console->pty_nr);
+		if (ret < 0)
+			return syserror("Failed to create console path");
+	} else {
+		/*
+		 * We're using a console from the host's devpts instance. Open
+		 * it again so we can later verify that the console we're
+		 * supposed to use is still the same as the one we opened on
+		 * the host.
+		 */
+		fd_devpts_host = open_at(rootfs->dfd_host,
+					 "dev/pts",
+					 PROTECT_OPATH_DIRECTORY,
+					 PROTECT_LOOKUP_BENEATH_XDEV,
+					 0);
+		if (fd_devpts_host < 0)
+			return syserror("Failed to open host devpts");
+
+		fd_devpts = fd_devpts_host;
+	}
+
 	if (ttydir)
-		ret = lxc_setup_ttydir_console(rootfs, console, ttydir);
+		ret = lxc_setup_ttydir_console(fd_devpts, rootfs, console, ttydir);
 	else
-		ret = lxc_setup_dev_console(rootfs, console);
+		ret = lxc_setup_dev_console(fd_devpts, rootfs, console);
 	if (ret < 0)
 		return syserror("Failed to setup console");
-
-	fd_pty = move_fd(console->pty);
 
 	/*
 	 * Some init's such as busybox will set sane tty settings on stdin,
@@ -2044,13 +2071,20 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
-	if (fd_pty >= 0) {
+	if (console->pty >= 0) {
 		if (handler->daemonize || !handler->conf->is_execute)
-			ret = set_stdfds(fd_pty);
+			ret = set_stdfds(console->pty);
 		else
-			ret = lxc_terminal_set_stdfds(fd_pty);
+			ret = lxc_terminal_set_stdfds(console->pty);
 		if (ret < 0)
-			return syserror("Failed to redirect std{in,out,err} to pty file descriptor %d", fd_pty);
+			return syserror("Failed to redirect std{in,out,err} to pty file descriptor %d", console->pty);
+
+		/*
+		 * If the console has been allocated from the host's devpts
+		 * we're done and we don't need to send fds to the parent.
+		 */
+		if (fd_devpts_host >= 0)
+			lxc_terminal_delete(console);
 	}
 
 	return ret;
@@ -4057,6 +4091,56 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	return ret;
 }
 
+static int lxc_send_console_to_parent(struct lxc_handler *handler)
+{
+	struct lxc_terminal *console = &handler->conf->console;
+	int ret;
+
+	if (!wants_console(console))
+		return 0;
+
+	/* We've already allocated a console from the host's devpts instance. */
+	if (console->pty < 0)
+		return 0;
+
+	ret = __lxc_abstract_unix_send_two_fds(handler->data_sock[0],
+					       console->ptx, console->pty,
+					       console,
+					       sizeof(struct lxc_terminal));
+	if (ret < 0)
+		return syserror("Fail to send console to parent");
+
+	TRACE("Sent console to parent");
+	return 0;
+}
+
+static int lxc_recv_console_from_child(struct lxc_handler *handler)
+{
+	__do_close int fd_ptx = -EBADF, fd_pty = -EBADF;
+	struct lxc_terminal *console = &handler->conf->console;
+	int ret;
+
+	if (!wants_console(console))
+		return 0;
+
+	/* We've already allocated a console from the host's devpts instance. */
+	if (console->pty >= 0)
+		return 0;
+
+	ret = __lxc_abstract_unix_recv_two_fds(handler->data_sock[1],
+					       &fd_ptx, &fd_pty,
+					       console,
+					       sizeof(struct lxc_terminal));
+	if (ret < 0)
+		return syserror("Fail to receive console from child");
+
+	console->ptx = move_fd(fd_ptx);
+	console->pty = move_fd(fd_pty);
+
+	TRACE("Received console from child");
+	return 0;
+}
+
 int lxc_sync_fds_parent(struct lxc_handler *handler)
 {
 	int ret;
@@ -4079,6 +4163,10 @@ int lxc_sync_fds_parent(struct lxc_handler *handler)
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to receive names and ifindices for network devices from child");
 	}
+
+	ret = lxc_recv_console_from_child(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to receive console from child");
 
 	TRACE("Finished syncing file descriptors with child");
 	return 0;
@@ -4105,6 +4193,10 @@ int lxc_sync_fds_child(struct lxc_handler *handler)
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to send network device names and ifindices to parent");
 	}
+
+	ret = lxc_send_console_to_parent(handler);
+	if (ret < 0)
+		return syserror_ret(ret, "Failed to send console to parent");
 
 	TRACE("Finished syncing file descriptors with parent");
 	return 0;
