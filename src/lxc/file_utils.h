@@ -87,6 +87,9 @@ __hidden extern bool exists_dir_at(int dir_fd, const char *path);
 __hidden extern bool exists_file_at(int dir_fd, const char *path);
 __hidden extern int open_at(int dfd, const char *path, unsigned int o_flags,
 			    unsigned int resolve_flags, mode_t mode);
+__hidden extern int open_at_same(int fd_same, int dfd, const char *path,
+				 unsigned int o_flags,
+				 unsigned int resolve_flags, mode_t mode);
 static inline int open_beneath(int dfd, const char *path, unsigned int flags)
 {
 	return open_at(dfd, path, flags, PROTECT_LOOKUP_BENEATH, 0);
