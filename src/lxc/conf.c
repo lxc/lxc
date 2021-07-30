@@ -1087,14 +1087,17 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 		return -ENOMEM;
 
 	for (size_t i = 0; i < conf->ttys.max; i++) {
+		int pty_nr = -1;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ret = lxc_devpts_terminal(conf->devpts_fd, conf, &tty->ptx, &tty->pty, tty->name);
+		ret = lxc_devpts_terminal(conf->devpts_fd, conf, &tty->ptx,
+					  &tty->pty, &pty_nr);
 		if (ret < 0) {
 			conf->ttys.max = i;
 			return syserror_set(-ENOTTY, "Failed to create tty %zu", i);
 		}
-		DEBUG("Created tty with ptx fd %d and pty fd %d", tty->ptx, tty->pty);
+		DEBUG("Created tty with ptx fd %d and pty fd %d and index %d",
+		      tty->ptx, tty->pty, pty_nr);
 		tty->busy = -1;
 	}
 
@@ -3246,6 +3249,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.proxy.pty = -1;
 	new->console.ptx = -EBADF;
 	new->console.pty = -EBADF;
+	new->console.pty_nr = -1;
 	new->console.name[0] = '\0';
 	new->devpts_fd = -EBADF;
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
