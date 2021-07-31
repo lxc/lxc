@@ -911,7 +911,8 @@ err:
 	return -ENODEV;
 }
 
-int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_nr)
+int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty,
+			int *ret_pty_nr, bool require_tiocgptpeer)
 {
 	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
@@ -946,20 +947,35 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty, int *ret_pty_
 			break;
 		}
 
-		return ret_errno(ENODEV);
+		if (require_tiocgptpeer)
+			return ret_errno(ENODEV);
 	}
 
 	ret = ioctl(fd_ptx, TIOCGPTN, &pty_nr);
 	if (ret)
 		return syswarn_set(-ENODEV, "Failed to retrieve name of terminal pty");
 
-	fd_opath_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPATH_FILE,
-			       PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
-	if (fd_opath_pty < 0)
-		return syswarn_set(-ENODEV, "Failed to open terminal pty fd by path %d/%d", devpts_fd, pty_nr);
+	if (fd_pty < 0) {
+		/*
+		 * If we end up it means that TIOCGPTPEER isn't supported but
+		 * the caller told us they trust the devpts instance so we use
+		 * the pty nr to open the pty side.
+		 */
+		fd_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPEN_RW,
+				 PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+		if (fd_pty < 0)
+			return syswarn_set(-ENODEV, "Failed to open terminal pty fd by path %d/%d",
+					   devpts_fd, pty_nr);
+	} else {
+		fd_opath_pty = open_at(devpts_fd, fdstr(pty_nr), PROTECT_OPATH_FILE,
+				       PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+		if (fd_opath_pty < 0)
+			return syswarn_set(-ENODEV, "Failed to open terminal pty fd by path %d/%d",
+					   devpts_fd, pty_nr);
 
-	if (!same_file_lax(fd_pty, fd_opath_pty))
-		return syswarn_set(-ENODEV, "Terminal file descriptor changed");
+		if (!same_file_lax(fd_pty, fd_opath_pty))
+			return syswarn_set(-ENODEV, "Terminal file descriptor changed");
+	}
 
 	*ret_ptx = move_fd(fd_ptx);
 	*ret_pty = move_fd(fd_pty);
@@ -989,8 +1005,8 @@ int lxc_terminal_parent(struct lxc_conf *conf)
 	if (fd_devpts < 0)
 		return syserror("Failed to open devpts instance");
 
-	ret = lxc_devpts_terminal(fd_devpts, &console->ptx,
-				  &console->pty, &console->pty_nr);
+	ret = lxc_devpts_terminal(fd_devpts, &console->ptx, &console->pty,
+				  &console->pty_nr, false);
 	if (ret < 0)
 		return syserror("Failed to allocate console");
 
@@ -1013,7 +1029,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 		return log_error_errno(-1, errno, "Failed to receive devpts fd");
 
 	ret = lxc_devpts_terminal(devpts_fd, &terminal->ptx, &terminal->pty,
-				  &terminal->pty_nr);
+				  &terminal->pty_nr, true);
 	if (ret < 0)
 		return ret;
 
