@@ -1026,7 +1026,7 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath,
 
 	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
 	if (devpts_fd < 0)
-		return log_error_errno(-1, errno, "Failed to receive devpts fd");
+		return sysinfo("Failed to receive devpts fd");
 
 	ret = lxc_devpts_terminal(devpts_fd, &terminal->ptx, &terminal->pty,
 				  &terminal->pty_nr, true);
