@@ -944,9 +944,10 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty,
 			break;
 		default:
 			SYSWARN("Failed to allocate new pty device");
-			break;
+			return -errno;
 		}
 
+		/* The caller tells us that they trust the devpts instance. */
 		if (require_tiocgptpeer)
 			return ret_errno(ENODEV);
 	}
