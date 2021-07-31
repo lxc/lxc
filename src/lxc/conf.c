@@ -1072,7 +1072,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = lxc_devpts_terminal(conf->devpts_fd, &tty->ptx,
-					  &tty->pty, &pty_nr);
+					  &tty->pty, &pty_nr, false);
 		if (ret < 0) {
 			conf->ttys.max = i;
 			return syserror_set(-ENOTTY, "Failed to create tty %zu", i);
@@ -2031,7 +2031,7 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 		 * available.
 		 */
 		ret = lxc_devpts_terminal(handler->conf->devpts_fd, &console->ptx,
-					  &console->pty, &console->pty_nr);
+					  &console->pty, &console->pty_nr, false);
 		if (ret < 0)
 			return syserror("Failed to allocate console from container's devpts instance");
 
