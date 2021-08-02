@@ -606,66 +606,56 @@ bool can_use_bind_mounts(void)
 	return supported == 1;
 }
 
-int mount_beneath_fd(int fd, const char *source, const char *target,
-		     const char *fs_name, unsigned int flags, const void *data)
+int mount_at(int dfd_from, const char *path_from, __u64 resolve_flags_from,
+	     int dfd_to, const char *path_to, __u64 resolve_flags_to,
+	     const char *fs_name, unsigned int flags, const void *data)
 {
-	int ret;
-	char buf_source[PATH_MAX], buf_target[PATH_MAX];
+	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
+	char *from = NULL, *to = NULL;
+	int fd_from, fd_to, ret;
+	char buf_from[LXC_PROC_SELF_FD_LEN], buf_to[LXC_PROC_SELF_FD_LEN];
 
-	if (abspath(source) || abspath(target))
+	if (dfd_from < 0 && !abspath(path_from))
 		return ret_errno(EINVAL);
 
-	ret = strnprintf(buf_target, sizeof(buf_target), "/proc/self/fd/%d/%s", fd, target);
-	if (ret < 0)
-		return syserror("Failed to create path");
+	if (dfd_to < 0 && !abspath(path_to))
+		return ret_errno(EINVAL);
 
-	if (is_empty_string(source)) {
-		ret = mount(fs_name ?: "", buf_target, fs_name, flags, data);
+	if (!is_empty_string(path_from)) {
+		__fd_from = open_at(dfd_from, path_from, PROTECT_OPATH_FILE, resolve_flags_from, 0);
+		if (__fd_from < 0)
+			return -errno;
+		fd_from = __fd_from;
 	} else {
-		ret = strnprintf(buf_source, sizeof(buf_source), "/proc/self/fd/%d/%s", fd, source);
+		fd_from = dfd_from;
+	}
+	if (fd_from >= 0) {
+		ret = strnprintf(buf_from, sizeof(buf_from), "/proc/self/fd/%d", fd_from);
 		if (ret < 0)
 			return syserror("Failed to create path");
-
-		source = buf_source;
-		ret = mount(source, buf_target, fs_name, flags, data);
+		from = buf_from;
 	}
-	if (ret < 0)
-		return syserror("Failed to mount \"%s\" to \"%s\"", source, buf_target);
 
-	TRACE("Mounted \"%s\" to \"%s\"", source, buf_target);
-	return 0;
-}
-
-int mount_fd(int fd_source, int fd_target, const char *fs_name,
-	     unsigned int flags, const void *data)
-{
-	int ret;
-	char buf_source[LXC_PROC_PID_FD_LEN], buf_target[LXC_PROC_PID_FD_LEN];
-	char *source = buf_source, *target = buf_target;
-
-	if (fd_source < 0) {
-		source = NULL;
+	if (!is_empty_string(path_to)) {
+		__fd_to = open_at(dfd_to, path_to, PROTECT_OPATH_FILE, resolve_flags_to, 0);
+		if (__fd_to < 0)
+			return -errno;
+		fd_to = __fd_to;
 	} else {
-		ret = strnprintf(buf_source, sizeof(buf_source),
-				 "/proc/self/fd/%d", fd_source);
+		fd_to = dfd_to;
+	}
+	if (fd_to >= 0) {
+		ret = strnprintf(buf_to, sizeof(buf_to), "/proc/self/fd/%d", fd_to);
 		if (ret < 0)
-			return ret;
+			return syserror("Failed to create path");
+		to = buf_to;
 	}
 
-	if (fd_target < 0) {
-		target = NULL;
-	} else {
-		ret = strnprintf(buf_target, sizeof(buf_target),
-				 "/proc/self/fd/%d", fd_target);
-		if (ret < 0)
-			return ret;
-	}
-
-	ret = mount(source, target, "none", MS_BIND, 0);
+	ret = mount(from ?: fs_name, to, fs_name, flags, data);
 	if (ret < 0)
 		return syserror("Failed to mount \"%s\" to \"%s\"",
-				maybe_empty(source), maybe_empty(target));
+				maybe_empty(from), maybe_empty(to));
 
-	TRACE("Mounted \"%s\" to \"%s\"", maybe_empty(source), maybe_empty(target));
+	TRACE("Mounted \"%s\" to \"%s\"", maybe_empty(from), maybe_empty(to));
 	return 0;
 }
