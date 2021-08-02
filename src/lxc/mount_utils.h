@@ -221,10 +221,15 @@ __hidden extern unsigned long add_required_remount_flags(const char *s,
 
 __hidden extern bool can_use_mount_api(void);
 __hidden extern bool can_use_bind_mounts(void);
-__hidden extern int mount_beneath_fd(int fd, const char *source,
-				     const char *target, const char *fs_name,
-				     unsigned int flags, const void *data);
-__hidden extern int mount_fd(int fd_source, int fd_target, const char *fs_name,
-			     unsigned int flags, const void *data);
+__hidden extern int mount_at(int dfd_from, const char *path_from,
+			     __u64 resolve_flags_from, int dfd_to,
+			     const char *path_to, __u64 resolve_flags_to,
+			     const char *fs_name, unsigned int flags,
+			     const void *data);
+static inline int mount_fd(int fd_from, int fd_to, const char *fs_name,
+			   unsigned int flags, const void *data)
+{
+	return mount_at(fd_from, "", 0, fd_to, "", 0, fs_name, flags, data);
+}
 
 #endif /* __LXC_MOUNT_UTILS_H */

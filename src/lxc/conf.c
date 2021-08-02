@@ -1089,7 +1089,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 
 void lxc_delete_tty(struct lxc_tty_info *ttys)
 {
-	if (!ttys->tty)
+	if (!ttys || !ttys->tty)
 		return;
 
 	for (int i = 0; i < ttys->max; i++) {
@@ -1742,7 +1742,9 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 
 		for (ret = -1, opts = mntopt_sets; opts && *opts; opts++) {
 			/* mount new devpts instance */
-			ret = mount_beneath_fd(rootfs->dfd_dev, "", "pts", "devpts", MS_NOSUID | MS_NOEXEC, *opts);
+			ret = mount_at(rootfs->dfd_dev, "", 0,
+				       rootfs->dfd_dev, "pts", PROTECT_LOOKUP_BENEATH,
+				       "devpts", MS_NOSUID | MS_NOEXEC, *opts);
 			if (ret == 0)
 				break;
 		}
@@ -1775,7 +1777,9 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	DEBUG("Created \"/dev/ptmx\" file as bind mount target");
 
 	/* Main option: use a bind-mount to please AppArmor  */
-	ret = mount_beneath_fd(rootfs->dfd_dev, "pts/ptmx", "ptmx", NULL, MS_BIND, NULL);
+	ret = mount_at(rootfs->dfd_dev, "pts/ptmx", (PROTECT_LOOKUP_BENEATH_WITH_SYMLINKS & ~RESOLVE_NO_XDEV),
+		       rootfs->dfd_dev, "ptmx", (PROTECT_LOOKUP_BENEATH_WITH_SYMLINKS & ~RESOLVE_NO_XDEV),
+		       NULL, MS_BIND, NULL);
 	if (!ret)
 		return log_debug(0, "Bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 	else
@@ -3026,7 +3030,7 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 out:
 	ret = lxc_abstract_unix_send_credential(handler->data_sock[0], NULL, 0);
 	if (ret < 0)
-		return syserror("Failed to inform child that we are done setting up mounts");
+		return syserror("Failed to inform parent that we are done setting up mounts");
 
 	return fret;
 }
@@ -4055,40 +4059,45 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
-	int i;
-	struct lxc_terminal_info *tty;
-	int ret = -1;
+	call_cleaner(lxc_delete_tty) struct lxc_tty_info *info_new = &(struct lxc_tty_info){};
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
-	struct lxc_tty_info *ttys = &conf->ttys;
+	struct lxc_tty_info *tty_info = &conf->ttys;
+	size_t ttys_max = tty_info->max;
+	struct lxc_terminal_info *terminal_info;
+	int ret;
 
-	if (!conf->ttys.max)
+	if (!ttys_max)
 		return 0;
 
-	ttys->tty = malloc(sizeof(*ttys->tty) * ttys->max);
-	if (!ttys->tty)
-		return -1;
+	info_new->tty = malloc(sizeof(*(info_new->tty)) * ttys_max);
+	if (!info_new->tty)
+		return ret_errno(ENOMEM);
 
-	for (i = 0; i < conf->ttys.max; i++) {
-		int ttyx = -EBADF, ttyy = -EBADF;
-
-		ret = lxc_abstract_unix_recv_two_fds(sock, &ttyx, &ttyy);
-		if (ret < 0)
-			break;
-
-		tty = &ttys->tty[i];
-		tty->busy = -1;
-		tty->ptx = ttyx;
-		tty->pty = ttyy;
-		TRACE("Received pty with ptx fd %d and pty fd %d from child", tty->ptx, tty->pty);
+	for (int i = 0; i < ttys_max; i++) {
+		terminal_info = &info_new->tty[i];
+		terminal_info->busy = -1;
+		terminal_info->ptx = -EBADF;
+		terminal_info->pty = -EBADF;
 	}
 
-	if (ret < 0)
-		SYSERROR("Failed to receive %zu ttys from child", ttys->max);
-	else
-		TRACE("Received %zu ttys from child", ttys->max);
+	for (int i = 0; i < ttys_max; i++) {
+		int ptx = -EBADF, pty = -EBADF;
 
-	return ret;
+		ret = lxc_abstract_unix_recv_two_fds(sock, &ptx, &pty);
+		if (ret < 0)
+			return syserror("Failed to receive %zu ttys from child", ttys_max);
+
+		terminal_info = &info_new->tty[i];
+		terminal_info->ptx = ptx;
+		terminal_info->pty = pty;
+		TRACE("Received pty with ptx fd %d and pty fd %d from child",
+		      terminal_info->ptx, terminal_info->pty);
+	}
+
+	tty_info->tty = move_ptr(info_new->tty);
+	TRACE("Received %zu ttys from child", ttys_max);
+	return 0;
 }
 
 static int lxc_send_console_to_parent(struct lxc_handler *handler)
