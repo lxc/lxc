@@ -3030,7 +3030,7 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 out:
 	ret = lxc_abstract_unix_send_credential(handler->data_sock[0], NULL, 0);
 	if (ret < 0)
-		return syserror("Failed to inform child that we are done setting up mounts");
+		return syserror("Failed to inform parent that we are done setting up mounts");
 
 	return fret;
 }
