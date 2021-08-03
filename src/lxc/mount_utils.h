@@ -186,17 +186,34 @@ static inline int fs_mount(const char *fs_name, int dfd_from,
 	return fs_attach(fd_fs, dfd_to, path_to, o_flags_to, resolve_flags_to, attr_flags);
 }
 
-__hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
-				  __u64 o_flags_from, __u64 resolve_flags_from,
-				  int dfd_to, const char *path_to,
-				  __u64 o_flags_to, __u64 resolve_flags_to,
-				  unsigned int attr_flags, bool recursive);
-__hidden extern int fd_mount_idmapped(int dfd_from, const char *path_from,
-				      __u64 o_flags_from, __u64 resolve_flags_from,
-				      int dfd_to, const char *path_to,
-				      __u64 o_flags_to, __u64 resolve_flags_to,
-				      unsigned int attr_flags, int userns_fd,
-				      bool recursive);
+__hidden extern int __fd_bind_mount(int dfd_from, const char *path_from,
+				    __u64 o_flags_from,
+				    __u64 resolve_flags_from, int dfd_to,
+				    const char *path_to, __u64 o_flags_to,
+				    __u64 resolve_flags_to, __u64 attr_flags,
+				    int userns_fd, bool recursive);
+static inline int fd_mount_idmapped(int dfd_from, const char *path_from,
+				    __u64 o_flags_from,
+				    __u64 resolve_flags_from, int dfd_to,
+				    const char *path_to, __u64 o_flags_to,
+				    __u64 resolve_flags_to, __u64 attr_flags,
+				    int userns_fd, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, userns_fd, recursive);
+}
+
+static inline int fd_bind_mount(int dfd_from, const char *path_from,
+				__u64 o_flags_from, __u64 resolve_flags_from,
+				int dfd_to, const char *path_to,
+				__u64 o_flags_to, __u64 resolve_flags_to,
+				__u64 attr_flags, bool recursive)
+{
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
+			       dfd_to, path_to, o_flags_to, resolve_flags_to,
+			       attr_flags, -EBADF, recursive);
+}
 __hidden extern int create_detached_idmapped_mount(const char *path,
 						   int userns_fd, bool recursive);
 __hidden extern int move_detached_mount(int dfd_from, int dfd_to,
