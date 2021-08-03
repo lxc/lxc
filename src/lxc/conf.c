@@ -946,11 +946,20 @@ static int open_ttymnt_at(int dfd, const char *path)
 {
 	int fd;
 
-	fd = open_at(dfd, path, PROTECT_OPEN | O_CREAT | O_EXCL,
-		     PROTECT_LOOKUP_BENEATH, 0);
-	if (fd < 0 && (errno == ENXIO || errno == EEXIST))
-		fd = open_at(dfd, path, PROTECT_OPATH_FILE,
-			     PROTECT_LOOKUP_BENEATH, 0);
+	fd = open_at(dfd, path,
+		     PROTECT_OPEN | O_CREAT | O_EXCL,
+		     PROTECT_LOOKUP_BENEATH,
+		     0);
+	if (fd < 0) {
+		if (!IN_SET(errno, ENXIO, EEXIST))
+			return syserror("Failed to create \"%d/\%s\"", dfd, path);
+
+		SYSINFO("Failed to create \"%d/\%s\"", dfd, path);
+		fd = open_at(dfd, path,
+			     PROTECT_OPATH_FILE,
+			     PROTECT_LOOKUP_BENEATH,
+			     0);
+	}
 
 	return fd;
 }
