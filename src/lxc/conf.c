@@ -615,6 +615,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	__do_close int dfd_idmapped = -EBADF, fd_userns = -EBADF;
 	struct lxc_rootfs *rootfs = &handler->conf->rootfs;
 	struct lxc_storage *storage = rootfs->storage;
+	const struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	int ret;
 	const char *path_source;
 
@@ -643,7 +644,9 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 
 	path_source = lxc_storage_get_path(storage->src, storage->type);
 
-	dfd_idmapped = create_detached_idmapped_mount(path_source, fd_userns, true);
+	dfd_idmapped = create_detached_idmapped_mount(path_source, fd_userns, true,
+						      mnt_opts->attr.attr_set,
+						      mnt_opts->attr.attr_clr);
 	if (dfd_idmapped < 0)
 		return syserror("Failed to create detached idmapped mount");
 
@@ -946,11 +949,20 @@ static int open_ttymnt_at(int dfd, const char *path)
 {
 	int fd;
 
-	fd = open_at(dfd, path, PROTECT_OPEN | O_CREAT | O_EXCL,
-		     PROTECT_LOOKUP_BENEATH, 0);
-	if (fd < 0 && (errno == ENXIO || errno == EEXIST))
-		fd = open_at(dfd, path, PROTECT_OPATH_FILE,
-			     PROTECT_LOOKUP_BENEATH, 0);
+	fd = open_at(dfd, path,
+		     PROTECT_OPEN | O_CREAT | O_EXCL,
+		     PROTECT_LOOKUP_BENEATH,
+		     0);
+	if (fd < 0) {
+		if (!IN_SET(errno, ENXIO, EEXIST))
+			return syserror("Failed to create \"%d/\%s\"", dfd, path);
+
+		SYSINFO("Failed to create \"%d/\%s\"", dfd, path);
+		fd = open_at(dfd, path,
+			     PROTECT_OPATH_FILE,
+			     PROTECT_LOOKUP_BENEATH,
+			     0);
+	}
 
 	return fd;
 }
@@ -999,7 +1011,10 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH_XDEV,
 						    fd_to, "",
 						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    0,
+						    0,
+						    0,
 						    false);
 			else
 				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
@@ -1033,7 +1048,10 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH_XDEV,
 						    fd_to, "",
 						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH, 0,
+						    PROTECT_LOOKUP_BENEATH,
+						    0,
+						    0,
+						    0,
 						    false);
 			else
 				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
@@ -1351,7 +1369,11 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 					    PROTECT_LOOKUP_BENEATH_XDEV,
 					    rootfs->dfd_dev, device->name,
 					    PROTECT_OPATH_FILE,
-					    PROTECT_LOOKUP_BENEATH, 0, false);
+					    PROTECT_LOOKUP_BENEATH,
+					    0,
+					    0,
+					    0,
+					    false);
 		} else {
 			char path[PATH_MAX];
 
@@ -1865,7 +1887,7 @@ static int bind_mount_console(int fd_devpts, struct lxc_rootfs *rootfs,
 	 * we're operating directly on the fd.
 	 */
 	if (can_use_mount_api())
-		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, false);
+		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, 0, 0, false);
 
 	return mount_fd(fd_pty, fd_to, "none", MS_BIND, 0);
 }
@@ -2005,6 +2027,8 @@ static int lxc_setup_ttydir_console(int fd_devpts, struct lxc_rootfs *rootfs,
 				    "",
 				    PROTECT_OPATH_FILE,
 				    PROTECT_LOOKUP_BENEATH,
+				    0,
+				    0,
 				    0,
 				    false);
 	else
@@ -2176,12 +2200,14 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 		if (strequal(mo->name, "rbind")) {
 			opts->recursive = 1;
 			opts->bind = 1;
+			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND | MS_REC */
 			return 0;
 		}
 
 		/* This is a bind-mount. */
 		if (strequal(mo->name, "bind")) {
 			opts->bind = 1;
+			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND */
 			return 0;
 		}
 
@@ -2190,28 +2216,31 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 
 		if (mo->clear) {
 			opts->attr.attr_clr |= mo->flag;
+			opts->mnt_flags &= ~mo->legacy_flag;
 			TRACE("Lowering %s", mo->name);
 		} else {
 			opts->attr.attr_set |= mo->flag;
+			opts->mnt_flags |= mo->legacy_flag;
 			TRACE("Raising %s", mo->name);
 		}
 
 		return 0;
 	}
 
-	for (struct mount_opt *mo = &mount_opt[0]; mo->name != NULL; mo++) {
+	for (struct mount_opt *mo = &propagation_opt[0]; mo->name != NULL; mo++) {
 		if (!strnequal(opt, mo->name, strlen(mo->name)))
 			continue;
 
 		/* TODO: Handle recursive propagation requests. */
 		opts->attr.propagation = mo->flag;
+		opts->mnt_flags |= mo->legacy_flag;
 		return 0;
 	}
 
 	return 0;
 }
 
-static int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
+int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 {
 	__do_free char *mntopts_new = NULL, *mntopts_dup = NULL;
 	char *end = NULL, *mntopt_cur = NULL;
