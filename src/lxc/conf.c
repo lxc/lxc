@@ -615,6 +615,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	__do_close int dfd_idmapped = -EBADF, fd_userns = -EBADF;
 	struct lxc_rootfs *rootfs = &handler->conf->rootfs;
 	struct lxc_storage *storage = rootfs->storage;
+	const struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	int ret;
 	const char *path_source;
 
@@ -643,7 +644,9 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 
 	path_source = lxc_storage_get_path(storage->src, storage->type);
 
-	dfd_idmapped = create_detached_idmapped_mount(path_source, fd_userns, true);
+	dfd_idmapped = create_detached_idmapped_mount(path_source, fd_userns, true,
+						      mnt_opts->attr.attr_set,
+						      mnt_opts->attr.attr_clr);
 	if (dfd_idmapped < 0)
 		return syserror("Failed to create detached idmapped mount");
 
@@ -1008,7 +1011,10 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH_XDEV,
 						    fd_to, "",
 						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    0,
+						    0,
+						    0,
 						    false);
 			else
 				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
@@ -1042,7 +1048,10 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH_XDEV,
 						    fd_to, "",
 						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH, 0,
+						    PROTECT_LOOKUP_BENEATH,
+						    0,
+						    0,
+						    0,
 						    false);
 			else
 				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
@@ -1360,7 +1369,11 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 					    PROTECT_LOOKUP_BENEATH_XDEV,
 					    rootfs->dfd_dev, device->name,
 					    PROTECT_OPATH_FILE,
-					    PROTECT_LOOKUP_BENEATH, 0, false);
+					    PROTECT_LOOKUP_BENEATH,
+					    0,
+					    0,
+					    0,
+					    false);
 		} else {
 			char path[PATH_MAX];
 
@@ -1874,7 +1887,7 @@ static int bind_mount_console(int fd_devpts, struct lxc_rootfs *rootfs,
 	 * we're operating directly on the fd.
 	 */
 	if (can_use_mount_api())
-		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, false);
+		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, 0, 0, false);
 
 	return mount_fd(fd_pty, fd_to, "none", MS_BIND, 0);
 }
@@ -2014,6 +2027,8 @@ static int lxc_setup_ttydir_console(int fd_devpts, struct lxc_rootfs *rootfs,
 				    "",
 				    PROTECT_OPATH_FILE,
 				    PROTECT_LOOKUP_BENEATH,
+				    0,
+				    0,
 				    0,
 				    false);
 	else
@@ -2225,7 +2240,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 	return 0;
 }
 
-static int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
+int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 {
 	__do_free char *mntopts_new = NULL, *mntopts_dup = NULL;
 	char *end = NULL, *mntopt_cur = NULL;

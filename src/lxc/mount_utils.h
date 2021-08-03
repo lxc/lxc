@@ -190,32 +190,37 @@ __hidden extern int __fd_bind_mount(int dfd_from, const char *path_from,
 				    __u64 o_flags_from,
 				    __u64 resolve_flags_from, int dfd_to,
 				    const char *path_to, __u64 o_flags_to,
-				    __u64 resolve_flags_to, __u64 attr_flags,
+				    __u64 resolve_flags_to, __u64 attr_set,
+				    __u64 attr_clr, __u64 propagation,
 				    int userns_fd, bool recursive);
 static inline int fd_mount_idmapped(int dfd_from, const char *path_from,
 				    __u64 o_flags_from,
 				    __u64 resolve_flags_from, int dfd_to,
 				    const char *path_to, __u64 o_flags_to,
-				    __u64 resolve_flags_to, __u64 attr_flags,
+				    __u64 resolve_flags_to, __u64 attr_set,
+				    __u64 attr_clr, __u64 propagation,
 				    int userns_fd, bool recursive)
 {
-	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
-			       dfd_to, path_to, o_flags_to, resolve_flags_to,
-			       attr_flags, userns_fd, recursive);
+	return __fd_bind_mount(dfd_from, path_from, o_flags_from,
+			       resolve_flags_from, dfd_to, path_to, o_flags_to,
+			       resolve_flags_to, attr_set, attr_clr,
+			       propagation, userns_fd, recursive);
 }
 
 static inline int fd_bind_mount(int dfd_from, const char *path_from,
 				__u64 o_flags_from, __u64 resolve_flags_from,
 				int dfd_to, const char *path_to,
 				__u64 o_flags_to, __u64 resolve_flags_to,
-				__u64 attr_flags, bool recursive)
+				__u64 attr_set, __u64 attr_clr,
+				__u64 propagation, bool recursive)
 {
 	return __fd_bind_mount(dfd_from, path_from, o_flags_from, resolve_flags_from,
 			       dfd_to, path_to, o_flags_to, resolve_flags_to,
-			       attr_flags, -EBADF, recursive);
+			       attr_set, attr_clr, propagation, -EBADF, recursive);
 }
 __hidden extern int create_detached_idmapped_mount(const char *path,
-						   int userns_fd, bool recursive);
+						   int userns_fd, bool recursive,
+						   __u64 attr_set, __u64 attr_clr);
 __hidden extern int move_detached_mount(int dfd_from, int dfd_to,
 					const char *path_to, __u64 o_flags_to,
 					__u64 resolve_flags_to);

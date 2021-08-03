@@ -26,6 +26,25 @@
 
 lxc_log_define(mount_utils, lxc);
 
+/*
+ * Since the MOUNT_ATTR_<atime> values are an enum, not a bitmap, users wanting
+ * to transition to a different atime setting cannot simply specify the atime
+ * setting in @attr_set, but must also specify MOUNT_ATTR__ATIME in the
+ * @attr_clr field.
+ */
+static inline void set_atime(struct lxc_mount_attr *attr)
+{
+	switch (attr->attr_set & MOUNT_ATTR__ATIME) {
+	case MOUNT_ATTR_RELATIME:
+		__fallthrough;
+	case MOUNT_ATTR_NOATIME:
+		__fallthrough;
+	case MOUNT_ATTR_STRICTATIME:
+		attr->attr_clr = MOUNT_ATTR__ATIME;
+		break;
+	}
+}
+
 int mnt_attributes_new(unsigned int old_flags, unsigned int *new_flags)
 {
 	unsigned int flags = 0;
@@ -249,17 +268,21 @@ int fs_attach(int fd_fs,
 	return 0;
 }
 
-int create_detached_idmapped_mount(const char *path, int userns_fd, bool recursive)
+int create_detached_idmapped_mount(const char *path, int userns_fd,
+				   bool recursive, __u64 attr_set, __u64 attr_clr)
 {
 	__do_close int fd_tree_from = -EBADF;
 	unsigned int open_tree_flags = OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
 	struct lxc_mount_attr attr = {
-		.attr_set	= MOUNT_ATTR_IDMAP,
+		.attr_set	= MOUNT_ATTR_IDMAP | attr_set,
+		.attr_clr	= attr_clr,
 		.userns_fd	= userns_fd,
 		.propagation	= MS_SLAVE,
 
 	};
 	int ret;
+
+	set_atime(&attr);
 
 	TRACE("Idmapped mount \"%s\" requested with user namespace fd %d", path, userns_fd);
 
@@ -309,16 +332,21 @@ int move_detached_mount(int dfd_from, int dfd_to, const char *path_to,
 
 int __fd_bind_mount(int dfd_from, const char *path_from, __u64 o_flags_from,
 		    __u64 resolve_flags_from, int dfd_to, const char *path_to,
-		    __u64 o_flags_to, __u64 resolve_flags_to, __u64 attr_flags,
-		    int userns_fd, bool recursive)
+		    __u64 o_flags_to, __u64 resolve_flags_to, __u64 attr_set,
+		    __u64 attr_clr, __u64 propagation, int userns_fd,
+		    bool recursive)
 {
 	struct lxc_mount_attr attr = {
-		.attr_set = attr_flags,
+		.attr_set	= attr_set,
+		.attr_clr	= attr_clr,
+		.propagation	= propagation,
 	};
 	__do_close int __fd_from = -EBADF;
 	__do_close int fd_tree_from = -EBADF;
 	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
 	int fd_from, ret;
+
+	set_atime(&attr);
 
 	if (!is_empty_string(path_from)) {
 		struct lxc_open_how how = {

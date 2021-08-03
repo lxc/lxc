@@ -2642,7 +2642,7 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *__data = NULL, *dup = NULL, *mdata = NULL, *opts = NULL;
+	__do_free char *dup = NULL, *raw_options = NULL;
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
 	struct lxc_mount_options *mnt_opts = &rootfs->mnt_opts;
 	int ret;
@@ -2651,6 +2651,10 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return 0;
 
+	ret = set_config_string_item(&raw_options, value);
+	if (ret < 0)
+		return ret_errno(ENOMEM);
+
 	dup = strdup(value);
 	if (!dup)
 		return -ENOMEM;
@@ -2658,27 +2662,17 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	ret = parse_lxc_mount_attrs(mnt_opts, dup);
 	if (ret < 0)
 		return ret;
-	__data = mnt_opts->data;
 
-	ret = parse_mntopts_legacy(dup, &mnt_opts->mnt_flags, &mdata);
-	if (ret < 0)
-		return ret_errno(EINVAL);
-
-	ret = parse_propagationopts(dup, &mnt_opts->prop_flags);
-	if (ret < 0)
-		return ret_errno(EINVAL);
-
-	ret = set_config_string_item(&opts, dup);
-	if (ret < 0)
-		return ret_errno(ENOMEM);
-
+	/* Make sure we're only valid LXC specific mount options. */
 	if (mnt_opts->create_dir || mnt_opts->create_file ||
 	    mnt_opts->optional || mnt_opts->relative)
 		return syserror_set(-EINVAL, "Invalid LXC specific mount option for rootfs mount");
 
-	mnt_opts->data		= move_ptr(mdata);
-	rootfs->options		= move_ptr(opts);
+	ret = parse_mount_attrs(mnt_opts, dup);
+	if (ret < 0)
+		return ret_errno(EINVAL);
 
+	rootfs->options	= move_ptr(raw_options);
 	return 0;
 }
 
