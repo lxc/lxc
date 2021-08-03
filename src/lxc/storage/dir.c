@@ -165,9 +165,14 @@ int dir_mount(struct lxc_storage *bdev)
 
 			ret = fd_bind_mount(fd_source, "",
 					    PROTECT_OPATH_DIRECTORY,
-					    PROTECT_LOOKUP_BENEATH, fd_target,
-					    "", PROTECT_OPATH_DIRECTORY,
-					    PROTECT_LOOKUP_BENEATH, 0, true);
+					    PROTECT_LOOKUP_BENEATH,
+					    fd_target, "",
+					    PROTECT_OPATH_DIRECTORY,
+					    PROTECT_LOOKUP_BENEATH,
+					    mnt_opts->attr.attr_set,
+                                            mnt_opts->attr.attr_clr,
+                                            mnt_opts->attr.propagation,
+					    true);
 		}
 	} else {
 		ret = mount(source, target, "bind", MS_BIND | MS_REC | mnt_opts->mnt_flags | mnt_opts->prop_flags, mnt_opts->data);
