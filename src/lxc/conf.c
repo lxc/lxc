@@ -2185,12 +2185,14 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 		if (strequal(mo->name, "rbind")) {
 			opts->recursive = 1;
 			opts->bind = 1;
+			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND | MS_REC */
 			return 0;
 		}
 
 		/* This is a bind-mount. */
 		if (strequal(mo->name, "bind")) {
 			opts->bind = 1;
+			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND */
 			return 0;
 		}
 
@@ -2199,21 +2201,24 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 
 		if (mo->clear) {
 			opts->attr.attr_clr |= mo->flag;
+			opts->mnt_flags &= ~mo->legacy_flag;
 			TRACE("Lowering %s", mo->name);
 		} else {
 			opts->attr.attr_set |= mo->flag;
+			opts->mnt_flags |= mo->legacy_flag;
 			TRACE("Raising %s", mo->name);
 		}
 
 		return 0;
 	}
 
-	for (struct mount_opt *mo = &mount_opt[0]; mo->name != NULL; mo++) {
+	for (struct mount_opt *mo = &propagation_opt[0]; mo->name != NULL; mo++) {
 		if (!strnequal(opt, mo->name, strlen(mo->name)))
 			continue;
 
 		/* TODO: Handle recursive propagation requests. */
 		opts->attr.propagation = mo->flag;
+		opts->mnt_flags |= mo->legacy_flag;
 		return 0;
 	}
 
