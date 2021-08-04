@@ -768,7 +768,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 	/* The final cgroup must be succesfully creatd by us. */
 	if (ret) {
 		if (ret != -EEXIST || !eexist_ignore)
-			return syserror_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+			return syswarn_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
 	}
 
 	return move_fd(dfd_final);
@@ -791,7 +791,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		/* With isolation both parts need to not already exist. */
 		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_limit < 0)
-			return syserror_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
 		h->path_lim = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 		h->dfd_lim = move_fd(fd_limit);
@@ -807,7 +807,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 */
 		if (string_in_list(h->controllers, "devices") &&
 		    !ops->setup_limits_legacy(ops, conf, true))
-			return log_error(false, "Failed to setup legacy device limits");
+			return log_warn(false, "Failed to setup legacy device limits");
 
 		/*
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
@@ -820,7 +820,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 				SYSWARN("Failed to destroy %d(%s)", h->dfd_base, cgroup_limit_dir);
 			else
 				TRACE("Removed cgroup tree %d(%s)", h->dfd_base, cgroup_limit_dir);
-			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 		}
 		h->dfd_con = move_fd(fd_final);
 		h->path_con = must_make_path(h->path_lim, cgroup_leaf, NULL);
@@ -828,7 +828,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 	} else {
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_final < 0)
-			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
 		if (payload) {
 			h->dfd_con = move_fd(fd_final);
