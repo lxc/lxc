@@ -1231,7 +1231,12 @@ static int netdev_configure_server_empty(struct lxc_handler *handler, struct lxc
 	    NULL,
 	};
 
-	netdev->ifindex = 0;
+	/* The loopback device always has index 1. */
+	netdev->ifindex = 1;
+
+	if (!strequal(netdev->name, "lo"))
+		return syserror_set(-EINVAL, "Custom loopback device names not supported");
+
 	if (!netdev->upscript)
 		return 0;
 
@@ -3494,6 +3499,23 @@ static int create_transient_name(struct lxc_netdev *netdev)
 	return 0;
 }
 
+static int netdev_requires_move(const struct lxc_netdev *netdev)
+{
+	if (IN_SET(netdev->type, LXC_NET_EMPTY, LXC_NET_NONE))
+		return false;
+
+	/*
+	 * Veth devices are directly created in the container's network
+	 * namespace so the device doesn't need to be moved into the
+	 * container's network namespace. The transient name will
+	 * already have been set above when we created the veth tunnel.
+	 */
+	if (!netdev->ifindex)
+		return false;
+
+	return true;
+}
+
 int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 {
 	pid_t pid = handler->pid;
@@ -3508,16 +3530,7 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 		int ret;
 		struct lxc_netdev *netdev = iterator->elem;
 
-		/*
-		* Veth devices are directly created in the container's network
-		* namespace so the device doesn't need to be moved into the
-		* container's network namespace. The transient name will
-		* already have been set above when we created the veth tunnel.
-		*
-		* Other than this special case this also catches all
-		* LXC_NET_EMPTY and LXC_NET_NONE devices.
-		 */
-		if (!netdev->ifindex)
+		if (!netdev_requires_move(netdev))
 			continue;
 
 		ret = create_transient_name(netdev);
@@ -3856,13 +3869,6 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 {
 	int err;
 	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
-
-	/* empty network namespace */
-	if (!netdev->ifindex && netdev->flags & IFF_UP) {
-		err = lxc_netdev_up("lo");
-		if (err)
-			return log_error_errno(-1, -err, "Failed to set the loopback network device up");
-	}
 
 	/* set a mac address */
 	if (netdev->hwaddr && setup_hw_addr(netdev->hwaddr, netdev->name))
