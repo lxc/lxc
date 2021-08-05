@@ -418,6 +418,8 @@ static int set_config_net_type(const char *key, const char *value,
 		netdev->type = LXC_NET_PHYS;
 	} else if (strequal(value, "empty")) {
 		netdev->type = LXC_NET_EMPTY;
+		/* We don't support custom loopback device names. */
+		(void)strlcpy(netdev->name, "lo", IFNAMSIZ);
 	} else if (strequal(value, "none")) {
 		netdev->type = LXC_NET_NONE;
 	} else {
