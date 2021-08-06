@@ -3991,7 +3991,7 @@ static int lxc_setup_keyring(struct lsm_ops *lsm_ops, const struct lxc_conf *con
 	else if (conf->lsm_se_context)
 		ret = lsm_ops->keyring_label_set(lsm_ops, conf->lsm_se_context);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to set keyring context");
+		return syserror("Failed to set keyring context");
 
 	/*
 	 * Try to allocate a new session keyring for the container to prevent
@@ -4010,7 +4010,7 @@ static int lxc_setup_keyring(struct lsm_ops *lsm_ops, const struct lxc_conf *con
 			DEBUG("Failed to access kernel keyring. Continuing...");
 			break;
 		default:
-			SYSERROR("Failed to create kernel keyring");
+			SYSWARN("Failed to create kernel keyring");
 			break;
 		}
 	}
