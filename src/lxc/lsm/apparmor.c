@@ -611,8 +611,8 @@ out:
 
 static bool file_is_yes(const char *path)
 {
+	__do_close int fd = -EBADF;
 	ssize_t rd;
-	int fd;
 	char buf[8]; /* we actually just expect "yes" or "no" */
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -620,7 +620,6 @@ static bool file_is_yes(const char *path)
 		return false;
 
 	rd = lxc_read_nointr(fd, buf, sizeof(buf));
-	close(fd);
 
 	return rd >= 4 && strnequal(buf, "yes\n", 4);
 }
