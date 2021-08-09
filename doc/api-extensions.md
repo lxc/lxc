@@ -113,7 +113,7 @@ This enables `LXC` to make complete use of the unified cgroup hierarchy. With th
 
 ## init\_pidfd
 
-This adds a new API function `init_pidfd()` which allows to retrieve a pidfd for the container's init process allowing process management interactions such as sending signal to be completely reliable and rac-e free.
+This adds a new API function `init_pidfd()` which allows one to retrieve a pidfd for the container's init process allowing process management interactions such as sending signals to be completely reliable and race free.
 
 ## pidfd
 
