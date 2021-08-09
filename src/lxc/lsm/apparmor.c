@@ -1163,7 +1163,8 @@ static int apparmor_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on
 	return __apparmor_process_label_open(ops, pid, O_RDWR, on_exec);
 }
 
-static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec)
+static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd,
+					 const char *label, bool on_exec)
 {
 	__do_free char *command = NULL;
 	int ret = -1;
@@ -1182,9 +1183,12 @@ static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, cons
 		return -EFBIG;
 
 	ret = lxc_write_nointr(label_fd, command, len - 1);
+	if (ret < 0)
+		return syserror("Failed to write AppArmor profile \"%s\" to %d",
+				label, label_fd);
 
 	INFO("Set AppArmor label to \"%s\"", label);
-	return ret;
+	return 0;
 }
 
 /*
