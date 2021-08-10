@@ -19,9 +19,8 @@
 
 lxc_log_define(mainloop, lxc);
 
-#define CANCEL_RAISED	(1 << 0)
-#define CANCEL_RECEIVED (1 << 1)
-#define CANCEL_SUCCESS (1 << 2)
+#define CANCEL_RECEIVED (1 << 0)
+#define CANCEL_SUCCESS (1 << 1)
 
 struct mainloop_handler {
 	struct lxc_list *list;
@@ -191,14 +190,11 @@ static int __io_uring_disarm(struct lxc_async_descr *descr,
 				    "Failed to get submission queue entry");
 
 	io_uring_prep_poll_remove(sqe, handler);
-	handler->flags |= CANCEL_RAISED;
 	io_uring_sqe_set_data(sqe, handler);
 	ret = io_uring_submit(descr->ring);
-	if (ret < 0) {
-		handler->flags &= ~CANCEL_RAISED;
+	if (ret < 0)
 		return syserror_ret(ret, "Failed to remove \"%s\" handler",
 				    handler->handler_name);
-	}
 
 	TRACE("Removed handler \"%s\"", handler->handler_name);
 	return ret;
