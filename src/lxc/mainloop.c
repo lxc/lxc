@@ -51,7 +51,7 @@ static void delete_handler(struct lxc_async_descr *descr,
 		 * generated before and since this is a oneshot handler it
 		 * means that it has been deactivated. So the only thing we
 		 * need to do is to call the registered cleanup handler and
-		 * remove the handlerfrom the list.
+		 * remove the handler from the list.
 		 */
 		if (!oneshot)
 			ret = __io_uring_disarm(descr, handler);
@@ -376,8 +376,8 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 	if (descr->type == LXC_MAINLOOP_IO_URING) {
 		ret = __io_uring_arm(descr, handler, oneshot);
 	} else {
-		ev.events = events;
-		ev.data.ptr = handler;
+		ev.events	= events;
+		ev.data.ptr	= handler;
 		ret = epoll_ctl(descr->epfd, EPOLL_CTL_ADD, fd, &ev);
 	}
 	if (ret < 0)
