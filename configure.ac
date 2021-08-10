@@ -671,6 +671,22 @@ AC_CHECK_HEADER([ifaddrs.h],
 	AC_DEFINE(HAVE_IFADDRS_H, 1, [Have ifaddrs.h]),
 	AM_CONDITIONAL(HAVE_IFADDRS_H, false))
 
+AC_ARG_ENABLE([liburing],
+	[AS_HELP_STRING([--enable-liburing], [enable liburing support [default=auto]])],
+	[enable_liburing=$enableval], [enable_liburing=auto])
+
+if test "x$enable_liburing" = "auto"; then
+	AC_CHECK_LIB([uring],[__io_uring_sqring_wait],[enable_liburing=yes],[enable_liburing=no])
+fi
+
+AM_CONDITIONAL([ENABLE_LIBURING], [test "x$enable_liburing" = "xyes"])
+
+AM_COND_IF([ENABLE_LIBURING],
+	[AC_CHECK_HEADER([liburing.h],[],[AC_MSG_ERROR([You must install the liburing development package in order to compile lxc])])
+	# We use __io_uring_sqring_wait as an indicator whether liburing is new enough to support poll.
+	AC_CHECK_LIB([uring],[__io_uring_sqring_wait],[],[AC_MSG_ERROR([The liburing development package in order to compile lxc])])
+        AC_SUBST([LIBURING_LIBS], [-luring])])
+
 # lookup major()/minor()/makedev()
 AC_HEADER_MAJOR
 

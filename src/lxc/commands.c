@@ -611,7 +611,7 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler,
-					 struct lxc_epoll_descr *descr)
+					 struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.data = PID_TO_PTR(handler->pid),
@@ -648,7 +648,7 @@ int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler,
-					   struct lxc_epoll_descr *descr)
+					   struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EBADF,
@@ -688,7 +688,7 @@ int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 					  struct lxc_handler *handler,
-					  struct lxc_epoll_descr *descr)
+					  struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EBADF,
@@ -732,7 +732,7 @@ int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *req,
 						  struct lxc_handler *handler,
-						  struct lxc_epoll_descr *descr)
+						  struct lxc_async_descr *descr)
 {
 #ifdef HAVE_SECCOMP_NOTIFY
 	struct lxc_cmd_rsp rsp = {
@@ -773,7 +773,7 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 
 static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler,
-					   struct lxc_epoll_descr *descr)
+					   struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = EINVAL,
@@ -824,7 +824,7 @@ int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler,
-					    struct lxc_epoll_descr *descr)
+					    struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.data = INT_TO_PTR(handler->ns_clone_flags),
@@ -914,7 +914,7 @@ char *lxc_cmd_get_limit_cgroup_path(const char *name, const char *lxcpath,
 
 static int __lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler,
-					 struct lxc_epoll_descr *descr,
+					 struct lxc_async_descr *descr,
 					 bool limiting_cgroup)
 {
 	ssize_t ret;
@@ -950,14 +950,14 @@ static int __lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 
 static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler,
-				       struct lxc_epoll_descr *descr)
+				       struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup_callback(fd, req, handler, descr, false);
 }
 
 static int lxc_cmd_get_limit_cgroup_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler,
-					     struct lxc_epoll_descr *descr)
+					     struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup_callback(fd, req, handler, descr, true);
 }
@@ -997,7 +997,7 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 
 static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler,
-					    struct lxc_epoll_descr *descr)
+					    struct lxc_async_descr *descr)
 {
 	__do_free char *cidata = NULL;
 	int cilen;
@@ -1059,7 +1059,7 @@ int lxc_cmd_get_state(const char *name, const char *lxcpath)
 
 static int lxc_cmd_get_state_callback(int fd, struct lxc_cmd_req *req,
 				      struct lxc_handler *handler,
-				      struct lxc_epoll_descr *descr)
+				      struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.data = INT_TO_PTR(handler->state),
@@ -1104,7 +1104,7 @@ int lxc_cmd_stop(const char *name, const char *lxcpath)
 
 static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 				 struct lxc_handler *handler,
-				 struct lxc_epoll_descr *descr)
+				 struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 	int stopsignal = SIGKILL;
@@ -1155,7 +1155,7 @@ int lxc_cmd_terminal_winch(const char *name, const char *lxcpath)
 
 static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler,
-					   struct lxc_epoll_descr *descr)
+					   struct lxc_async_descr *descr)
 {
 	/* should never be called */
 	return syserror_set(-ENOSYS, "Called lxc_cmd_terminal_winch_callback()");
@@ -1207,7 +1207,7 @@ int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpa
 
 static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler,
-				       struct lxc_epoll_descr *descr)
+				       struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EBADF,
@@ -1258,7 +1258,7 @@ char *lxc_cmd_get_name(const char *hashed_sock_name)
 
 static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 				     struct lxc_handler *handler,
-				     struct lxc_epoll_descr *descr)
+				     struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 
@@ -1298,7 +1298,7 @@ char *lxc_cmd_get_lxcpath(const char *hashed_sock_name)
 
 static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 					struct lxc_handler *handler,
-					struct lxc_epoll_descr *descr)
+					struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret		= 0,
@@ -1351,7 +1351,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 
 static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler,
-					     struct lxc_epoll_descr *descr)
+					     struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EINVAL,
@@ -1403,7 +1403,7 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 
 static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *req,
 						  struct lxc_handler *handler,
-						  struct lxc_epoll_descr *descr)
+						  struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EINVAL,
@@ -1470,7 +1470,7 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 
 static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 					struct lxc_handler *handler,
-					struct lxc_epoll_descr *descr)
+					struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 	uint64_t buffer_size = handler->conf->console.buffer_size;
@@ -1526,7 +1526,7 @@ int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 
 static int lxc_cmd_serve_state_clients_callback(int fd, struct lxc_cmd_req *req,
 						struct lxc_handler *handler,
-						struct lxc_epoll_descr *descr)
+						struct lxc_async_descr *descr)
 {
 	int ret;
 	lxc_state_t state = PTR_TO_INT(req->data);
@@ -1566,7 +1566,7 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 							struct lxc_cmd_req *req,
 							struct lxc_handler *handler,
-							struct lxc_epoll_descr *descr)
+							struct lxc_async_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {0};
 
@@ -1587,8 +1587,10 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 		goto out;
 	}
 
-	ret = lxc_mainloop_add_handler(descr, recv_fd, seccomp_notify_handler,
-				       handler);
+	ret = lxc_mainloop_add_handler(descr, recv_fd,
+				       seccomp_notify_handler,
+				       seccomp_notify_cleanup_handler,
+				       handler, "seccomp_notify_handler");
 	if (ret < 0) {
 		rsp.ret = -errno;
 		goto out;
@@ -1621,7 +1623,7 @@ int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
 
 static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
 				   struct lxc_handler *handler,
-				   struct lxc_epoll_descr *descr)
+				   struct lxc_async_descr *descr)
 {
 	int timeout = PTR_TO_INT(req->data);
 	struct lxc_cmd_rsp rsp = {
@@ -1653,7 +1655,7 @@ int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
 
 static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
 				   struct lxc_handler *handler,
-				   struct lxc_epoll_descr *descr)
+				   struct lxc_async_descr *descr)
 {
 	int timeout = PTR_TO_INT(req->data);
 	struct lxc_cmd_rsp rsp = {
@@ -1713,7 +1715,7 @@ int lxc_cmd_get_limit_cgroup_fd(const char *name, const char *lxcpath,
 
 static int __lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler,
-					    struct lxc_epoll_descr *descr,
+					    struct lxc_async_descr *descr,
 					    bool limit)
 {
 	struct lxc_cmd_rsp rsp = {
@@ -1745,14 +1747,14 @@ static int __lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 
 static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 					  struct lxc_handler *handler,
-					  struct lxc_epoll_descr *descr)
+					  struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup_fd_callback(fd, req, handler, descr, false);
 }
 
 static int lxc_cmd_get_limit_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 						struct lxc_handler *handler,
-						struct lxc_epoll_descr *descr)
+						struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup_fd_callback(fd, req, handler, descr, true);
 }
@@ -1809,7 +1811,7 @@ int lxc_cmd_get_limit_cgroup2_fd(const char *name, const char *lxcpath)
 
 static int __lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler,
-					     struct lxc_epoll_descr *descr,
+					     struct lxc_async_descr *descr,
 					     bool limiting_cgroup)
 {
 	struct lxc_cmd_rsp rsp = {
@@ -1835,14 +1837,14 @@ static int __lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 
 static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler,
-					   struct lxc_epoll_descr *descr)
+					   struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup2_fd_callback(fd, req, handler, descr, false);
 }
 
 static int lxc_cmd_get_limit_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 						 struct lxc_handler *handler,
-						 struct lxc_epoll_descr *descr)
+						 struct lxc_async_descr *descr)
 {
 	return __lxc_cmd_get_cgroup2_fd_callback(fd, req, handler, descr, true);
 }
@@ -1859,10 +1861,10 @@ static int lxc_cmd_rsp_send_enosys(int fd, int id)
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler,
-			   struct lxc_epoll_descr *descr)
+			   struct lxc_async_descr *descr)
 {
 	typedef int (*callback)(int, struct lxc_cmd_req *, struct lxc_handler *,
-				struct lxc_epoll_descr *);
+				struct lxc_async_descr *);
 
 	callback cb[LXC_CMD_MAX] = {
 		[LXC_CMD_GET_TTY_FD]			= lxc_cmd_get_tty_fd_callback,
@@ -1900,11 +1902,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 }
 
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
-			       struct lxc_epoll_descr *descr, const lxc_cmd_t cmd)
+			       const lxc_cmd_t cmd)
 {
-	lxc_terminal_free(handler->conf, fd);
-	lxc_mainloop_del_handler(descr, fd);
-
 	if (cmd == LXC_CMD_ADD_STATE_CLIENT) {
 		struct lxc_list *cur, *next;
 
@@ -1937,15 +1936,29 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		 * was already reached by the time we were ready to add it. So
 		 * fallthrough and clean it up.
 		 */
-		TRACE("Closing state client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
+		TRACE("Deleted state client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
 	}
 
-	TRACE("Closing client fd %d for command \"%s\"", fd, lxc_cmd_str(cmd));
+	/*
+	 * We're not closing the client fd here. They will instead be notified
+	 * from the mainloop when it calls the cleanup handler. This will cause
+	 * a slight delay but is semantically cleaner then what we used to do.
+	 */
+}
+
+static int lxc_cmd_cleanup_handler(int fd, void *data)
+{
+	struct lxc_handler *handler = data;
+
+	lxc_terminal_free(handler->conf, fd);
 	close(fd);
+	TRACE("Closing client fd %d for \"%s\"", fd, __FUNCTION__);
+	return 0;
+
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
-			   struct lxc_epoll_descr *descr)
+			   struct lxc_async_descr *descr)
 {
 	__do_free void *reqdata = NULL;
 	int ret;
@@ -1965,20 +1978,20 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 			__lxc_cmd_rsp_send(fd, &rsp);
 		}
 
-		goto out_close;
+		goto out;
 	}
 
 	if (ret == 0)
-		goto out_close;
+		goto out;
 
 	if (ret != sizeof(req)) {
 		WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-		goto out_close;
+		goto out;
 	}
 
 	if ((req.datalen > LXC_CMD_DATA_MAX) && (req.cmd != LXC_CMD_CONSOLE_LOG)) {
 		ERROR("Received command data length %d is too large for command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
-		goto out_close;
+		goto out;
 	}
 
 	if (req.datalen > 0) {
@@ -1986,7 +1999,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		ret = lxc_recv_nointr(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-			goto out_close;
+			goto out;
 		}
 
 		req.data = reqdata;
@@ -1995,24 +2008,24 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	ret = lxc_cmd_process(fd, &req, handler, descr);
 	if (ret < 0) {
 		DEBUG("Failed to process command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
-		goto out_close;
-	} else if (ret == LXC_CMD_REAP_CLIENT_FD) {
-		TRACE("Processed command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
-		goto out_close;
-	} else {
-		TRACE("Processed command %s; keeping client fd %d", lxc_cmd_str(req.cmd), fd);
+		goto out;
 	}
 
-out:
+	if (ret == LXC_CMD_REAP_CLIENT_FD) {
+		TRACE("Processed command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
+		goto out;
+	}
+
+	TRACE("Processed command %s; keeping client fd %d", lxc_cmd_str(req.cmd), fd);
 	return LXC_MAINLOOP_CONTINUE;
 
-out_close:
-	lxc_cmd_fd_cleanup(fd, handler, descr, req.cmd);
-	goto out;
+out:
+	lxc_cmd_fd_cleanup(fd, handler, req.cmd);
+	return LXC_MAINLOOP_DISARM;
 }
 
 static int lxc_cmd_accept(int fd, uint32_t events, void *data,
-			  struct lxc_epoll_descr *descr)
+			  struct lxc_async_descr *descr)
 {
 	__do_close int connection = -EBADF;
 	int opt = 1, ret = -1;
@@ -2029,7 +2042,10 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to enable necessary credentials on command socket");
 
-	ret = lxc_mainloop_add_handler(descr, connection, lxc_cmd_handler, data);
+	ret = lxc_mainloop_add_oneshot_handler(descr, connection,
+					       lxc_cmd_handler,
+					       lxc_cmd_cleanup_handler,
+					       data, "lxc_cmd_handler");
 	if (ret)
 		return log_error(ret, "Failed to add command handler");
 
@@ -2063,12 +2079,15 @@ int lxc_server_init(const char *name, const char *lxcpath, const char *suffix)
 	return log_trace(move_fd(fd), "Created abstract unix socket \"%s\"", &path[1]);
 }
 
-int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
+int lxc_cmd_mainloop_add(const char *name, struct lxc_async_descr *descr,
 			 struct lxc_handler *handler)
 {
 	int ret;
 
-	ret = lxc_mainloop_add_handler(descr, handler->conf->maincmd_fd, lxc_cmd_accept, handler);
+	ret = lxc_mainloop_add_handler(descr, handler->conf->maincmd_fd,
+				       lxc_cmd_accept,
+				       default_cleanup_handler,
+				       handler, "lxc_cmd_accept");
 	if (ret < 0)
 		return log_error(ret, "Failed to add handler for command socket fd %d", handler->conf->maincmd_fd);
 

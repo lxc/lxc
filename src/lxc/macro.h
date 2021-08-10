@@ -747,4 +747,9 @@ enum {
 #define PER_LINUX32	0x0008
 #endif
 
+static inline bool has_exact_flags(__u32 flags, __u32 mask)
+{
+	return (flags & mask) == mask;
+}
+
 #endif /* __LXC_MACRO_H */

@@ -13,7 +13,7 @@
 
 struct lxc_container;
 struct lxc_conf;
-struct lxc_epoll_descr;
+struct lxc_async_descr;
 
 struct lxc_terminal_info {
 	/* the path name of the pty side */
@@ -63,7 +63,7 @@ struct lxc_terminal {
 	int ptx;
 	int peer;
 	struct lxc_terminal_info proxy;
-	struct lxc_epoll_descr *descr;
+	struct lxc_async_descr *descr;
 	char *path;
 	char name[PATH_MAX];
 	struct termios *tios;
@@ -141,7 +141,7 @@ __hidden extern void lxc_terminal_free(struct lxc_conf *conf, int fd);
 /**
  * Register terminal event handlers in an open mainloop.
  */
-__hidden extern int lxc_terminal_mainloop_add(struct lxc_epoll_descr *, struct lxc_terminal *);
+__hidden extern int lxc_terminal_mainloop_add(struct lxc_async_descr *, struct lxc_terminal *);
 
 /**
  * Handle SIGWINCH events on the allocated terminals.
@@ -182,7 +182,7 @@ __hidden extern int lxc_terminal_set_stdfds(int fd);
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 __hidden extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
-					  struct lxc_epoll_descr *descr);
+					  struct lxc_async_descr *descr);
 
 /**
  * Handler for events on the ptx fd of the terminal. To be registered via
@@ -191,7 +191,7 @@ __hidden extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 __hidden extern int lxc_terminal_ptx_cb(int fd, uint32_t events, void *cbdata,
-					struct lxc_epoll_descr *descr);
+					struct lxc_async_descr *descr);
 
 /**
  * Setup new terminal properties. The old terminal settings are stored in
@@ -240,12 +240,10 @@ __hidden extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, i
  * declared and defined in mainloop.{c,h} or lxc_terminal_mainloop_add().
  */
 __hidden extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
-					     struct lxc_epoll_descr *descr);
+					     struct lxc_async_descr *descr);
 
 __hidden extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);
-__hidden extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
-				       struct lxc_epoll_descr *descr);
 
 __hidden extern int lxc_make_controlling_terminal(int fd);
 __hidden extern int lxc_terminal_prepare_login(int fd);

@@ -768,7 +768,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 	/* The final cgroup must be succesfully creatd by us. */
 	if (ret) {
 		if (ret != -EEXIST || !eexist_ignore)
-			return syserror_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+			return syswarn_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
 	}
 
 	return move_fd(dfd_final);
@@ -791,7 +791,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		/* With isolation both parts need to not already exist. */
 		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_limit < 0)
-			return syserror_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
 		h->path_lim = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 		h->dfd_lim = move_fd(fd_limit);
@@ -807,7 +807,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 */
 		if (string_in_list(h->controllers, "devices") &&
 		    !ops->setup_limits_legacy(ops, conf, true))
-			return log_error(false, "Failed to setup legacy device limits");
+			return log_warn(false, "Failed to setup legacy device limits");
 
 		/*
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
@@ -820,7 +820,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 				SYSWARN("Failed to destroy %d(%s)", h->dfd_base, cgroup_limit_dir);
 			else
 				TRACE("Removed cgroup tree %d(%s)", h->dfd_base, cgroup_limit_dir);
-			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 		}
 		h->dfd_con = move_fd(fd_final);
 		h->path_con = must_make_path(h->path_lim, cgroup_leaf, NULL);
@@ -828,7 +828,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 	} else {
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_final < 0)
-			return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+			return syswarn_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
 		if (payload) {
 			h->dfd_con = move_fd(fd_final);
@@ -1927,7 +1927,7 @@ static int cg_legacy_freeze(struct cgroup_ops *ops)
 }
 
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
-				    struct lxc_epoll_descr *descr)
+				    struct lxc_async_descr *descr)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
@@ -1960,9 +1960,9 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 				const char *wait_error)
 {
 	__do_close int fd = -EBADF;
-	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_epoll_descr descr;
+	struct lxc_async_descr descr;
 	struct hierarchy *h;
 
 	h = ops->unified;
@@ -1987,7 +1987,11 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
-		ret = lxc_mainloop_add_handler_events(&descr, fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		ret = lxc_mainloop_add_handler_events(&descr, fd, EPOLLPRI,
+						      freezer_cgroup_events_cb,
+						      default_cleanup_handler,
+						      INT_TO_PTR(state_num),
+						      "freezer_cgroup_events_cb");
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
@@ -3653,9 +3657,9 @@ static int do_cgroup_freeze(int unified_fd,
 			    const char *wait_error)
 {
 	__do_close int events_fd = -EBADF;
-	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_epoll_descr descr = {};
+	struct lxc_async_descr descr = {};
 
 	if (timeout != 0) {
 		ret = lxc_mainloop_open(&descr);
@@ -3669,7 +3673,11 @@ static int do_cgroup_freeze(int unified_fd,
 		if (events_fd < 0)
 			return log_error_errno(-errno, errno, "Failed to open cgroup.events file");
 
-		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI,
+						      freezer_cgroup_events_cb,
+						      default_cleanup_handler,
+						      INT_TO_PTR(state_num),
+						      "freezer_cgroup_events_cb");
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
