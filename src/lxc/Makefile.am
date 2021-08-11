@@ -1984,11 +1984,24 @@ install-exec-local: install-libLTLIBRARIES
 if ENABLE_COMMANDS
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
+if ENABLE_BASH
+install-data-local:
+	cd $(DESTDIR)$(bashcompdir); \
+	for bin in $(bin_PROGRAMS) ; do \
+		ln -sf lxc $$bin ; \
+	done
+endif
 endif
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
 	$(RM) $(DESTDIR)$(libdir)/liblxc.a
+if ENABLE_BASH
+	for bin in $(bin_PROGRAMS) ; do \
+		$(RM) $(DESTDIR)$(bashcompdir)/$$bin ; \
+	done
+endif
+
 if ENABLE_PAM
 if HAVE_PAM
 	$(RM) $(DESTDIR)$(pamdir)/pam_cgfs.so*

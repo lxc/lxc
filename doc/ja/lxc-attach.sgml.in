@@ -374,7 +374,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
       <varlistentry>
 	<term>
-	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	  <option>-u, --uid <replaceable>uid</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
