@@ -292,7 +292,17 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 					return -1;
 				break;
 			case LXC_MAINLOOP_DISARM:
+				/*
+				 * If this is a multhishot handler we need to
+				 * disarm it here. Actual cleanup happens
+				 * later.
+				 */
 				disarm_handler(descr, handler, oneshot);
+				/*
+				 * If this is a oneshot handler we know it has
+				 * just run and we also know the above call was
+				 * a nop. So clean it up directly.
+				 */
 				if (oneshot)
 					delete_handler(handler);
 				break;
