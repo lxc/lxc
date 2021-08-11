@@ -128,7 +128,7 @@ static inline int __io_uring_open(struct lxc_async_descr *descr)
 	if (descr->ring == MAP_FAILED)
 		return syserror("Failed to mmap io_uring memory");
 
-	ret = io_uring_queue_init(512, descr->ring, IORING_SETUP_SQPOLL);
+	ret = io_uring_queue_init(512, descr->ring, 0);
 	if (ret) {
 		SYSERROR("Failed to initialize io_uring instance");
 		goto on_error;
