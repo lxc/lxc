@@ -250,7 +250,7 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
 	int ret;
 
-	for (size_t i = 0; i <= nbits; i++) {
+	for (size_t i = 0; i < nbits; i++) {
 		if (!is_set(i, bitarr))
 			continue;
 
@@ -641,7 +641,7 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
 	}
 
-	for (i = 0; i <= maxposs; i++) {
+	for (i = 0; i < maxposs; i++) {
 		if ((isolmask && !is_set(i, isolmask)) ||
 		    (offlinemask && !is_set(i, offlinemask)) ||
 		    !is_set(i, possmask))
