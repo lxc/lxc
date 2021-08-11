@@ -315,11 +315,10 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 
 static int __lxc_mainloop_epoll(struct lxc_async_descr *descr, int timeout_ms)
 {
-	int i, nfds, ret;
-	struct mainloop_handler *handler;
-	struct epoll_event events[MAX_EVENTS];
-
 	for (;;) {
+		int nfds;
+		struct epoll_event events[MAX_EVENTS];
+
 		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, timeout_ms);
 		if (nfds < 0) {
 			if (errno == EINTR)
@@ -328,8 +327,9 @@ static int __lxc_mainloop_epoll(struct lxc_async_descr *descr, int timeout_ms)
 			return -errno;
 		}
 
-		for (i = 0; i < nfds; i++) {
-			handler = events[i].data.ptr;
+		for (int i = 0; i < nfds; i++) {
+			int ret;
+			struct mainloop_handler *handler = events[i].data.ptr;
 
 			/* If the handler returns a positive value, exit the
 			 * mainloop.
