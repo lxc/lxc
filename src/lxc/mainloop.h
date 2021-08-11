@@ -49,15 +49,15 @@ __hidden extern int lxc_mainloop(struct lxc_async_descr *descr, int timeout_ms);
 __hidden extern int lxc_mainloop_add_handler_events(struct lxc_async_descr *descr, int fd, int events,
 						    lxc_mainloop_callback_t callback,
 						    lxc_mainloop_cleanup_t cleanup,
-						    void *data, const char *handler_name);
+						    void *data, const char *name);
 __hidden extern int lxc_mainloop_add_handler(struct lxc_async_descr *descr, int fd,
 					     lxc_mainloop_callback_t callback,
 					     lxc_mainloop_cleanup_t cleanup,
-					     void *data, const char *handler_name);
+					     void *data, const char *name);
 __hidden extern int lxc_mainloop_add_oneshot_handler(struct lxc_async_descr *descr, int fd,
 						     lxc_mainloop_callback_t callback,
 						     lxc_mainloop_cleanup_t cleanup,
-						     void *data, const char *handler_name);
+						     void *data, const char *name);
 
 __hidden extern int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd);
 

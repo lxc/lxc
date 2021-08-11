@@ -28,7 +28,7 @@ struct mainloop_handler {
 	void *data;
 	lxc_mainloop_callback_t callback;
 	lxc_mainloop_cleanup_t cleanup;
-	const char *handler_name;
+	const char *name;
 	unsigned int flags;
 };
 
@@ -58,9 +58,9 @@ static int disarm_handler(struct lxc_async_descr *descr,
 	}
 	if (ret < 0)
 		return syswarn_ret(-1, "Failed to disarm %d for \"%s\" handler",
-				   handler->fd, handler->handler_name);
+				   handler->fd, handler->name);
 
-	TRACE("Disarmed %d for \"%s\" handler", handler->fd, handler->handler_name);
+	TRACE("Disarmed %d for \"%s\" handler", handler->fd, handler->name);
 	return 0;
 }
 
@@ -73,10 +73,10 @@ static void delete_handler(struct mainloop_handler *handler)
 
 		ret = handler->cleanup(handler->fd, handler->data);
 		if (ret < 0)
-			SYSWARN("Failed to cleanup %d for \"%s\" handler", handler->fd, handler->handler_name);
+			SYSWARN("Failed to cleanup %d for \"%s\" handler", handler->fd, handler->name);
 	}
 
-	TRACE("Deleted %d for \"%s\" handler", handler->fd, handler->handler_name);
+	TRACE("Deleted %d for \"%s\" handler", handler->fd, handler->name);
 	list = move_ptr(handler->list);
 	lxc_list_del(list);
 	free(list->elem);
@@ -128,7 +128,7 @@ static inline int __io_uring_open(struct lxc_async_descr *descr)
 	if (descr->ring == MAP_FAILED)
 		return syserror("Failed to mmap io_uring memory");
 
-	ret = io_uring_queue_init(512, descr->ring, IORING_SETUP_SQPOLL);
+	ret = io_uring_queue_init(512, descr->ring, 0);
 	if (ret) {
 		SYSERROR("Failed to initialize io_uring instance");
 		goto on_error;
@@ -190,9 +190,9 @@ static int __io_uring_arm(struct lxc_async_descr *descr,
 		}
 	}
 	if (ret < 0)
-		return syserror_ret(ret, "Failed to add \"%s\" handler", handler->handler_name);
+		return syserror_ret(ret, "Failed to add \"%s\" handler", handler->name);
 
-	TRACE("Added \"%s\" handler", handler->handler_name);
+	TRACE("Added \"%s\" handler", handler->name);
 	return 0;
 }
 
@@ -212,9 +212,9 @@ static int __io_uring_disarm(struct lxc_async_descr *descr,
 	ret = io_uring_submit(descr->ring);
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to remove \"%s\" handler",
-				    handler->handler_name);
+				    handler->name);
 
-	TRACE("Removed handler \"%s\"", handler->handler_name);
+	TRACE("Removed handler \"%s\"", handler->name);
 	return ret;
 }
 
@@ -261,26 +261,26 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 		if (res <= 0) {
 			switch (res) {
 			case 0:
-				TRACE("Removed \"%s\" handler", handler->handler_name);
+				TRACE("Removed \"%s\" handler", handler->name);
 				handler->flags |= CANCEL_SUCCESS;
 				if (has_exact_flags(handler->flags, (CANCEL_SUCCESS | CANCEL_RECEIVED)))
 					delete_handler(handler);
 				break;
 			case -EALREADY:
-				TRACE("Repeat sqe remove request for \"%s\" handler", handler->handler_name);
+				TRACE("Repeat sqe remove request for \"%s\" handler", handler->name);
 				break;
 			case -ECANCELED:
-				TRACE("Canceled \"%s\" handler", handler->handler_name);
+				TRACE("Canceled \"%s\" handler", handler->name);
 				handler->flags |= CANCEL_RECEIVED;
 				if (has_exact_flags(handler->flags, (CANCEL_SUCCESS | CANCEL_RECEIVED)))
 					delete_handler(handler);
 				break;
 			case -ENOENT:
-				TRACE("No sqe for \"%s\" handler", handler->handler_name);
+				TRACE("No sqe for \"%s\" handler", handler->name);
 				break;
 			default:
 				WARN("Received unexpected return value %d in cqe for \"%s\" handler",
-				     res, handler->handler_name);
+				     res, handler->name);
 				break;
 			}
 		} else {
@@ -292,17 +292,27 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 					return -1;
 				break;
 			case LXC_MAINLOOP_DISARM:
+				/*
+				 * If this is a multhishot handler we need to
+				 * disarm it here. Actual cleanup happens
+				 * later.
+				 */
 				disarm_handler(descr, handler, oneshot);
+				/*
+				 * If this is a oneshot handler we know it has
+				 * just run and we also know the above call was
+				 * a nop. So clean it up directly.
+				 */
 				if (oneshot)
 					delete_handler(handler);
 				break;
 			case LXC_MAINLOOP_CLOSE:
-				return log_trace(0, "Closing from \"%s\"", handler->handler_name);
+				return log_trace(0, "Closing from \"%s\"", handler->name);
 			case LXC_MAINLOOP_ERROR:
-				return syserror_ret(-1, "Closing with error from \"%s\"", handler->handler_name);
+				return syserror_ret(-1, "Closing with error from \"%s\"", handler->name);
 			default:
 				WARN("Received unexpected return value %d from \"%s\" handler",
-				     ret, handler->handler_name);
+				     ret, handler->name);
 				break;
 			}
 		}
@@ -370,7 +380,7 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 					     lxc_mainloop_callback_t callback,
 					     lxc_mainloop_cleanup_t cleanup,
 					     void *data, bool oneshot,
-					     const char *handler_name)
+					     const char *name)
 {
 	__do_free struct mainloop_handler *handler = NULL;
 	__do_free struct lxc_list *list = NULL;
@@ -380,7 +390,7 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 	if (fd < 0)
 		return ret_errno(EBADF);
 
-	if (!callback || !cleanup || !events || !handler_name)
+	if (!callback || !cleanup || !events || !name)
 		return ret_errno(EINVAL);
 
 	handler = zalloc(sizeof(*handler));
@@ -391,7 +401,7 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 	handler->cleanup	= cleanup;
 	handler->fd		= fd;
 	handler->data		= data;
-	handler->handler_name	= handler_name;
+	handler->name		= name;
 
 	if (descr->type == LXC_MAINLOOP_IO_URING) {
 		ret = __io_uring_arm(descr, handler, oneshot);
@@ -417,31 +427,31 @@ int lxc_mainloop_add_handler_events(struct lxc_async_descr *descr, int fd,
 				    int events,
 				    lxc_mainloop_callback_t callback,
 				    lxc_mainloop_cleanup_t cleanup,
-				    void *data, const char *handler_name)
+				    void *data, const char *name)
 {
 	return __lxc_mainloop_add_handler_events(descr, fd, events,
 						 callback, cleanup,
-						 data, false, handler_name);
+						 data, false, name);
 }
 
 int lxc_mainloop_add_handler(struct lxc_async_descr *descr, int fd,
 			     lxc_mainloop_callback_t callback,
 			     lxc_mainloop_cleanup_t cleanup,
-			     void *data, const char *handler_name)
+			     void *data, const char *name)
 {
 	return __lxc_mainloop_add_handler_events(descr, fd, EPOLLIN,
 						 callback, cleanup,
-						 data, false, handler_name);
+						 data, false, name);
 }
 
 int lxc_mainloop_add_oneshot_handler(struct lxc_async_descr *descr, int fd,
 				     lxc_mainloop_callback_t callback,
 				     lxc_mainloop_cleanup_t cleanup,
-				     void *data, const char *handler_name)
+				     void *data, const char *name)
 {
 	return __lxc_mainloop_add_handler_events(descr, fd, EPOLLIN,
 						 callback, cleanup,
-						 data, true, handler_name);
+						 data, true, name);
 }
 
 int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd)
@@ -460,7 +470,7 @@ int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd)
 		else
 			ret = epoll_ctl(descr->epfd, EPOLL_CTL_DEL, fd, NULL);
 		if (ret < 0)
-			return syserror("Failed to disarm \"%s\"", handler->handler_name);
+			return syserror("Failed to disarm \"%s\"", handler->name);
 
 		/*
 		 * For io_uring the deletion happens at completion time. Either
