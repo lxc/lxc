@@ -215,7 +215,7 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 	size_t arrlen;
 
 	arrlen = BITS_TO_LONGS(nbits);
-	bitarr = calloc(arrlen, sizeof(uint32_t));
+	bitarr = zalloc(arrlen * sizeof(uint32_t));
 	if (!bitarr)
 		return ret_set_errno(NULL, ENOMEM);
 
