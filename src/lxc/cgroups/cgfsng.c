@@ -215,7 +215,7 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 	size_t arrlen;
 
 	arrlen = BITS_TO_LONGS(nbits);
-	bitarr = calloc(arrlen, sizeof(uint32_t));
+	bitarr = zalloc(arrlen * sizeof(uint32_t));
 	if (!bitarr)
 		return ret_set_errno(NULL, ENOMEM);
 
@@ -596,7 +596,6 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 
 		if (maxposs < maxisol)
 			maxposs = maxisol;
-		maxposs++;
 	} else {
 		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
 	}
@@ -615,7 +614,6 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 
 		if (maxposs < maxoffline)
 			maxposs = maxoffline;
-		maxposs++;
 	} else {
 		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
 	}
