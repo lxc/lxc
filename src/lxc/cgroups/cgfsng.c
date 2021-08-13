@@ -679,18 +679,12 @@ static bool cpuset1_initialize(int dfd_base, int dfd_next)
 	ssize_t bytes;
 	char v;
 
-	/*
-	* Determine whether the base cgroup has cpuset
-	* inheritance turned on.
-	 */
+	/* Determine whether the base cgroup has cpuset inheritance turned on. */
 	bytes = lxc_readat(dfd_base, "cgroup.clone_children", &v, 1);
 	if (bytes < 0)
 		return syserror_ret(false, "Failed to read file %d(cgroup.clone_children)", dfd_base);
 
-	/*
-	* Initialize cpuset.cpus and make remove any isolated
-	* and offline cpus.
-	 */
+	/* Initialize cpuset.cpus removing any isolated and offline cpus. */
 	if (!cpuset1_cpus_initialize(dfd_base, dfd_next, v == '1'))
 		return syserror_ret(false, "Failed to initialize cpuset.cpus");
 
@@ -699,12 +693,12 @@ static bool cpuset1_initialize(int dfd_base, int dfd_next)
 	if (bytes < 0)
 		return syserror_ret(false, "Failed to read file %d(cpuset.mems)", dfd_base);
 
-	/* ... and copy to first cgroup in the tree... */
+	/* and copy to first cgroup in the tree... */
 	bytes = lxc_writeat(dfd_next, "cpuset.mems", mems, bytes);
 	if (bytes < 0)
 		return syserror_ret(false, "Failed to write %d(cpuset.mems)", dfd_next);
 
-	/* ... and finally turn on cpuset inheritance. */
+	/* and finally turn on cpuset inheritance. */
 	bytes = lxc_writeat(dfd_next, "cgroup.clone_children", "1", 1);
 	if (bytes < 0)
 		return syserror_ret(false, "Failed to write %d(cgroup.clone_children)", dfd_next);
