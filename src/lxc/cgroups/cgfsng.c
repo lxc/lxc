@@ -208,49 +208,68 @@ static bool is_set(unsigned bit, uint32_t *bitarr)
  *
  *	1 0 1 1
  */
-static uint32_t *lxc_cpumask(char *buf, size_t nbits)
+static int lxc_cpumask(char *buf, uint32_t **bitarr, size_t *last_set_bit)
 {
-	__do_free uint32_t *bitarr = NULL;
+	__do_free uint32_t *arr_u32 = NULL;
+	size_t cur_last_set_bit = 0, nbits = 256;
+	size_t nr_u32;
 	char *token;
-	size_t arrlen;
 
-	arrlen = BITS_TO_LONGS(nbits);
-	bitarr = zalloc(arrlen * sizeof(uint32_t));
-	if (!bitarr)
-		return ret_set_errno(NULL, ENOMEM);
+	nr_u32 = BITS_TO_LONGS(nbits);
+	arr_u32 = zalloc(nr_u32 * sizeof(uint32_t));
+	if (!arr_u32)
+		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(token, buf, ",") {
-		errno = 0;
-		unsigned end, start;
+		unsigned last_bit, first_bit;
 		char *range;
 
-		start = strtoul(token, NULL, 0);
-		end = start;
+		errno = 0;
+		first_bit = strtoul(token, NULL, 0);
+		last_bit = first_bit;
 		range = strchr(token, '-');
 		if (range)
-			end = strtoul(range + 1, NULL, 0);
+			last_bit = strtoul(range + 1, NULL, 0);
 
-		if (!(start <= end))
-			return ret_set_errno(NULL, EINVAL);
+		if (!(first_bit <= last_bit))
+			return ret_errno(EINVAL);
 
-		if (end >= nbits)
-			return ret_set_errno(NULL, EINVAL);
+		if (last_bit >= nbits) {
+			size_t add_bits = last_bit - nbits + 32;
+			size_t new_nr_u32;
+			uint32_t *p;
 
-		while (start <= end)
-			set_bit(start++, bitarr);
+			new_nr_u32 = BITS_TO_LONGS(nbits + add_bits);
+			p = realloc(arr_u32, new_nr_u32 * sizeof(uint32_t));
+			if (!p)
+				return ret_errno(ENOMEM);
+			arr_u32 = move_ptr(p);
+
+			memset(arr_u32 + nr_u32, 0,
+			       (new_nr_u32 - nr_u32) * sizeof(uint32_t));
+			nbits += add_bits;
+		}
+
+		while (first_bit <= last_bit)
+			set_bit(first_bit++, arr_u32);
+
+		if (last_bit > cur_last_set_bit)
+			cur_last_set_bit = last_bit;
 	}
 
-	return move_ptr(bitarr);
+	*last_set_bit = cur_last_set_bit;
+	*bitarr = move_ptr(arr_u32);
+	return 0;
 }
 
 /* Turn cpumask into simple, comma-separated cpulist. */
-static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
+static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t last_set_bit)
 {
 	__do_free_string_list char **cpulist = NULL;
 	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
 	int ret;
 
-	for (size_t i = 0; i <= nbits; i++) {
+	for (size_t i = 0; i <= last_set_bit; i++) {
 		if (!is_set(i, bitarr))
 			continue;
 
@@ -267,37 +286,6 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 		return ret_set_errno(NULL, ENOMEM);
 
 	return lxc_string_join(",", (const char **)cpulist, false);
-}
-
-static ssize_t get_max_cpus(char *cpulist)
-{
-	char *c1, *c2;
-	char *maxcpus = cpulist;
-	size_t cpus = 0;
-
-	c1 = strrchr(maxcpus, ',');
-	if (c1)
-		c1++;
-
-	c2 = strrchr(maxcpus, '-');
-	if (c2)
-		c2++;
-
-	if (!c1 && !c2)
-		c1 = maxcpus;
-	else if (c1 > c2)
-		c2 = c1;
-	else if (c1 < c2)
-		c1 = c2;
-	else if (!c1 && c2)
-		c1 = c2;
-
-	errno = 0;
-	cpus = strtoul(c1, NULL, 0);
-	if (errno != 0)
-		return -1;
-
-	return cpus;
 }
 
 static inline bool is_unified_hierarchy(const struct hierarchy *h)
@@ -569,34 +557,21 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 	__do_free uint32_t *isolmask = NULL, *offlinemask = NULL,
 			   *possmask = NULL;
 	int ret;
-	ssize_t i;
-	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
+	size_t isol_last_set_bit = 0, offline_last_set_bit = 0,
+	       poss_last_set_bit = 0;
 	bool flipped_bit = false;
 
 	posscpus = read_file_at(dfd_parent, "cpuset.cpus", PROTECT_OPEN, 0);
 	if (!posscpus)
 		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
 
-	/* Get maximum number of cpus found in possible cpuset. */
-	maxposs = get_max_cpus(posscpus);
-	if (maxposs < 0 || maxposs >= INT_MAX - 1)
-		return false;
-
 	if (file_exists(__ISOL_CPUS)) {
 		isolcpus = read_file_at(-EBADF, __ISOL_CPUS, PROTECT_OPEN, 0);
 		if (!isolcpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
 
-		if (isdigit(isolcpus[0])) {
-			/* Get maximum number of cpus found in isolated cpuset. */
-			maxisol = get_max_cpus(isolcpus);
-			if (maxisol < 0 || maxisol >= INT_MAX - 1)
-				return false;
-		}
-
-		if (maxposs < maxisol)
-			maxposs = maxisol;
-		maxposs++;
+		if (!isdigit(isolcpus[0]))
+			free_disarm(isolcpus);
 	} else {
 		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
 	}
@@ -606,53 +581,49 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 		if (!offlinecpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
 
-		if (isdigit(offlinecpus[0])) {
-			/* Get maximum number of cpus found in offline cpuset. */
-			maxoffline = get_max_cpus(offlinecpus);
-			if (maxoffline < 0 || maxoffline >= INT_MAX - 1)
-				return false;
-		}
-
-		if (maxposs < maxoffline)
-			maxposs = maxoffline;
-		maxposs++;
+		if (!isdigit(offlinecpus[0]))
+			free_disarm(offlinecpus);
 	} else {
 		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
 	}
 
-	if ((maxisol == 0) && (maxoffline == 0)) {
+	if (!isolcpus && !offlinecpus) {
 		cpulist = move_ptr(posscpus);
 		goto copy_parent;
 	}
 
-	possmask = lxc_cpumask(posscpus, maxposs);
-	if (!possmask)
+	ret = lxc_cpumask(posscpus, &possmask, &poss_last_set_bit);
+	if (ret)
 		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
 
-	if (maxisol > 0) {
-		isolmask = lxc_cpumask(isolcpus, maxposs);
-		if (!isolmask)
+	if (isolcpus) {
+		ret = lxc_cpumask(isolcpus, &isolmask, &isol_last_set_bit);
+		if (ret)
 			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
 	}
 
-	if (maxoffline > 0) {
-		offlinemask = lxc_cpumask(offlinecpus, maxposs);
-		if (!offlinemask)
+	if (offlinecpus > 0) {
+		ret = lxc_cpumask(offlinecpus, &offlinemask, &offline_last_set_bit);
+		if (ret)
 			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
 	}
 
-	for (i = 0; i <= maxposs; i++) {
-		if ((isolmask && !is_set(i, isolmask)) ||
-		    (offlinemask && !is_set(i, offlinemask)) ||
-		    !is_set(i, possmask))
-			continue;
+	for (size_t i = 0; i <= poss_last_set_bit; i++) {
+		if (isolmask && (i <= isol_last_set_bit) &&
+		    is_set(i, isolmask) && is_set(i, possmask)) {
+			flipped_bit = true;
+			clear_bit(i, possmask);
+		}
 
-		flipped_bit = true;
-		clear_bit(i, possmask);
+		if (offlinemask && (i <= offline_last_set_bit) &&
+		    is_set(i, offlinemask) && is_set(i, possmask)) {
+			flipped_bit = true;
+			clear_bit(i, possmask);
+		}
 	}
 
 	if (!flipped_bit) {
-		cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
+		cpulist = lxc_cpumask_to_cpulist(possmask, poss_last_set_bit);
 		TRACE("No isolated or offline cpus present in cpuset");
 	} else {
 		cpulist = move_ptr(posscpus);
