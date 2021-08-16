@@ -44,63 +44,26 @@ lxc.net.0.link = lxcbr0
 EOF
 fi
 
-ARCH=i386
-if type dpkg >/dev/null 2>&1; then
-	ARCH=$(dpkg --print-architecture)
-fi
-
-lxc-create -t download -n c1 -- -d ubuntu -r xenial -a $ARCH
+lxc-create -t busybox -n c1
 echo "lxc.no_new_privs = 1" >> /var/lib/lxc/c1/config
 
 lxc-start -n c1
 p1=$(lxc-info -n c1 -p -H)
-[ "$p1" != "-1" ] || { echo "Failed to start container c1 (run $count)"; false; }
-sleep 5s
-lxc-attach -n c1 --clear-env -- apt update -y
-lxc-attach -n c1 --clear-env -- apt install -y gcc make
+[ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
 
-# Here documents don't seem to like sudo -i.
-lxc-attach -n c1 --clear-env -- /bin/bash -c "cat <<EOF > /nnptest.c
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-
-int main(int argc, char *argv[])
-{
-      printf(\"%d\n\", geteuid());
-}
+lxc-attach -n c1 --clear-env -- mkdir -p /home/ubuntu
+lxc-attach -n c1 --clear-env -- /bin/sh -c "cat <<EOF >> /etc/passwd
+ubuntu:x:1000:1000:ubuntu:/home/ubuntu:/bin/sh
 EOF"
-lxc-attach -n c1 --clear-env -- cat /nnptest.c
-lxc-attach -n c1 --clear-env -- make -C / nnptest
-lxc-attach -n c1 --clear-env -- chmod u+s /nnptest
 
 # Check that lxc-attach obeys PR_SET_NO_NEW_PRIVS when it is set.
-NNP_EUID=$(lxc-attach -n c1 --clear-env -- sudo -u ubuntu /nnptest)
-if [ "$NNP_EUID" -ne 1000 ]; then
-	exit 1
-fi
+! lxc-attach -n c1 --clear-env --uid 1000 --gid 1000 -- ping -c 1 127.0.0.1 || { echo "Managed to ping localhost"; false; }
 lxc-stop -n c1 -k
 
 # Check that lxc-attach obeys PR_SET_NO_NEW_PRIVS when it is not set.
 sed -i 's/lxc.no_new_privs = 1/lxc.no_new_privs = 0/' /var/lib/lxc/c1/config
 lxc-start -n c1
-NNP_EUID=$(lxc-attach -n c1 --clear-env -- sudo -u ubuntu /nnptest)
-if [ "$NNP_EUID" -ne 0 ]; then
-	exit 1
-fi
+lxc-attach -n c1 --clear-env --uid 1000 --gid 1000 -- ping -c 1 127.0.0.1 || { echo "Managed to ping localhost"; false; }
 lxc-stop -n c1 -k
-
-# Check that lxc-execute and lxc-start obey PR_SET_NO_NEW_PRIVS when it is set.
-NNP_EUID=$(lxc-execute -n c1 -- sudo -u ubuntu /nnptest)
-if [ "$NNP_EUID" -ne 0 ]; then
-	exit 1
-fi
-
-# Check that lxc-execute and lxc-start obey PR_SET_NO_NEW_PRIVS when it is not set.
-sed -i 's/lxc.no_new_privs = 0/lxc.no_new_privs = 1/' /var/lib/lxc/c1/config
-NNP_EUID=$(lxc-execute -n c1 -- sudo -u ubuntu /nnptest)
-if [ "$NNP_EUID" -ne 1000 ]; then
-	exit 1
-fi
 
 DONE=1
