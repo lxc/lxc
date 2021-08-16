@@ -602,7 +602,7 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
 	}
 
-	if (offlinecpus > 0) {
+	if (offlinecpus) {
 		ret = lxc_cpumask(offlinecpus, &offlinemask, &offline_last_set_bit);
 		if (ret)
 			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
