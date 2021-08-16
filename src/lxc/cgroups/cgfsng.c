@@ -262,6 +262,50 @@ static int lxc_cpumask(char *buf, uint32_t **bitarr, size_t *last_set_bit)
 	return 0;
 }
 
+static int lxc_cpumask_update(char *buf, uint32_t *bitarr, size_t last_set_bit,
+			      bool clear)
+{
+	bool flipped = false;
+	char *token;
+
+	lxc_iterate_parts(token, buf, ",") {
+		unsigned last_bit, first_bit;
+		char *range;
+
+		errno = 0;
+		first_bit = strtoul(token, NULL, 0);
+		last_bit = first_bit;
+		range = strchr(token, '-');
+		if (range)
+			last_bit = strtoul(range + 1, NULL, 0);
+
+		if (!(first_bit <= last_bit)) {
+			WARN("The cup range seems to be inverted: %u-%u", first_bit, last_bit);
+			continue;
+		}
+
+		if (last_bit > last_set_bit)
+			continue;
+
+		while (first_bit <= last_bit) {
+			if (clear && is_set(first_bit, bitarr)) {
+				flipped = true;
+				clear_bit(first_bit, bitarr);
+			} else if (!clear && !is_set(first_bit, bitarr)) {
+				flipped = true;
+				set_bit(first_bit, bitarr);
+			}
+
+			first_bit++;
+		}
+	}
+
+	if (flipped)
+		return 1;
+
+	return 0;
+}
+
 /* Turn cpumask into simple, comma-separated cpulist. */
 static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t last_set_bit)
 {
@@ -554,12 +598,9 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 {
 	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
 		       *offlinecpus = NULL, *posscpus = NULL;
-	__do_free uint32_t *isolmask = NULL, *offlinemask = NULL,
-			   *possmask = NULL;
+	__do_free uint32_t *possmask = NULL;
 	int ret;
-	size_t isol_last_set_bit = 0, offline_last_set_bit = 0,
-	       poss_last_set_bit = 0;
-	bool flipped_bit = false;
+	size_t poss_last_set_bit = 0;
 
 	posscpus = read_file_at(dfd_parent, "cpuset.cpus", PROTECT_OPEN, 0);
 	if (!posscpus)
@@ -596,33 +637,13 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 	if (ret)
 		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
 
-	if (isolcpus) {
-		ret = lxc_cpumask(isolcpus, &isolmask, &isol_last_set_bit);
-		if (ret)
-			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
-	}
+	if (isolcpus)
+		ret = lxc_cpumask_update(isolcpus, possmask, poss_last_set_bit, true);
 
-	if (offlinecpus) {
-		ret = lxc_cpumask(offlinecpus, &offlinemask, &offline_last_set_bit);
-		if (ret)
-			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
-	}
+	if (offlinecpus)
+		ret |= lxc_cpumask_update(offlinecpus, possmask, poss_last_set_bit, true);
 
-	for (size_t i = 0; i <= poss_last_set_bit; i++) {
-		if (isolmask && (i <= isol_last_set_bit) &&
-		    is_set(i, isolmask) && is_set(i, possmask)) {
-			flipped_bit = true;
-			clear_bit(i, possmask);
-		}
-
-		if (offlinemask && (i <= offline_last_set_bit) &&
-		    is_set(i, offlinemask) && is_set(i, possmask)) {
-			flipped_bit = true;
-			clear_bit(i, possmask);
-		}
-	}
-
-	if (!flipped_bit) {
+	if (!ret) {
 		cpulist = lxc_cpumask_to_cpulist(possmask, poss_last_set_bit);
 		TRACE("No isolated or offline cpus present in cpuset");
 	} else {
