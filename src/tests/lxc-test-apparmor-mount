@@ -53,7 +53,6 @@ run_cmd() {
 }
 
 DONE=0
-KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 MOUNTSR=/sys/kernel/security/apparmor/features/mount
 dnam=`mktemp -d`
 logfile=`mktemp`
@@ -96,11 +95,6 @@ which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; 
 # create a test user
 TUSER=lxcunpriv
 HDIR=/home/$TUSER
-
-ARCH=i386
-if type dpkg >/dev/null 2>&1; then
-	ARCH=$(dpkg --print-architecture)
-fi
 
 deluser $TUSER && rm -Rf $HDIR || true
 useradd $TUSER
@@ -154,23 +148,7 @@ else
 fi
 
 
-run_cmd mkdir -p $HDIR/.cache/lxc
-[ -d /var/cache/lxc/download ] && \
-    cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
-    chown -R $TUSER: $HDIR/.cache/lxc
-
-# default release is trusty, or the systems release if recognized
-release=trusty
-if [ -f /etc/lsb-release ]; then
-    . /etc/lsb-release
-    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
-        rels="$KNOWN_RELEASES"
-    for r in $rels; do
-        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
-    done
-fi
-
-run_cmd lxc-create -t download -n $cname -- -d ubuntu -r $release -a $ARCH
+run_cmd lxc-create -t busybox -n $cname
 
 echo "test default confined container"
 run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
