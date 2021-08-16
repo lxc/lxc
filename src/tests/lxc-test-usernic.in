@@ -24,7 +24,6 @@
 # This test assumes an Ubuntu host
 
 DONE=0
-KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 LXC_USER_NIC="@LIBEXECDIR@/lxc/lxc-user-nic"
 
 cleanup() {
@@ -63,11 +62,6 @@ run_cmd() {
 	        XDG_RUNTIME_DIR=/run/user/$(id -u usernic-user) ASAN_OPTIONS=${ASAN_OPTIONS:-} \
 		UBSAN_OPTIONS=${UBSAN_OPTIONS:-} $*
 }
-
-ARCH=i386
-if type dpkg >/dev/null 2>&1; then
-	ARCH=$(dpkg --print-architecture)
-fi
 
 set -eu
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
@@ -117,37 +111,14 @@ fi
 mkdir -p /run/user/$(id -u usernic-user)
 chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 
-# Copy the download template cache if available
-run_cmd "mkdir -p /home/usernic-user/.cache/lxc"
-[ -d /var/cache/lxc/download ] && \
-    cp -R /var/cache/lxc/download /home/usernic-user/.cache/lxc && \
-    chown -R usernic-user: /home/usernic-user/.cache/lxc
-
-
 # Create two test bridges
 brctl addbr usernic-br0
 brctl addbr usernic-br1
 ifconfig usernic-br0 0.0.0.0 up
 ifconfig usernic-br1 0.0.0.0 up
 
-ARCH=i386
-if type dpkg >/dev/null 2>&1; then
-	ARCH=$(dpkg --print-architecture)
-fi
-
-# default release is trusty, or the systems release if recognized
-release=trusty
-if [ -f /etc/lsb-release ]; then
-    . /etc/lsb-release
-    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
-        rels="$KNOWN_RELEASES"
-    for r in $rels; do
-        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
-    done
-fi
-
 # Create three containers
-run_cmd "lxc-create -t download -n b1 -- -d ubuntu -r $release -a $ARCH"
+run_cmd "lxc-create -t busybox -n b1"
 run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
