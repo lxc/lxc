@@ -946,19 +946,41 @@ err:
 int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty,
 			int *ret_pty_nr, bool require_tiocgptpeer)
 {
-	__do_close int fd_ptx = -EBADF, fd_opath_pty = -EBADF, fd_pty = -EBADF;
+	__do_close int fd_devpts = -EBADF, fd_ptx = -EBADF,
+		       fd_opath_pty = -EBADF, fd_pty = -EBADF;
 	int pty_nr = -1;
 	int ret;
 
+	/*
+	 * When we aren't told what devpts instance to allocate from we assume
+	 * it is the one in the caller's mount namespace.
+	 * This poses a slight complication, a lot of distros will change
+	 * permissions on /dev/ptmx so it can be opened by unprivileged users
+	 * but will not change permissions on /dev/pts/ptmx itself. In
+	 * addition, /dev/ptmx can either be a symlink, a bind-mount, or a
+	 * separate device node. So we need to allow for fairly lax lookup.
+	 */
 	if (devpts_fd < 0)
-		return ret_errno(EBADF);
-
-	fd_ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
+		fd_ptx = open_at(-EBADF, "/dev/ptmx", PROTECT_OPEN_RW & ~O_NOFOLLOW,
+				 PROTECT_LOOKUP_ABSOLUTE_XDEV_SYMLINKS, 0);
+	else
+		fd_ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (fd_ptx < 0) {
 		if (errno == ENOSPC)
 			return systrace("Exceeded number of allocatable terminals");
 
 		return syserror("Failed to open terminal multiplexer device");
+	}
+
+	if (devpts_fd < 0) {
+		fd_devpts = open_at(-EBADF, "/dev/pts", PROTECT_OPATH_DIRECTORY,
+				    PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+		if (fd_devpts < 0)
+			return syserror("Failed to open devpts instance");
+
+		if (!same_device(fd_devpts, "ptmx", fd_ptx, ""))
+			return syserror("The acquired ptmx devices don't match");
+		devpts_fd = fd_devpts;
 	}
 
 	ret = unlockpt(fd_ptx);
@@ -1018,7 +1040,6 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty,
 
 int lxc_terminal_parent(struct lxc_conf *conf)
 {
-	__do_close int fd_devpts = -EBADF;
 	struct lxc_terminal *console = &conf->console;
 	int ret;
 
@@ -1030,15 +1051,7 @@ int lxc_terminal_parent(struct lxc_conf *conf)
 		return 0;
 
 	/* Allocate console for the container from the host's devpts. */
-	fd_devpts = open_at(-EBADF,
-			    "/dev/pts",
-			    PROTECT_OPATH_DIRECTORY,
-			    PROTECT_LOOKUP_ABSOLUTE_XDEV,
-			    0);
-	if (fd_devpts < 0)
-		return syserror("Failed to open devpts instance");
-
-	ret = lxc_devpts_terminal(fd_devpts, &console->ptx, &console->pty,
+	ret = lxc_devpts_terminal(-EBADF, &console->ptx, &console->pty,
 				  &console->pty_nr, false);
 	if (ret < 0)
 		return syserror("Failed to allocate console");
