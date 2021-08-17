@@ -123,4 +123,7 @@ static inline int dup_cloexec(int fd)
 	return move_fd(fd_dup);
 }
 
+__hidden extern bool same_device(int fda, const char *patha, int fdb,
+				 const char *pathb);
+
 #endif /* __LXC_FILE_UTILS_H */

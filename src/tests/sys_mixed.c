@@ -106,14 +106,14 @@ int main(int argc, char *argv[])
 
 	c->clear_config(c);
 
-	if (!c->set_config_item(c, "lxc.mount.auto", "sys:mixed")) {
-		lxc_error("%s\n", "Failed to set config item \"lxc.mount.auto=sys:mixed\"");
-		goto on_error_put;
-	}
-
 	if (!c->load_config(c, NULL)) {
 		lxc_error("%s\n", "Failed to load config for container \"sys-mixed\"");
 		goto on_error_stop;
+	}
+
+	if (!c->set_config_item(c, "lxc.mount.auto", "sys:mixed")) {
+		lxc_error("%s\n", "Failed to set config item \"lxc.mount.auto=sys:mixed\"");
+		goto on_error_put;
 	}
 
 	if (!c->want_daemonize(c, true)) {

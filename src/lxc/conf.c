@@ -1666,10 +1666,12 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	__do_close int devpts_fd = -EBADF, fd_fs = -EBADF;
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
+	size_t pty_max = conf->pty_max;
 	int ret;
 
-	if (conf->pty_max <= 0)
-		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
+	pty_max += conf->ttys.max;
+	if (pty_max <= 0)
+		return log_debug(0, "No new devpts instance will be mounted since no pts devices are required");
 
 	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
 			 "/proc/self/fd/%d/pts", rootfs->dfd_dev);
@@ -1708,7 +1710,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		if (ret < 0)
 			return syserror("Failed to set \"mode=0620\" property on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_property(fd_fs, "max", fdstr(conf->pty_max));
+		ret = fs_set_property(fd_fs, "max", fdstr(pty_max));
 		if (ret < 0)
 			return syserror("Failed to set \"max=%zu\" property on devpts filesystem context %d", conf->pty_max, fd_fs);
 
@@ -1738,7 +1740,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		 */
 
 		ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
-				default_devpts_mntopts, conf->pty_max);
+				default_devpts_mntopts, pty_max);
 		if (ret < 0)
 			return -1;
 
@@ -1781,7 +1783,22 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 
 		DEBUG("Mounted new devpts instance with options \"%s\"", *opts);
 	}
+
 	handler->conf->devpts_fd = move_fd(devpts_fd);
+
+	/*
+	 * In order to allocate terminal devices the devpts filesystem will
+	 * have to be attached to the filesystem at least ones in the new mount
+	 * api. The reason is lengthy but the gist is that until the new mount
+	 * has been attached to the filesystem it is a detached mount with an
+	 * anonymous mount mamespace attached to it for which the kernel
+	 * refuses certain operations.
+	 * We end up here if the user has requested to allocate tty devices
+	 * while not requestig pty devices be made available to the container.
+	 * We only need the devpts_fd to allocate tty devices.
+	 */
+	if (conf->pty_max <= 0)
+		return 0;
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = unlinkat(rootfs->dfd_dev, "ptmx", 0);
@@ -1820,6 +1837,30 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 
 	DEBUG("Created symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 	return 0;
+}
+
+static int lxc_finish_devpts_child(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
+	int ret;
+
+	if (conf->pty_max > 0)
+		return 0;
+
+	/*
+	 * We end up here if the user has requested to allocate tty devices
+	 * while not requestig pty devices be made available to the container.
+	 * This means we can unmount the devpts instance. We only need the
+	 * devpts_fd to allocate tty devices.
+	 */
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
+			 "/proc/self/fd/%d/pts", rootfs->dfd_dev);
+	if (ret < 0)
+		return syserror("Failed to create path");
+
+	close_prot_errno_disarm(conf->devpts_fd);
+	return umount2(rootfs->buf, MNT_DETACH);
 }
 
 static int lxc_send_devpts_to_parent(struct lxc_handler *handler)
@@ -4346,6 +4387,10 @@ int lxc_setup(struct lxc_handler *handler)
 	ret = lxc_setup_devpts_child(handler);
 	if (ret < 0)
 		return log_error(-1, "Failed to prepare new devpts instance");
+
+	ret = lxc_finish_devpts_child(handler);
+	if (ret < 0)
+		return log_error(-1, "Failed to finish devpts setup");
 
 	ret = lxc_setup_console(handler, &lxc_conf->rootfs, &lxc_conf->console,
 				lxc_conf->ttys.dir);
