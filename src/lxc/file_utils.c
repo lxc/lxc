@@ -766,3 +766,35 @@ bool same_file_lax(int fda, int fdb)
 	return (st_fda.st_dev == st_fdb.st_dev) &&
 	       (st_fda.st_ino == st_fdb.st_ino);
 }
+
+bool same_device(int fda, const char *patha, int fdb, const char *pathb)
+{
+	int ret;
+	mode_t modea, modeb;
+	struct stat st_fda, st_fdb;
+
+        if (fda == fdb)
+                return true;
+
+	if (is_empty_string(patha))
+		ret = fstat(fda, &st_fda);
+	else
+		ret = fstatat(fda, patha, &st_fda, 0);
+	if (ret)
+		return false;
+
+	if (is_empty_string(pathb))
+		ret = fstat(fdb, &st_fdb);
+	else
+		ret = fstatat(fdb, pathb, &st_fdb, 0);
+	if (ret)
+		return false;
+
+	errno = EINVAL;
+	modea = (st_fda.st_mode & S_IFMT);
+	modeb = (st_fdb.st_mode & S_IFMT);
+	if (modea != modeb || !IN_SET(modea, S_IFCHR, S_IFBLK))
+		return false;
+
+	return (st_fda.st_rdev == st_fdb.st_rdev);
+}
