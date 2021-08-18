@@ -216,7 +216,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
 
 	if (!bpf_device_all_access(access_mask))
-		jump_nr++;
+		jump_nr += 3; // use 3 instructions to check access_mask
 
 	device_type = bpf_device_type(device->type);
 	if (device_type < 0)
@@ -235,8 +235,9 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 		struct bpf_insn ins[] = {
 			BPF_MOV32_REG(BPF_REG_1, BPF_REG_3),
 			BPF_ALU32_IMM(BPF_AND, BPF_REG_1, access_mask),
-			BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, jump_nr--),
+			BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, jump_nr),
 		};
+        jump_nr -= 3;
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
