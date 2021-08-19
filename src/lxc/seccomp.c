@@ -1360,6 +1360,7 @@ static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 
 int seccomp_notify_cleanup_handler(int fd, void *data)
 {
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
 
@@ -1372,6 +1373,7 @@ int seccomp_notify_cleanup_handler(int fd, void *data)
 	 * seccomp notify handler through the command socket (e.g. for attach)
 	 * and so we won't touch the container's config.
 	 */
+#endif
 	return 0;
 }
 
