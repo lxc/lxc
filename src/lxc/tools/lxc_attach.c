@@ -131,7 +131,8 @@ Options :\n\
   -u, --uid=UID     Execute COMMAND with UID inside the container\n\
   -g, --gid=GID     Execute COMMAND with GID inside the container\n\
   -c, --context=context\n\
-                    SELinux Context to transition into\n\
+                    SELinux Context to transition into. This option can't\n\
+                    be combined with elevated LSM privileges.\n\
 ",
 	.options      = my_longopts,
 	.parser       = my_parser,
@@ -148,7 +149,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 
 	switch (c) {
 	case 'e':
-		ret = lxc_fill_elevated_privileges(arg, &elevated_privileges);
+		ret = lxc_fill_elevated_privileges(arg, &elevated_privileges, selinux_context);
 		if (ret)
 			return -1;
 		break;
@@ -171,7 +172,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 			return -1;
 
 		/* -s implies -e */
-		lxc_fill_elevated_privileges(NULL, &elevated_privileges);
+		ret = lxc_fill_elevated_privileges(NULL, &elevated_privileges, selinux_context);
+		if (ret)
+			return -1;
 		break;
 	case 500: /* clear-env */
 		env_policy = LXC_ATTACH_CLEAR_ENV;
@@ -207,9 +210,13 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		if (lxc_safe_uint(arg, &args->gid) < 0)
 			return -1;
 		break;
-        case 'c':
-                selinux_context = arg;
-                break;
+	case 'c':
+		if (elevated_privileges & LXC_ATTACH_LSM_EXEC) {
+			ERROR("Can not combine -c with elevated LSM privileges");
+			return -1;
+		}
+		selinux_context = arg;
+		break;
 	}
 
 	return 0;

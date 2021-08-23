@@ -3252,7 +3252,7 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 	return ret_errno(EINVAL);
 }
 
-int lxc_fill_elevated_privileges(char *flaglist, int *flags)
+int lxc_fill_elevated_privileges(char *flaglist, int *flags, const char *selinux_context)
 {
 	char *token;
 	int i, aflag;
@@ -3272,21 +3272,23 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 		 */
 		for (i = 0; all_privs[i].token; i++)
 			*flags |= all_privs[i].flag;
+	} else {
+		lxc_iterate_parts(token, flaglist, "|") {
+			aflag = -1;
 
-		return 0;
+			for (i = 0; all_privs[i].token; i++)
+				if (strequal(all_privs[i].token, token))
+					aflag = all_privs[i].flag;
+
+			if (aflag < 0)
+				return ret_errno(EINVAL);
+
+			*flags |= aflag;
+		}
 	}
 
-	lxc_iterate_parts(token, flaglist, "|") {
-		aflag = -1;
-
-		for (i = 0; all_privs[i].token; i++)
-			if (strequal(all_privs[i].token, token))
-				aflag = all_privs[i].flag;
-
-		if (aflag < 0)
-			return ret_errno(EINVAL);
-
-		*flags |= aflag;
+	if (*flags & LXC_ATTACH_LSM_EXEC && selinux_context) {
+		return log_error(-1, "Can't combine LSM privileges with -c option");
 	}
 
 	return 0;
