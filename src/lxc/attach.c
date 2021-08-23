@@ -1430,6 +1430,11 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error(-1, "Failed to get attach context");
 	}
 
+	if (options->lsm_label) {
+		free(ctx->lsm_label);
+		ctx->lsm_label = strdup(options->lsm_label);
+	}
+
 	conf = ctx->container->lxc_conf;
 
 	if (!fetch_seccomp(ctx->container, options))
