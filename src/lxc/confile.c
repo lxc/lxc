@@ -392,10 +392,8 @@ static struct lxc_config_net_t *lxc_get_config_net(const char *key)
 static int set_config_net(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf, void *data)
 {
-	if (!lxc_config_value_empty(value)) {
-		ERROR("lxc.net must not have a value");
-		return -1;
-	}
+	if (!lxc_config_value_empty(value))
+		return syserror_set(-EINVAL, "lxc.net must not have a value");
 
 	return clr_config_net(key, lxc_conf, data);
 }
@@ -1082,7 +1080,7 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 
 	valdup = strdup(value);
 	if (!valdup)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	slash = strchr(valdup, '/');
 	if (!slash)
@@ -1164,15 +1162,14 @@ static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 		return clr_config_seccomp_allow_nesting(key, lxc_conf, NULL);
 
 	if (lxc_safe_uint(value, &lxc_conf->seccomp.allow_nesting) < 0)
-		return -1;
+		return -errno;
 
 	if (lxc_conf->seccomp.allow_nesting > 1)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	return 0;
 #else
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 #endif
 }
 
@@ -1182,7 +1179,7 @@ static int set_config_seccomp_notify_cookie(const char *key, const char *value,
 #ifdef HAVE_SECCOMP_NOTIFY
 	return set_config_string_item(&lxc_conf->seccomp.notifier.cookie, value);
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
@@ -1196,15 +1193,15 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 		return clr_config_seccomp_notify_proxy(key, lxc_conf, NULL);
 
 	if (!strnequal(value, "unix:", 5))
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	offset = value + 5;
 	if (lxc_unix_sockaddr(&lxc_conf->seccomp.notifier.proxy_addr, offset) < 0)
-		return -1;
+		return -errno;
 
 	return 0;
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
@@ -1214,7 +1211,7 @@ static int set_config_seccomp_profile(const char *key, const char *value,
 #ifdef HAVE_SECCOMP
 	return set_config_path_item(&lxc_conf->seccomp.seccomp, value);
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
@@ -1247,7 +1244,7 @@ static int set_config_init_uid(const char *key, const char *value,
 	}
 
 	if (lxc_safe_uint(value, &init_uid) < 0)
-		return -1;
+		return -errno;
 
 	lxc_conf->init_uid = init_uid;
 
@@ -1265,7 +1262,7 @@ static int set_config_init_gid(const char *key, const char *value,
 	}
 
 	if (lxc_safe_uint(value, &init_gid) < 0)
-		return -1;
+		return -errno;
 
 	lxc_conf->init_gid = init_gid;
 
@@ -1380,11 +1377,10 @@ static int set_config_hooks_version(const char *key, const char *value,
 
 	ret = lxc_safe_uint(value, &tmp);
 	if (ret < 0)
-		return -1;
+		return -errno;
 
 	if (tmp > 1)
-		return log_error_errno(-EINVAL,
-				       EINVAL, "Invalid hook version specified. Currently only 0 (legacy) and 1 are supported");
+		return syserror_set(-EINVAL, "Invalid hook version specified. Currently only 0 (legacy) and 1 are supported");
 
 	lxc_conf->hooks_version = tmp;
 
@@ -2152,11 +2148,11 @@ static int set_config_sysctl(const char *key, const char *value,
 		return clr_config_sysctl(key, lxc_conf, NULL);
 
 	if (!strnequal(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")))
-		return -1;
+		return ret_errno(EINVAL);
 
 	key += STRLITERALLEN("lxc.sysctl.");
 	if (is_empty_string(key))
-		return ret_errno(-EINVAL);
+		return ret_errno(EINVAL);
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
@@ -2210,7 +2206,7 @@ static int set_config_proc(const char *key, const char *value,
 		return clr_config_proc(key, lxc_conf, NULL);
 
 	if (!strnequal(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")))
-		return -1;
+		return ret_errno(EINVAL);
 
 	subkey = key + STRLITERALLEN("lxc.proc.");
 	if (*subkey == '\0')
@@ -4434,7 +4430,7 @@ static int get_config_start(const char *key, char *retv, int inlen,
 	else if (strequal(key + 10, "order"))
 		return lxc_get_conf_int(c, retv, inlen, c->start_order);
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 static int get_config_log_syslog(const char *key, char *retv, int inlen,

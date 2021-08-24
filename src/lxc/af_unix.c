@@ -480,17 +480,17 @@ int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
 
 	len = strlen(path);
 	if (len == 0)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 	if (path[0] != '/' && path[0] != '@')
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 	if (path[1] == '\0')
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	if (len + 1 > sizeof(ret->sun_path))
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	*ret = (struct sockaddr_un){
-	    .sun_family = AF_UNIX,
+		.sun_family = AF_UNIX,
 	};
 
 	if (path[0] == '@') {
