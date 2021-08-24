@@ -277,10 +277,11 @@ int main(int argc, char *argv[])
 {
 	int ret = -1;
 	int wexit = 0;
-	struct lxc_log log;
-	pid_t pid;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	lxc_attach_command_t command = (lxc_attach_command_t){.program = NULL};
+	pid_t pid;
+	struct lxc_container *c;
+	struct lxc_log log;
 
 	if (lxc_caps_init())
 		exit(EXIT_FAILURE);
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-	struct lxc_container *c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		exit(EXIT_FAILURE);
 
