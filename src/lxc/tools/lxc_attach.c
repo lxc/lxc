@@ -52,7 +52,7 @@ static int add_to_simple_array(char ***array, ssize_t *capacity, char *value);
 static bool stdfd_is_pty(void);
 static int lxc_attach_create_log_file(const char *log_file);
 
-static int elevated_privileges;
+static unsigned int elevated_privileges;
 static signed long new_personality = -1;
 static int namespace_flags = -1;
 static int remount_sys_proc;
