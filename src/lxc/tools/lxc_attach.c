@@ -289,12 +289,12 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	log.name = my_args.name;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.prefix = my_args.progname;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath[0];
+	log.name	= my_args.name;
+	log.file	= my_args.log_file;
+	log.level	= my_args.log_priority;
+	log.prefix	= my_args.progname;
+	log.quiet	= my_args.quiet;
+	log.lxcpath	= my_args.lxcpath[0];
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
@@ -340,15 +340,15 @@ int main(int argc, char *argv[])
 	if (stdfd_is_pty())
 		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
 
-	attach_options.namespaces = namespace_flags;
-	attach_options.personality = new_personality;
-	attach_options.env_policy = env_policy;
-	attach_options.extra_env_vars = extra_env;
-	attach_options.extra_keep_env = extra_keep;
+	attach_options.namespaces	= namespace_flags;
+	attach_options.personality	= new_personality;
+	attach_options.env_policy	= env_policy;
+	attach_options.extra_env_vars	= extra_env;
+	attach_options.extra_keep_env	= extra_keep;
 
 	if (my_args.argc > 0) {
 		command.program = my_args.argv[0];
-		command.argv = (char**)my_args.argv;
+		command.argv	= (char**)my_args.argv;
 	}
 
 	if (my_args.console_log) {
