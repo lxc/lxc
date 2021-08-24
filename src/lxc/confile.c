@@ -1211,7 +1211,11 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 static int set_config_seccomp_profile(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
+#ifdef HAVE_SECCOMP
 	return set_config_path_item(&lxc_conf->seccomp.seccomp, value);
+#else
+	return ret_set_errno(-1, ENOSYS);
+#endif
 }
 
 static int set_config_execute_cmd(const char *key, const char *value,
@@ -4383,7 +4387,11 @@ static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inle
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
+#ifdef HAVE_SECCOMP
 	return lxc_get_conf_str(retv, inlen, c->seccomp.seccomp);
+#else
+	return ret_errno(ENOSYS);
+#endif
 }
 
 static int get_config_autodev(const char *key, char *retv, int inlen,
