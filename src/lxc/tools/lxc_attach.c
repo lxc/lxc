@@ -334,8 +334,23 @@ int main(int argc, char *argv[])
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 
-	if (elevated_privileges)
+	if (elevated_privileges) {
+		if ((elevated_privileges & LXC_ATTACH_LSM_EXEC)) {
+			if (selinux_context) {
+				ERROR("Cannot combine elevated LSM privileges while requesting LSM profile");
+				goto out;
+			}
+
+			/*
+			 * While most LSM flags are off by default let's still
+			 * make sure they are stripped when elevated LSM
+			 * privileges are requested.
+			 */
+			elevated_privileges |= LXC_ATTACH_LSM;
+		}
+
 		attach_options.attach_flags &= ~(elevated_privileges);
+	}
 
 	if (stdfd_is_pty())
 		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
