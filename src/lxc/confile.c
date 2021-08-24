@@ -3030,10 +3030,10 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 	return ret_errno(EINVAL);
 }
 
-int lxc_fill_elevated_privileges(char *flaglist, int *flags)
+int lxc_fill_elevated_privileges(char *flaglist, unsigned int *flags)
 {
+	unsigned int flags_tmp = 0;
 	char *token;
-	int i, aflag;
 	struct {
 		const char *token;
 		int flag;
@@ -3045,28 +3045,33 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 	};
 
 	if (!flaglist) {
-		/* For the sake of backward compatibility, drop all privileges
-		*  if none is specified.
+		/*
+		 * For the sake of backward compatibility, keep all privileges
+		 * if no specific privileges are specified.
 		 */
-		for (i = 0; all_privs[i].token; i++)
-			*flags |= all_privs[i].flag;
+		for (unsigned int i = 0; all_privs[i].token; i++)
+			flags_tmp |= all_privs[i].flag;
 
+		*flags = flags_tmp;
 		return 0;
 	}
 
 	lxc_iterate_parts(token, flaglist, "|") {
-		aflag = -1;
+		bool valid_token = false;
 
-		for (i = 0; all_privs[i].token; i++)
-			if (strequal(all_privs[i].token, token))
-				aflag = all_privs[i].flag;
+		for (unsigned int i = 0; all_privs[i].token; i++) {
+			if (!strequal(all_privs[i].token, token))
+				continue;
 
-		if (aflag < 0)
-			return ret_errno(EINVAL);
+			valid_token = true;
+			flags_tmp |= all_privs[i].flag;
+		}
 
-		*flags |= aflag;
+		if (!valid_token)
+			return syserror_set(-EINVAL, "Invalid elevated privilege \"%s\" requested", token);
 	}
 
+	*flags = flags_tmp;
 	return 0;
 }
 
