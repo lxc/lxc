@@ -132,6 +132,7 @@ enum idtype {
 struct lxc_sysctl {
 	char *key;
 	char *value;
+	struct list_head head;
 };
 
 static void free_lxc_sysctl(struct lxc_sysctl *ptr)
@@ -492,7 +493,7 @@ struct lxc_conf {
 	struct list_head state_clients;
 
 	/* sysctls */
-	struct lxc_list sysctls;
+	struct list_head sysctls;
 
 	/* procs */
 	struct lxc_list procs;
@@ -572,7 +573,7 @@ static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
 	return !in_caplist(cap, &conf->caps);
 }
 
-__hidden extern int setup_sysctl_parameters(struct lxc_list *sysctls);
+__hidden extern int setup_sysctl_parameters(struct lxc_conf *conf);
 __hidden extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
 __hidden extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
 __hidden extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
