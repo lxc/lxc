@@ -3379,8 +3379,8 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.fd_path_pin = -EBADF;
 	new->rootfs.dfd_idmapped = -EBADF;
 	new->logfd = -1;
-	lxc_list_init(&new->cgroup);
-	lxc_list_init(&new->cgroup2);
+	INIT_LIST_HEAD(&new->cgroup);
+	INIT_LIST_HEAD(&new->cgroup2);
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 	INIT_LIST_HEAD(&(new->bpf_devices).devices);
@@ -4538,11 +4538,12 @@ int lxc_clear_namespace(struct lxc_conf *c)
 
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 {
-	char *global_token, *namespaced_token;
-	size_t namespaced_token_len;
-	struct lxc_list *it, *next, *list;
 	const char *k = key;
 	bool all = false;
+	char *global_token, *namespaced_token;
+	size_t namespaced_token_len;
+	struct list_head *list;
+	struct lxc_cgroup *cgroup, *ncgroup;
 
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token		= "lxc.cgroup2";
@@ -4565,21 +4566,18 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe(it, list, next) {
-		struct lxc_cgroup *cg = it->elem;
-
-		if (!all && !strequal(cg->subsystem, k))
+	list_for_each_entry_safe(cgroup, ncgroup, list, head) {
+		if (!all && !strequal(cgroup->subsystem, k))
 			continue;
 
-		lxc_list_del(it);
-		free(cg->subsystem);
-		free(cg->value);
-		free(cg);
-		free(it);
+		list_del(&cgroup->head);
+		free(cgroup->subsystem);
+		free(cgroup->value);
+		free(cgroup);
 	}
 
 	if (all)
-		lxc_list_init(list);
+		INIT_LIST_HEAD(list);
 
 	return 0;
 }
@@ -5817,54 +5815,25 @@ void suggest_default_idmap(void)
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
 }
 
-static void free_cgroup_settings(struct lxc_list *result)
-{
-	struct lxc_list *iterator, *next;
-
-	lxc_list_for_each_safe (iterator, result, next) {
-		lxc_list_del(iterator);
-		free_disarm(iterator);
-	}
-	free_disarm(result);
-}
-
 /* Return the list of cgroup_settings sorted according to the following rules
  * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
  */
-struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings)
+void sort_cgroup_settings(struct lxc_conf *conf)
 {
-	struct lxc_list *result;
-	struct lxc_cgroup *cg = NULL;
-	struct lxc_list *it = NULL, *item = NULL, *memsw_limit = NULL;
-
-	result = lxc_list_new();
-	if (!result)
-		return NULL;
-	lxc_list_init(result);
+	struct lxc_cgroup *cgroup, *memsw_limit, *ncgroup;
 
 	/* Iterate over the cgroup settings and copy them to the output list. */
-	lxc_list_for_each (it, cgroup_settings) {
-		item = zalloc(sizeof(*item));
-		if (!item) {
-			free_cgroup_settings(result);
-			return NULL;
-		}
-
-		item->elem = it->elem;
-		cg = it->elem;
-		if (strequal(cg->subsystem, "memory.memsw.limit_in_bytes")) {
+	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
+		if (strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes")) {
 			/* Store the memsw_limit location */
-			memsw_limit = item;
-		} else if (strequal(cg->subsystem, "memory.limit_in_bytes") &&
-			   memsw_limit != NULL) {
-			/* lxc.cgroup.memory.memsw.limit_in_bytes is found
+			memsw_limit = cgroup;
+		} else if (memsw_limit && strequal(cgroup->subsystem, "memory.limit_in_bytes")) {
+			/*
+			 * lxc.cgroup.memory.memsw.limit_in_bytes is found
 			 * before lxc.cgroup.memory.limit_in_bytes, swap these
-			 * two items */
-			item->elem = memsw_limit->elem;
-			memsw_limit->elem = it->elem;
+			 * two items.
+			 */
+			list_swap(&memsw_limit->head, &cgroup->head);
 		}
-		lxc_list_add_tail(result, item);
 	}
-
-	return result;
 }

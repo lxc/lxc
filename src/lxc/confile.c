@@ -1777,8 +1777,7 @@ static int set_config_signal_stop(const char *key, const char *value,
 static int __set_config_cgroup_controller(const char *key, const char *value,
 					  struct lxc_conf *lxc_conf, int version)
 {
-	__do_free struct lxc_list *cglist = NULL;
-	call_cleaner(free_lxc_cgroup) struct lxc_cgroup *cgelem = NULL;
+	call_cleaner(free_lxc_cgroup) struct lxc_cgroup *new_cgroup = NULL;
 	const char *subkey, *token;
 	size_t token_len;
 
@@ -1802,31 +1801,25 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	cglist = lxc_list_new();
-	if (!cglist)
+	new_cgroup = zalloc(sizeof(*new_cgroup));
+	if (!new_cgroup)
 		return ret_errno(ENOMEM);
 
-	cgelem = zalloc(sizeof(*cgelem));
-	if (!cgelem)
+	new_cgroup->subsystem = strdup(subkey);
+	if (!new_cgroup->subsystem)
 		return ret_errno(ENOMEM);
 
-	cgelem->subsystem = strdup(subkey);
-	if (!cgelem->subsystem)
+	new_cgroup->value = strdup(value);
+	if (!new_cgroup->value)
 		return ret_errno(ENOMEM);
 
-	cgelem->value = strdup(value);
-	if (!cgelem->value)
-		return ret_errno(ENOMEM);
-
-	cgelem->version = version;
-
-	lxc_list_add_elem(cglist, move_ptr(cgelem));
+	new_cgroup->version = version;
 
 	if (version == CGROUP2_SUPER_MAGIC)
-		lxc_list_add_tail(&lxc_conf->cgroup2, cglist);
+		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup2);
 	else
-		lxc_list_add_tail(&lxc_conf->cgroup, cglist);
-	move_ptr(cglist);
+		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup);
+	move_ptr(new_cgroup);
 
 	return 0;
 }
@@ -3626,12 +3619,13 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 					  int inlen, struct lxc_conf *c,
 					  int version)
 {
+	int fulllen = 0;
+	bool get_all = false;
 	int len;
 	size_t namespaced_token_len;
 	char *global_token, *namespaced_token;
-	struct lxc_list *it;
-	int fulllen = 0;
-	bool get_all = false;
+	struct list_head *list;
+	struct lxc_cgroup *cgroup;
 
 	if (!retv)
 		inlen = 0;
@@ -3642,10 +3636,12 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 		global_token = "lxc.cgroup2";
 		namespaced_token = "lxc.cgroup2.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
+		list = &c->cgroup2;
 	} else if (version == CGROUP_SUPER_MAGIC) {
 		global_token = "lxc.cgroup";
 		namespaced_token = "lxc.cgroup.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
+		list = &c->cgroup;
 	} else {
 		return ret_errno(EINVAL);
 	}
@@ -3657,17 +3653,15 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->cgroup) {
-		struct lxc_cgroup *cg = it->elem;
-
+	list_for_each_entry(cgroup, list, head) {
 		if (get_all) {
-			if (version != cg->version)
+			if (version != cgroup->version)
 				continue;
 
 			strprint(retv, inlen, "%s.%s = %s\n", global_token,
-				 cg->subsystem, cg->value);
-		} else if (strequal(cg->subsystem, key)) {
-			strprint(retv, inlen, "%s\n", cg->value);
+				 cgroup->subsystem, cgroup->value);
+		} else if (strequal(cgroup->subsystem, key)) {
+			strprint(retv, inlen, "%s\n", cgroup->value);
 		}
 	}
 
