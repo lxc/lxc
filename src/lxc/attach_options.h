@@ -65,7 +65,7 @@ enum {
 };
 
 /*! All Linux Security Module flags */
-#define LXC_ATTACH_LSM (LXC_ATTACH_LSM_EXEC | LXC_ATTACH_LSM_NOW)
+#define LXC_ATTACH_LSM (LXC_ATTACH_LSM_EXEC | LXC_ATTACH_LSM_NOW | LXC_ATTACH_LSM_LABEL)
 
 /*! LXC attach function type.
  *

@@ -52,7 +52,7 @@ static int add_to_simple_array(char ***array, ssize_t *capacity, char *value);
 static bool stdfd_is_pty(void);
 static int lxc_attach_create_log_file(const char *log_file);
 
-static int elevated_privileges;
+static unsigned int elevated_privileges;
 static signed long new_personality = -1;
 static int namespace_flags = -1;
 static int remount_sys_proc;
@@ -277,10 +277,11 @@ int main(int argc, char *argv[])
 {
 	int ret = -1;
 	int wexit = 0;
-	struct lxc_log log;
-	pid_t pid;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	lxc_attach_command_t command = (lxc_attach_command_t){.program = NULL};
+	pid_t pid;
+	struct lxc_container *c;
+	struct lxc_log log;
 
 	if (lxc_caps_init())
 		exit(EXIT_FAILURE);
@@ -288,12 +289,12 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	log.name = my_args.name;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.prefix = my_args.progname;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath[0];
+	log.name	= my_args.name;
+	log.file	= my_args.log_file;
+	log.level	= my_args.log_priority;
+	log.prefix	= my_args.progname;
+	log.quiet	= my_args.quiet;
+	log.lxcpath	= my_args.lxcpath[0];
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-	struct lxc_container *c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c)
 		exit(EXIT_FAILURE);
 
@@ -333,21 +334,36 @@ int main(int argc, char *argv[])
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 
-	if (elevated_privileges)
+	if (elevated_privileges) {
+		if ((elevated_privileges & LXC_ATTACH_LSM_EXEC)) {
+			if (selinux_context) {
+				ERROR("Cannot combine elevated LSM privileges while requesting LSM profile");
+				goto out;
+			}
+
+			/*
+			 * While most LSM flags are off by default let's still
+			 * make sure they are stripped when elevated LSM
+			 * privileges are requested.
+			 */
+			elevated_privileges |= LXC_ATTACH_LSM;
+		}
+
 		attach_options.attach_flags &= ~(elevated_privileges);
+	}
 
 	if (stdfd_is_pty())
 		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
 
-	attach_options.namespaces = namespace_flags;
-	attach_options.personality = new_personality;
-	attach_options.env_policy = env_policy;
-	attach_options.extra_env_vars = extra_env;
-	attach_options.extra_keep_env = extra_keep;
+	attach_options.namespaces	= namespace_flags;
+	attach_options.personality	= new_personality;
+	attach_options.env_policy	= env_policy;
+	attach_options.extra_env_vars	= extra_env;
+	attach_options.extra_keep_env	= extra_keep;
 
 	if (my_args.argc > 0) {
 		command.program = my_args.argv[0];
-		command.argv = (char**)my_args.argv;
+		command.argv	= (char**)my_args.argv;
 	}
 
 	if (my_args.console_log) {

@@ -165,8 +165,7 @@ static inline bool sync_wait_fd(int fd, int *fd_recv)
 
 static bool attach_lsm(lxc_attach_options_t *options)
 {
-	return (options->namespaces & CLONE_NEWNS) &&
-	       (options->attach_flags & (LXC_ATTACH_LSM | LXC_ATTACH_LSM_LABEL));
+	return (options->attach_flags & (LXC_ATTACH_LSM | LXC_ATTACH_LSM_LABEL));
 }
 
 static struct attach_context *alloc_attach_context(void)
