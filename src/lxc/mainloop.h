@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "compiler.h"
-#include "list.h"
+#include "hlist.h"
 #include "memory_utils.h"
 
 #ifdef HAVE_LIBURING
@@ -31,7 +31,7 @@ struct lxc_async_descr {
 		struct io_uring *ring;
 #endif
 	};
-	struct lxc_list handlers;
+	struct list_head handlers;
 };
 
 static inline int default_cleanup_handler(int fd, void *data)

@@ -23,13 +23,13 @@ lxc_log_define(mainloop, lxc);
 #define CANCEL_SUCCESS (1 << 1)
 
 struct mainloop_handler {
-	struct lxc_list *list;
 	int fd;
 	void *data;
 	lxc_mainloop_callback_t callback;
 	lxc_mainloop_cleanup_t cleanup;
 	const char *name;
 	unsigned int flags;
+	struct list_head head;
 };
 
 #define MAX_EVENTS 10
@@ -66,8 +66,6 @@ static int disarm_handler(struct lxc_async_descr *descr,
 
 static void delete_handler(struct mainloop_handler *handler)
 {
-	struct lxc_list *list;
-
 	if (handler->cleanup) {
 		int ret;
 
@@ -77,10 +75,8 @@ static void delete_handler(struct mainloop_handler *handler)
 	}
 
 	TRACE("Deleted %d for \"%s\" handler", handler->fd, handler->name);
-	list = move_ptr(handler->list);
-	lxc_list_del(list);
-	free(list->elem);
-	free(list);
+	list_del(&handler->head);
+	free(handler);
 }
 
 static inline void cleanup_handler(struct lxc_async_descr *descr,
@@ -317,7 +313,7 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 			}
 		}
 
-		if (lxc_list_empty(&descr->handlers))
+		if (list_empty(&descr->handlers))
 			return error_ret(0, "Closing because there are no more handlers");
 	}
 }
@@ -362,7 +358,7 @@ static int __lxc_mainloop_epoll(struct lxc_async_descr *descr, int timeout_ms)
 		if (nfds == 0)
 			return 0;
 
-		if (lxc_list_empty(&descr->handlers))
+		if (list_empty(&descr->handlers))
 			return 0;
 	}
 }
@@ -383,7 +379,6 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 					     const char *name)
 {
 	__do_free struct mainloop_handler *handler = NULL;
-	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct epoll_event ev;
 
@@ -413,13 +408,8 @@ static int __lxc_mainloop_add_handler_events(struct lxc_async_descr *descr,
 	if (ret < 0)
 		return -errno;
 
-	list = lxc_list_new();
-	if (!list)
-		return ret_errno(ENOMEM);
-
-	handler->list = list;
-	lxc_list_add_elem(list, move_ptr(handler));;
-	lxc_list_add_tail(&descr->handlers, move_ptr(list));
+	list_add_tail(&handler->head, &descr->handlers);
+	move_ptr(handler);
 	return 0;
 }
 
@@ -457,11 +447,9 @@ int lxc_mainloop_add_oneshot_handler(struct lxc_async_descr *descr, int fd,
 int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd)
 {
 	int ret;
-	struct lxc_list *iterator = NULL;
+	struct mainloop_handler *handler;
 
-	lxc_list_for_each(iterator, &descr->handlers) {
-		struct mainloop_handler *handler = iterator->elem;
-
+	list_for_each_entry(handler, &descr->handlers, head) {
 		if (handler->fd != fd)
 			continue;
 
@@ -479,9 +467,8 @@ int lxc_mainloop_del_handler(struct lxc_async_descr *descr, int fd)
 		 * the cancellation request.
 		 */
 		if (descr->type == LXC_MAINLOOP_EPOLL) {
-			lxc_list_del(iterator);
-			free(iterator->elem);
-			free(iterator);
+			list_del(&handler->head);
+			free(handler);
 		}
 
 		return 0;
@@ -515,22 +502,17 @@ int lxc_mainloop_open(struct lxc_async_descr *descr)
 	if (ret < 0)
 		return syserror("Failed to create mainloop instance");
 
-	lxc_list_init(&descr->handlers);
+	INIT_LIST_HEAD(&descr->handlers);
 	return 0;
 }
 
 void lxc_mainloop_close(struct lxc_async_descr *descr)
 {
-	struct lxc_list *iterator, *next;
+	struct mainloop_handler *handler, *nhandler;
 
-	iterator = descr->handlers.next;
-	while (iterator != &descr->handlers) {
-		next = iterator->next;
-
-		lxc_list_del(iterator);
-		free(iterator->elem);
-		free(iterator);
-		iterator = next;
+	list_for_each_entry_safe(handler, nhandler, &descr->handlers, head) {
+		list_del(&handler->head);
+		free(handler);
 	}
 
 	if (descr->type == LXC_MAINLOOP_IO_URING) {
@@ -543,4 +525,6 @@ void lxc_mainloop_close(struct lxc_async_descr *descr)
 	} else {
 		close_prot_errno_disarm(descr->epfd);
 	}
+
+	INIT_LIST_HEAD(&descr->handlers);
 }
