@@ -67,7 +67,7 @@ lxc_log_define(cgfsng, cgroup);
  * second-to-last entry - that is, the one which is now available for use
  * (keeping the list null-terminated).
  */
-static int list_add(void ***list)
+static int cg_list_add(void ***list)
 {
 	int idx = 0;
 	void **p;
@@ -372,7 +372,7 @@ static char **list_new(void)
 	__do_free_string_list char **list = NULL;
 	int idx;
 
-	idx = list_add((void ***)&list);
+	idx = cg_list_add((void ***)&list);
 	if (idx < 0)
 		return NULL;
 
@@ -389,7 +389,7 @@ static int list_add_string(char ***list, char *entry)
 	if (!dup)
 		return ret_errno(ENOMEM);
 
-	idx = list_add((void ***)list);
+	idx = cg_list_add((void ***)list);
 	if (idx < 0)
 		return idx;
 
@@ -480,7 +480,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	for (char *const *it = new->controllers; it && *it; it++)
 		TRACE("The hierarchy contains the %s controller", *it);
 
-	idx = list_add((void ***)&ops->hierarchies);
+	idx = cg_list_add((void ***)&ops->hierarchies);
 	if (idx < 0)
 		return ret_errno(idx);
 
