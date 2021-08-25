@@ -3282,7 +3282,7 @@ const char *lxc_get_version(void)
 
 static int copy_file(const char *old, const char *new)
 {
-	int in, out;
+	__do_close int fd_from = -EBADF, fd_to = -EBADF;
 	ssize_t len, ret;
 	char buf[8096];
 	struct stat sbuf;
@@ -3292,58 +3292,38 @@ static int copy_file(const char *old, const char *new)
 		return -1;
 	}
 
-	ret = stat(old, &sbuf);
-	if (ret < 0) {
-		INFO("Error stat'ing %s", old);
-		return -1;
-	}
+	fd_from = open(old, PROTECT_OPEN);
+	if (fd_from < 0)
+		return syserror("Error opening original file %s", old);
 
-	in = open(old, O_RDONLY);
-	if (in < 0) {
-		SYSERROR("Error opening original file %s", old);
-		return -1;
-	}
+	ret = fstat(fd_from, &sbuf);
+	if (ret < 0)
+		return sysinfo("Error stat'ing %s", old);
 
-	out = open(new, O_CREAT | O_EXCL | O_WRONLY, 0644);
-	if (out < 0) {
-		SYSERROR("Error opening new file %s", new);
-		close(in);
-		return -1;
-	}
+	fd_to = open(new, PROTECT_OPEN_W | O_CREAT | O_EXCL, 0644);
+	if (fd_to < 0)
+		return syserror("Error opening new file %s", new);
 
 	for (;;) {
-		len = lxc_read_nointr(in, buf, 8096);
-		if (len < 0) {
-			SYSERROR("Error reading old file %s", old);
-			goto err;
-		}
+		len = lxc_read_nointr(fd_from, buf, 8096);
+		if (len < 0)
+			return syserror("Error reading old file %s", old);
 
 		if (len == 0)
 			break;
 
-		ret = lxc_write_nointr(out, buf, len);
-		if (ret < len) { /* should we retry? */
-			SYSERROR("Error: write to new file %s was interrupted", new);
-			goto err;
-		}
+		ret = lxc_write_nointr(fd_to, buf, len);
+		if (ret < len)
+			return syserror("Error: write to new file %s was interrupted", new);
 	}
 
-	close(in);
-	close(out);
 
 	/* We set mode, but not owner/group. */
-	ret = chmod(new, sbuf.st_mode);
-	if (ret) {
-		SYSERROR("Error setting mode on %s", new);
-		return -1;
-	}
+	ret = fchmod(fd_to, sbuf.st_mode);
+	if (ret < 0)
+		return syserror("Error setting mode on %s", new);
 
 	return 0;
-
-err:
-	close(in);
-	close(out);
-	return -1;
 }
 
 static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
