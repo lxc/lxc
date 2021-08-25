@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
+#include "hlist.h"
 #include "list.h"
 
 struct lxc_conf;
@@ -180,6 +181,7 @@ struct lxc_netdev {
 	struct in6_addr *ipv6_gateway;
 	char *upscript;
 	char *downscript;
+	struct list_head head;
 };
 
 /* Convert a string mac address to a socket structure. */
@@ -267,8 +269,7 @@ __hidden extern void lxc_delete_network(struct lxc_handler *handler);
 __hidden extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 __hidden extern int lxc_requests_empty_network(struct lxc_handler *handler);
 __hidden extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
-__hidden extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
-							  struct lxc_list *network);
+__hidden extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf);
 __hidden extern int lxc_network_send_to_child(struct lxc_handler *handler);
 __hidden extern int lxc_network_recv_from_parent(struct lxc_handler *handler);
 __hidden extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);

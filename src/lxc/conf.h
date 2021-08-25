@@ -19,6 +19,7 @@
 #include "caps.h"
 #include "compiler.h"
 #include "config.h"
+#include "hlist.h"
 #include "list.h"
 #include "lxcseccomp.h"
 #include "memory_utils.h"
@@ -298,6 +299,7 @@ __hidden extern char *lxchook_names[NUM_LXC_HOOKS];
 struct lxc_state_client {
 	int clientfd;
 	lxc_state_t states[MAX_STATE];
+	struct list_head head;
 };
 
 typedef enum lxc_bpf_devices_rule_t {
@@ -311,11 +313,12 @@ struct device_item {
 	int minor;
 	char access[4];
 	int allow;
+	struct list_head head;
 };
 
 struct bpf_devices {
 	lxc_bpf_devices_rule_t list_type;
-	struct lxc_list device_item;
+	struct list_head devices;
 };
 
 struct timens_offsets {
@@ -358,7 +361,7 @@ struct lxc_conf {
 		const struct id_map *root_nsgid_map;
 	};
 
-	struct lxc_list network;
+	struct list_head netdevs;
 
 	struct {
 		char *fstab;
@@ -484,7 +487,7 @@ struct lxc_conf {
 	char *init_cwd;
 
 	/* A list of clients registered to be informed about a container state. */
-	struct lxc_list state_clients;
+	struct list_head state_clients;
 
 	/* sysctls */
 	struct lxc_list sysctls;
@@ -623,15 +626,12 @@ static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 
 static inline void lxc_clear_cgroup2_devices(struct bpf_devices *bpf_devices)
 {
-	struct lxc_list *list = &bpf_devices->device_item;
-	struct lxc_list *it, *next;
+	struct device_item *device, *n;
 
-	lxc_list_for_each_safe (it, list, next) {
-		lxc_list_del(it);
-		free(it);
-	}
+	list_for_each_entry_safe(device, n, &bpf_devices->devices, head)
+		list_del(&device->head);
 
-	lxc_list_init(&bpf_devices->device_item);
+	INIT_LIST_HEAD(&bpf_devices->devices);
 }
 
 static inline int lxc_personality(personality_t persona)

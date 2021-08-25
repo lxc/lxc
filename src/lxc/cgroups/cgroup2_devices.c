@@ -453,9 +453,8 @@ static inline bool bpf_device_add(const struct bpf_devices *bpf_devices,
 int bpf_list_add_device(struct bpf_devices *bpf_devices,
 			struct device_item *device)
 {
-	__do_free struct lxc_list *list_elem = NULL;
 	__do_free struct device_item *new_device = NULL;
-	struct lxc_list *it;
+	struct device_item *dev;
 
 	if (!bpf_devices || !device)
 		return ret_errno(EINVAL);
@@ -482,27 +481,25 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 	TRACE("Processing new device rule: type %c, major %d, minor %d, access %s, allow %d",
 	      device->type, device->major, device->minor, device->access, device->allow);
 
-	lxc_list_for_each(it, &bpf_devices->device_item) {
-		struct device_item *cur = it->elem;
-
-		if (cur->type != device->type)
+	list_for_each_entry(dev, &bpf_devices->devices, head) {
+		if (dev->type != device->type)
 			continue;
-		if (cur->major != device->major)
+		if (dev->major != device->major)
 			continue;
-		if (cur->minor != device->minor)
+		if (dev->minor != device->minor)
 			continue;
-		if (!strequal(cur->access, device->access))
+		if (!strequal(dev->access, device->access))
 			continue;
 
-		if (!bpf_device_add(bpf_devices, cur))
+		if (!bpf_device_add(bpf_devices, dev))
 			continue;
 
 		/*
 		 * The rule is switched from allow to deny or vica versa so
 		 * don't bother allocating just flip the existing one.
 		 */
-		if (cur->allow != device->allow) {
-			cur->allow = device->allow;
+		if (dev->allow != device->allow) {
+			dev->allow = device->allow;
 
 			return log_trace(1, "Switched existing device rule"); /* The device list was altered. */
 		}
@@ -511,18 +508,14 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 		return log_trace(0, "Reused existing device rule"); /* The device list wasn't altered. */
 	}
 
-	list_elem = malloc(sizeof(*list_elem));
-	if (!list_elem)
-		return syserror_set(ENOMEM, "Failed to allocate new device list");
-
 	new_device = memdup(device, sizeof(struct device_item));
 	if (!new_device)
 		return syserror_set(ENOMEM, "Failed to allocate new device item");
 
-	lxc_list_add_elem(list_elem, move_ptr(new_device));
-	lxc_list_add_tail(&bpf_devices->device_item, move_ptr(list_elem));
+	list_add(&new_device->head, &bpf_devices->devices);
 
-	return log_trace(1, "Added new device rule"); /* The device list was altered. */
+	TRACE("Added new device rule"); /* The device list was altered. */
+	return 1;
 }
 
 bool bpf_devices_cgroup_supported(void)
@@ -565,7 +558,7 @@ static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
-	struct lxc_list *it;
+	struct device_item *dev;
 
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 	if (!prog)
@@ -579,16 +572,14 @@ static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 	TRACE("Device cgroup %s all devices by default",
 	      bpf_device_list_block_all(bpf_devices) ? "blocks" : "allows");
 
-	lxc_list_for_each(it, &bpf_devices->device_item) {
-		struct device_item *cur = it->elem;
-
+	list_for_each_entry(dev, &bpf_devices->devices, head) {
 		TRACE("Processing device rule: type %c, major %d, minor %d, access %s, allow %d",
-		      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+		      dev->type, dev->major, dev->minor, dev->access, dev->allow);
 
-		if (!bpf_device_add(bpf_devices, cur))
+		if (!bpf_device_add(bpf_devices, dev))
 			continue;
 
-		ret = bpf_program_append_device(prog, cur);
+		ret = bpf_program_append_device(prog, dev);
 		if (ret)
 			return syserror_ret(NULL, "Failed adding new device rule");
 

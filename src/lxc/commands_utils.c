@@ -168,7 +168,6 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
 	__do_free struct lxc_state_client *newclient = NULL;
-	__do_free struct lxc_list *tmplist = NULL;
 	int state;
 
 	newclient = zalloc(sizeof(*newclient));
@@ -179,14 +178,10 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 	memcpy(newclient->states, states, sizeof(newclient->states));
 	newclient->clientfd = state_client_fd;
 
-	tmplist = zalloc(sizeof(*tmplist));
-	if (!tmplist)
-		return -ENOMEM;
-
 	state = handler->state;
 	if (states[state] != 1) {
-		lxc_list_add_elem(tmplist, move_ptr(newclient));
-		lxc_list_add_tail(&handler->conf->state_clients, move_ptr(tmplist));
+		list_add_tail(&newclient->head, &handler->conf->state_clients);
+		move_ptr(newclient);
 	} else {
 		TRACE("Container already in requested state");
 		return state;

@@ -2852,23 +2852,18 @@ int setup_private_host_hw_addr(char *veth1)
 
 int lxc_find_gateway_addresses(struct lxc_handler *handler)
 {
-	struct lxc_list *network = &handler->conf->network;
-	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
 	int link_index;
 
-	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
-
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		if (!netdev->ipv4_gateway_auto && !netdev->ipv6_gateway_auto)
 			continue;
 
 		if (netdev->type != LXC_NET_VETH && netdev->type != LXC_NET_MACVLAN)
 			return log_error_errno(-1, EINVAL, "Automatic gateway detection is only supported for veth and macvlan");
 
-		if (is_empty_string(netdev->link)) {
+		if (is_empty_string(netdev->link))
 			return log_error_errno(-1, errno, "Automatic gateway detection needs a link interface");
-		}
 
 		link_index = if_nametoindex(netdev->link);
 		if (!link_index)
@@ -3127,8 +3122,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 static bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 {
 	int ret;
-	struct lxc_list *iterator;
-	struct lxc_list *network = &handler->conf->network;
+	struct lxc_netdev *netdev;
 	/* strlen("/proc/") = 6
 	 * +
 	 * INTTYPE_TO_STRLEN(pid_t)
@@ -3151,9 +3145,8 @@ static bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	if (ret < 0)
 		return false;
 
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		char *hostveth = NULL;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		/* We can only delete devices whose ifindex we have. If we don't
 		 * have the index it means that we didn't create it.
@@ -3405,12 +3398,9 @@ static int lxc_delete_l2proxy(struct lxc_netdev *netdev) {
 
 static int lxc_create_network_priv(struct lxc_handler *handler)
 {
-	struct lxc_list *iterator;
-	struct lxc_list *network = &handler->conf->network;
+	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
-		struct lxc_netdev *netdev = iterator->elem;
-
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE)
 			return log_error_errno(-1, EINVAL, "Invalid network configuration type %d", netdev->type);
 
@@ -3519,16 +3509,14 @@ static int netdev_requires_move(const struct lxc_netdev *netdev)
 int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 {
 	pid_t pid = handler->pid;
-	struct lxc_list *network = &handler->conf->network;
-	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
 
 	if (am_guest_unpriv())
 		return 0;
 
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		__do_free char *physname = NULL;
 		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		if (!netdev_requires_move(netdev))
 			continue;
@@ -3571,13 +3559,10 @@ static int lxc_create_network_unpriv(struct lxc_handler *handler)
 	int hooks_version = handler->conf->hooks_version;
 	const char *lxcname = handler->name;
 	const char *lxcpath = handler->lxcpath;
-	struct lxc_list *network = &handler->conf->network;
 	pid_t pid = handler->pid;
-	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
-		struct lxc_netdev *netdev = iterator->elem;
-
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		if (!network_requires_advanced_setup(netdev->type))
 			continue;
 
@@ -3599,12 +3584,10 @@ static int lxc_create_network_unpriv(struct lxc_handler *handler)
 static bool lxc_delete_network_priv(struct lxc_handler *handler)
 {
 	int ret;
-	struct lxc_list *iterator;
-	struct lxc_list *network = &handler->conf->network;
+	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		char *hostveth = NULL;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		/* We can only delete devices whose ifindex we have. If we don't
 		 * have the index it means that we didn't create it.
@@ -3715,15 +3698,14 @@ clear_ifindices:
 
 int lxc_requests_empty_network(struct lxc_handler *handler)
 {
-	struct lxc_list *network = &handler->conf->network;
-	struct lxc_list *iterator;
+	struct list_head *netdevs = &handler->conf->netdevs;
 	bool found_none = false, found_nic = false;
+	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(network))
+	if (list_empty(netdevs))
 		return 0;
 
-	lxc_list_for_each (iterator, network) {
-		struct lxc_netdev *netdev = iterator->elem;
+	list_for_each_entry(netdev, netdevs, head) {
 
 		if (netdev->type == LXC_NET_NONE)
 			found_none = true;
@@ -3745,7 +3727,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	struct lxc_conf *conf = handler->conf;
 	int ret;
 	char ifname[IFNAMSIZ];
-	struct lxc_list *iterator;
+	struct lxc_netdev *netdev;
 
 	/*
 	 * If we weren't asked to clone a new network namespace, there's
@@ -3771,9 +3753,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to enter network namespace");
 
-	lxc_list_for_each(iterator, &conf->network) {
-		struct lxc_netdev *netdev = iterator->elem;
-
+	list_for_each_entry(netdev, &conf->netdevs, head) {
 		if (netdev->type != LXC_NET_PHYS)
 			continue;
 
@@ -4001,18 +3981,17 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
  *
  * That'll brutally fail of course but there's nothing we can do about it.
  */
-int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
-					  struct lxc_list *network)
+int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf)
 {
-	struct lxc_list *iterator;
 	bool needs_second_pass = false;
+	struct lxc_netdev *netdev;
+	const struct list_head *netdevs = &conf->netdevs;
 
-	if (lxc_list_empty(network))
+	if (list_empty(netdevs))
 		return 0;
 
 	/* Configure all devices that have a specific target name. */
-	lxc_list_for_each(iterator, network) {
-		struct lxc_netdev *netdev = iterator->elem;
+	list_for_each_entry(netdev, netdevs, head) {
 		int ret;
 
 		if (is_empty_string(netdev->name) || strequal(netdev->name, "eth%d")) {
@@ -4030,8 +4009,7 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 
 	if (needs_second_pass) {
 		/* Configure all devices that have a kernel assigned name. */
-		lxc_list_for_each(iterator, network) {
-			struct lxc_netdev *netdev = iterator->elem;
+			list_for_each_entry(netdev, netdevs, head) {
 			int ret;
 
 			if (!is_empty_string(netdev->name) && !strequal(netdev->name, "eth%d"))
@@ -4051,13 +4029,11 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 
 int lxc_network_send_to_child(struct lxc_handler *handler)
 {
-	struct lxc_list *iterator;
-	struct lxc_list *network = &handler->conf->network;
 	int data_sock = handler->data_sock[0];
+	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		if (!network_requires_advanced_setup(netdev->type))
 			continue;
@@ -4078,13 +4054,11 @@ int lxc_network_send_to_child(struct lxc_handler *handler)
 
 int lxc_network_recv_from_parent(struct lxc_handler *handler)
 {
-	struct lxc_list *iterator;
-	struct lxc_list *network = &handler->conf->network;
 	int data_sock = handler->data_sock[1];
+	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		if (!network_requires_advanced_setup(netdev->type))
 			continue;
@@ -4105,16 +4079,15 @@ int lxc_network_recv_from_parent(struct lxc_handler *handler)
 
 int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 {
-	struct lxc_list *iterator, *network;
 	int data_sock = handler->data_sock[0];
+	struct lxc_netdev *netdev;
+	struct list_head *netdevs = &handler->conf->netdevs;
 
 	if (!handler->am_root)
 		return 0;
 
-	network = &handler->conf->network;
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, netdevs, head) {
 		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		/* Send network device name in the child's namespace to parent. */
 		ret = lxc_send_nointr(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
@@ -4131,7 +4104,7 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 		TRACE("Sent network device %s with ifindex %d to parent", maybe_empty(netdev->name), netdev->ifindex);
 	}
 
-	if (!lxc_list_empty(network))
+	if (!list_empty(netdevs))
 		TRACE("Sent network device names and ifindices to parent");
 
 	return 0;
@@ -4139,16 +4112,14 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 
 int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 {
-	struct lxc_list *iterator, *network;
 	int data_sock = handler->data_sock[1];
+	struct lxc_netdev *netdev;
 
 	if (!handler->am_root)
 		return 0;
 
-	network = &handler->conf->network;
-	lxc_list_for_each(iterator, network) {
+	list_for_each_entry(netdev, &handler->conf->netdevs, head) {
 		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
 
 		/* Receive network device name in the child's namespace to
 		 * parent.
