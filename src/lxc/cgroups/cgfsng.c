@@ -2707,11 +2707,8 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 						    struct lxc_conf *conf,
 						    bool do_devices)
 {
-	__do_free struct lxc_list *sorted_cgroup_settings = NULL;
-	struct lxc_list *cgroup_settings = &conf->cgroup;
-	struct lxc_list *iterator, *next;
-	struct lxc_cgroup *cg;
-	bool ret = false;
+	struct list_head *cgroup_settings;
+	struct lxc_cgroup *cgroup;
 
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -2720,7 +2717,7 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	cgroup_settings = &conf->cgroup;
-	if (lxc_list_empty(cgroup_settings))
+	if (list_empty(cgroup_settings))
 		return true;
 
 	if (!ops->hierarchies)
@@ -2729,35 +2726,23 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 	if (pure_unified_layout(ops))
 		return log_warn_errno(true, EINVAL, "Ignoring legacy cgroup limits on pure cgroup2 system");
 
-	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
-	if (!sorted_cgroup_settings)
-		return false;
-
-	lxc_list_for_each(iterator, sorted_cgroup_settings) {
-		cg = iterator->elem;
-
-		if (do_devices == strnequal("devices", cg->subsystem, 7)) {
-			if (cg_legacy_set_data(ops, cg->subsystem, cg->value, strnequal("cpuset", cg->subsystem, 6))) {
+	sort_cgroup_settings(conf);
+	list_for_each_entry(cgroup, cgroup_settings, head) {
+		if (do_devices == strnequal("devices", cgroup->subsystem, 7)) {
+			if (cg_legacy_set_data(ops, cgroup->subsystem, cgroup->value, strnequal("cpuset", cgroup->subsystem, 6))) {
 				if (do_devices && (errno == EACCES || errno == EPERM)) {
-					SYSWARN("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+					SYSWARN("Failed to set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
 					continue;
 				}
-				SYSERROR("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
-				goto out;
+				SYSERROR("Failed to set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
+				return false;
 			}
-			DEBUG("Set controller \"%s\" set to \"%s\"", cg->subsystem, cg->value);
+			DEBUG("Set controller \"%s\" set to \"%s\"", cgroup->subsystem, cgroup->value);
 		}
 	}
 
-	ret = true;
 	INFO("Limits for the legacy cgroup hierarchies have been setup");
-out:
-	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
-		lxc_list_del(iterator);
-		free(iterator);
-	}
-
-	return ret;
+	return true;
 }
 
 /*
@@ -2793,9 +2778,10 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 					     struct lxc_handler *handler)
 {
-	struct lxc_list *cgroup_settings, *iterator;
+	struct list_head *cgroup_settings;
 	struct hierarchy *h;
 	struct lxc_conf *conf;
+	struct lxc_cgroup *cgroup;
 
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -2811,7 +2797,7 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 	conf = handler->conf;
 
 	cgroup_settings = &conf->cgroup2;
-	if (lxc_list_empty(cgroup_settings))
+	if (list_empty(cgroup_settings))
 		return true;
 
 	if (!pure_unified_layout(ops))
@@ -2821,18 +2807,17 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		return false;
 	h = ops->unified;
 
-	lxc_list_for_each (iterator, cgroup_settings) {
-		struct lxc_cgroup *cg = iterator->elem;
+	list_for_each_entry(cgroup, cgroup_settings, head) {
 		int ret;
 
-		if (strnequal("devices", cg->subsystem, 7))
-			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem, cg->value);
+		if (strnequal("devices", cgroup->subsystem, 7))
+			ret = bpf_device_cgroup_prepare(ops, conf, cgroup->subsystem, cgroup->value);
 		else
-			ret = lxc_write_openat(h->path_lim, cg->subsystem, cg->value, strlen(cg->value));
+			ret = lxc_write_openat(h->path_lim, cgroup->subsystem, cgroup->value, strlen(cgroup->value));
 		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+			return log_error_errno(false, errno, "Failed to set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
 
-		TRACE("Set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+		TRACE("Set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
 	}
 
 	return log_info(true, "Limits for the unified cgroup hierarchy have been setup");
