@@ -299,6 +299,7 @@ __hidden extern char *lxchook_names[NUM_LXC_HOOKS];
 struct lxc_state_client {
 	int clientfd;
 	lxc_state_t states[MAX_STATE];
+	struct list_head head;
 };
 
 typedef enum lxc_bpf_devices_rule_t {
@@ -486,7 +487,7 @@ struct lxc_conf {
 	char *init_cwd;
 
 	/* A list of clients registered to be informed about a container state. */
-	struct lxc_list state_clients;
+	struct list_head state_clients;
 
 	/* sysctls */
 	struct lxc_list sysctls;
