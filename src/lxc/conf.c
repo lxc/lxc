@@ -3305,30 +3305,33 @@ int setup_sysctl_parameters(struct lxc_conf *conf)
 	return 0;
 }
 
-int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
+int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid)
 {
 	__do_free char *tmp = NULL;
-	struct lxc_list *it;
-	struct lxc_proc *elem;
 	int ret = 0;
 	char filename[PATH_MAX] = {0};
+	struct lxc_proc *proc;
 
-	lxc_list_for_each (it, procs) {
-		elem = it->elem;
-		tmp = lxc_string_replace(".", "/", elem->filename);
+	if (!list_empty(&conf->procs))
+		return 0;
+
+	list_for_each_entry(proc, &conf->procs, head) {
+		tmp = lxc_string_replace(".", "/", proc->filename);
 		if (!tmp)
-			return log_error(-1, "Failed to replace key %s", elem->filename);
+			return log_error(-1, "Failed to replace key %s", proc->filename);
 
 		ret = strnprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
 		if (ret < 0)
 			return log_error(-1, "Error setting up proc filesystem path");
 
-		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false, 0666);
+		ret = lxc_write_to_file(filename, proc->value,
+					strlen(proc->value), false, 0666);
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to setup proc filesystem %s to %s", elem->filename, elem->value);
+			return log_error_errno(-1, errno, "Failed to setup proc filesystem %s to %s",
+					       proc->filename, proc->value);
 	}
 
+	TRACE("Setup /proc/%d settings", pid);
 	return 0;
 }
 
@@ -3392,7 +3395,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->environment);
 	INIT_LIST_HEAD(&new->limits);
 	INIT_LIST_HEAD(&new->sysctls);
-	lxc_list_init(&new->procs);
+	INIT_LIST_HEAD(&new->procs);
 	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
@@ -4647,9 +4650,9 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 
 int lxc_clear_procs(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false;
+	struct lxc_proc *proc, *nproc;
 
 	if (strequal(key, "lxc.proc"))
 		all = true;
@@ -4658,21 +4661,18 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe(it, &c->procs, next) {
-		struct lxc_proc *proc = it->elem;
-
+	list_for_each_entry_safe(proc, nproc, &c->procs, head) {
 		if (!all && !strequal(proc->filename, k))
 			continue;
 
-		lxc_list_del(it);
+		list_del(&proc->head);
 		free(proc->filename);
 		free(proc->value);
 		free(proc);
-		free(it);
 	}
 
 	if (all)
-		lxc_list_init(&c->procs);
+		INIT_LIST_HEAD(&c->procs);
 
 	return 0;
 }

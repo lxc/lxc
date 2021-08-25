@@ -2183,8 +2183,7 @@ static int set_config_sysctl(const char *key, const char *value,
 static int set_config_proc(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *proclist = NULL;
-	call_cleaner(free_lxc_proc) struct lxc_proc *procelem = NULL;
+	call_cleaner(free_lxc_proc) struct lxc_proc *new_proc = NULL;
 	const char *subkey;
 
 	if (lxc_config_value_empty(value))
@@ -2197,24 +2196,20 @@ static int set_config_proc(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	proclist = lxc_list_new();
-	if (!proclist)
+	new_proc = zalloc(sizeof(*new_proc));
+	if (!new_proc)
 		return ret_errno(ENOMEM);
 
-	procelem = zalloc(sizeof(*procelem));
-	if (!procelem)
+	new_proc->filename = strdup(subkey);
+	if (!new_proc->filename)
 		return ret_errno(ENOMEM);
 
-	procelem->filename = strdup(subkey);
-	if (!procelem->filename)
+	new_proc->value = strdup(value);
+	if (!new_proc->value)
 		return ret_errno(ENOMEM);
 
-	procelem->value = strdup(value);
-	if (!procelem->value)
-		return ret_errno(ENOMEM);
-
-	proclist->elem = move_ptr(procelem);
-	lxc_list_add_tail(&lxc_conf->procs, move_ptr(proclist));
+	list_add_tail(&new_proc->head, &lxc_conf->procs);
+	move_ptr(new_proc);
 
 	return 0;
 }
@@ -4632,10 +4627,10 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 static int get_config_proc(const char *key, char *retv, int inlen,
 			   struct lxc_conf *c, void *data)
 {
-	struct lxc_list *it;
-	int len;
 	int fulllen = 0;
 	bool get_all = false;
+	int len;
+	struct lxc_proc *proc;
 
 	if (!retv)
 		inlen = 0;
@@ -4649,9 +4644,7 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->procs) {
-		struct lxc_proc *proc = it->elem;
-
+	list_for_each_entry(proc, &c->procs, head) {
 		if (get_all) {
 			strprint(retv, inlen, "lxc.proc.%s = %s\n",
 			         proc->filename, proc->value);
