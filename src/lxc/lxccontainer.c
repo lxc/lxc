@@ -2687,13 +2687,14 @@ WRAP_API_1(bool, lxcapi_save_config, const char *)
 
 static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc)
 {
+	__do_close int fd = -EBADF;
 	FILE *f1;
 	struct stat fbuf;
 	void *buf = NULL;
 	char *del = NULL;
 	char path[PATH_MAX];
 	char newpath[PATH_MAX];
-	int fd, ret, n = 0, v = 0;
+	int ret, n = 0, v = 0;
 	bool bret = false;
 	size_t len = 0, bytes = 0;
 
@@ -2744,37 +2745,27 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		/* Here we know that we have or can use an lxc-snapshot file
 		 * using the new format. */
 		if (inc) {
-			f1 = fopen(path, "ae");
-			if (!f1)
+			fd = open(path, O_APPEND | O_RDWR | O_CLOEXEC);
+			if (fd < 0)
 				goto out;
 
-			if (fprintf(f1, "%s", newpath) < 0) {
+			ret = lxc_write_nointr(fd, newpath, strlen(newpath));
+			if (ret < 0) {
 				ERROR("Error writing new snapshots entry");
-				ret = fclose(f1);
-				if (ret != 0)
-					SYSERROR("Error writing to or closing snapshots file");
-				goto out;
-			}
-
-			ret = fclose(f1);
-			if (ret != 0) {
-				SYSERROR("Error writing to or closing snapshots file");
 				goto out;
 			}
 		} else if (!inc) {
-			if ((fd = open(path, O_RDWR | O_CLOEXEC)) < 0)
+			fd = open(path, O_RDWR | O_CLOEXEC);
+			if (fd < 0)
 				goto out;
 
-			if (fstat(fd, &fbuf) < 0) {
-				close(fd);
+			if (fstat(fd, &fbuf) < 0)
 				goto out;
-			}
 
 			if (fbuf.st_size != 0) {
 				buf = lxc_strmmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 				if (buf == MAP_FAILED) {
 					SYSERROR("Failed to create mapping %s", path);
-					close(fd);
 					goto out;
 				}
 
@@ -2787,16 +2778,13 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 				lxc_strmunmap(buf, fbuf.st_size);
 				if (ftruncate(fd, fbuf.st_size - bytes) < 0) {
 					SYSERROR("Failed to truncate file %s", path);
-					close(fd);
 					goto out;
 				}
 			}
-
-			close(fd);
 		}
 
 		/* If the lxc-snapshot file is empty, remove it. */
-		if (stat(path, &fbuf) < 0)
+		if (fstat(fd, &fbuf) < 0)
 			goto out;
 
 		if (!fbuf.st_size) {
