@@ -1988,9 +1988,8 @@ static int set_config_prlimit(const char *key, const char *value,
 static int set_config_sysctl(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *sysctl_list = NULL;
 	call_cleaner(free_lxc_sysctl) struct lxc_sysctl *sysctl_elem = NULL;
-	struct lxc_list *iter;
+	struct lxc_sysctl *sysctl, *nsysctl;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_sysctl(key, lxc_conf, NULL);
@@ -2003,27 +2002,21 @@ static int set_config_sysctl(const char *key, const char *value,
 		return ret_errno(EINVAL);
 
 	/* find existing list element */
-	lxc_list_for_each(iter, &lxc_conf->sysctls) {
+	list_for_each_entry_safe(sysctl, nsysctl, &lxc_conf->sysctls, head) {
 		__do_free char *replace_value = NULL;
-		struct lxc_sysctl *cur = iter->elem;
 
-		if (!strequal(key, cur->key))
+		if (!strequal(key, sysctl->key))
 			continue;
 
 		replace_value = strdup(value);
 		if (!replace_value)
 			return ret_errno(EINVAL);
 
-		free(cur->value);
-		cur->value = move_ptr(replace_value);
+		free(sysctl->value);
+		sysctl->value = move_ptr(replace_value);
 
 		return 0;
 	}
-
-	/* allocate list element */
-	sysctl_list = lxc_list_new();
-	if (!sysctl_list)
-		return ret_errno(ENOMEM);
 
 	sysctl_elem = zalloc(sizeof(*sysctl_elem));
 	if (!sysctl_elem)
@@ -2037,8 +2030,8 @@ static int set_config_sysctl(const char *key, const char *value,
 	if (!sysctl_elem->value)
 		return ret_errno(ENOMEM);
 
-	lxc_list_add_elem(sysctl_list, move_ptr(sysctl_elem));
-	lxc_list_add_tail(&lxc_conf->sysctls, move_ptr(sysctl_list));
+	list_add_tail(&sysctl_elem->head, &lxc_conf->sysctls);
+	move_ptr(sysctl_elem);
 
 	return 0;
 }
@@ -4323,10 +4316,10 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 static int get_config_sysctl(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
-	int len;
-	struct lxc_list *it;
 	int fulllen = 0;
 	bool get_all = false;
+	int len;
+	struct lxc_sysctl *sysctl;
 
 	if (!retv)
 		inlen = 0;
@@ -4340,13 +4333,12 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->sysctls) {
-		struct lxc_sysctl *elem = it->elem;
+	list_for_each_entry(sysctl, &c->sysctls, head) {
 		if (get_all) {
-			strprint(retv, inlen, "lxc.sysctl.%s = %s\n", elem->key,
-				 elem->value);
-		} else if (strequal(elem->key, key)) {
-			strprint(retv, inlen, "%s", elem->value);
+			strprint(retv, inlen, "lxc.sysctl.%s = %s\n", sysctl->key,
+				 sysctl->value);
+		} else if (strequal(sysctl->key, key)) {
+			strprint(retv, inlen, "%s", sysctl->value);
 		}
 	}
 
