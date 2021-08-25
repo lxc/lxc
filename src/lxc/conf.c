@@ -619,7 +619,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	int ret;
 	const char *path_source;
 
-	if (lxc_list_empty(&handler->conf->id_map))
+	if (list_empty(&handler->conf->id_map))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -1616,7 +1616,6 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 						   unsigned id,
 						   enum idtype idtype)
 {
-	struct lxc_list *it;
 	struct id_map *map;
 	struct id_map *retmap = NULL;
 
@@ -1629,8 +1628,7 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 			return conf->root_nsgid_map;
 	}
 
-	lxc_list_for_each(it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -3387,7 +3385,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
 	lxc_list_init(&new->keepcaps);
-	lxc_list_init(&new->id_map);
+	INIT_LIST_HEAD(&new->id_map);
 	new->root_nsuid_map = NULL;
 	new->root_nsgid_map = NULL;
 	lxc_list_init(&new->includes);
@@ -3528,24 +3526,22 @@ static int lxc_map_ids_exec_wrapper(void *args)
 	return -1;
 }
 
-static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
+static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 					       unsigned id, enum idtype idtype);
 
-int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
+int lxc_map_ids(struct list_head *idmap, pid_t pid)
 {
-	int fill, left;
+	int hostuid, hostgid, fill, left;
 	char u_or_g;
 	char *pos;
 	char cmd_output[PATH_MAX];
 	struct id_map *map;
-	struct lxc_list *iterator;
 	enum idtype type;
 	int ret = 0, gidmap = 0, uidmap = 0;
 	char mapbuf[STRLITERALLEN("new@idmap") + STRLITERALLEN(" ") +
 		    INTTYPE_TO_STRLEN(pid_t) + STRLITERALLEN(" ") +
 		    LXC_IDMAPLEN] = {0};
 	bool had_entry = false, maps_host_root = false, use_shadow = false;
-	int hostuid, hostgid;
 
 	hostuid = geteuid();
 	hostgid = getegid();
@@ -3595,10 +3591,9 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	/* Check if we really need to use newuidmap and newgidmap.
 	* If the user is only remapping their own {g,u}id, we don't need it.
 	*/
-	if (use_shadow && lxc_list_len(idmap) == 2) {
+	if (use_shadow && list_len(idmap) == 2) {
 		use_shadow = false;
-		lxc_list_for_each(iterator, idmap) {
-			map = iterator->elem;
+		list_for_each_entry(map, idmap, head) {
 			if (map->idtype == ID_TYPE_UID && map->range == 1 &&
 			    map->nsid == hostuid && map->hostid == hostuid)
 				continue;
@@ -3617,8 +3612,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (use_shadow)
 			pos += sprintf(mapbuf, "new%cidmap %d", u_or_g, pid);
 
-		lxc_list_for_each(iterator, idmap) {
-			map = iterator->elem;
+		list_for_each_entry(map, idmap, head) {
 			if (map->idtype != type)
 				continue;
 
@@ -3672,15 +3666,13 @@ static id_t get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	unsigned nsid;
 	struct id_map *map;
-	struct lxc_list *it;
 
 	if (idtype == ID_TYPE_UID)
 		nsid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	else
 		nsid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
 
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry (map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 		if (map->nsid != nsid)
@@ -3697,10 +3689,8 @@ static id_t get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype)
 int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
-	struct lxc_list *it;
 
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -3714,12 +3704,10 @@ int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
-	struct lxc_list *it;
 	unsigned int freeid = 0;
 
 again:
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -4071,7 +4059,7 @@ static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
 	int dfd_idmapped = -EBADF;
 	int ret;
 
-	if (lxc_list_empty(&handler->conf->id_map))
+	if (list_empty(&handler->conf->id_map))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -4487,27 +4475,25 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-static int lxc_free_idmap(struct lxc_list *id_map)
+static int lxc_free_idmap(struct list_head *id_map)
 {
-	struct lxc_list *it, *next;
+	struct id_map *map, *nmap;
 
-	lxc_list_for_each_safe(it, id_map, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(map, nmap, id_map, head) {
+		list_del(&map->head);
+		free(map);
 	}
 
-	lxc_list_init(id_map);
+	INIT_LIST_HEAD(id_map);
 	return 0;
 }
 
-static int __lxc_free_idmap(struct lxc_list *id_map)
+static int __lxc_free_idmap(struct list_head *id_map)
 {
 	lxc_free_idmap(id_map);
-	free(id_map);
 	return 0;
 }
-define_cleanup_function(struct lxc_list *, __lxc_free_idmap);
+define_cleanup_function(struct list_head *, __lxc_free_idmap);
 
 int lxc_clear_idmaps(struct lxc_conf *c)
 {
@@ -4905,15 +4891,13 @@ static struct id_map *mapped_nsid_add(const struct lxc_conf *conf, unsigned id,
 	return retmap;
 }
 
-static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
+static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 					       unsigned id, enum idtype idtype)
 {
-	struct id_map *map;
-	struct lxc_list *it;
 	struct id_map *retmap = NULL;
+	struct id_map *map;
 
-	lxc_list_for_each (it, idmap) {
-		map = it->elem;
+	list_for_each_entry(map, idmap, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -4959,22 +4943,20 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 	return move_ptr(entry);
 }
 
-static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
-					  uid_t *resuid, gid_t *resgid)
+static int get_minimal_idmap(const struct lxc_conf *conf, uid_t *resuid,
+			     gid_t *resgid, struct list_head *head_ret)
 {
 	__do_free struct id_map *container_root_uid = NULL,
 				*container_root_gid = NULL,
 				*host_uid_map = NULL, *host_gid_map = NULL;
-	__do_free struct lxc_list *idmap = NULL;
 	uid_t euid, egid;
 	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
-	struct lxc_list *tmplist = NULL;
 
 	/* Find container root mappings. */
 	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
 	if (!container_root_uid)
-		return log_debug(NULL, "Failed to find mapping for namespace uid %d", 0);
+		return sysdebug("Failed to find mapping for namespace uid %d", 0);
 	euid = geteuid();
 	if (euid >= container_root_uid->hostid &&
 	    euid < (container_root_uid->hostid + container_root_uid->range))
@@ -4982,7 +4964,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid)
-		return log_debug(NULL, "Failed to find mapping for namespace gid %d", 0);
+		return sysdebug("Failed to find mapping for namespace gid %d", 0);
 	egid = getegid();
 	if (egid >= container_root_gid->hostid &&
 	    egid < (container_root_gid->hostid + container_root_gid->range))
@@ -4992,50 +4974,31 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	if (!host_uid_map)
 		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	if (!host_uid_map)
-		return log_debug(NULL, "Failed to find mapping for uid %d", euid);
+		return sysdebug("Failed to find mapping for uid %d", euid);
 
 	if (!host_gid_map)
 		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	if (!host_gid_map)
-		return log_debug(NULL, "Failed to find mapping for gid %d", egid);
+		return sysdebug("Failed to find mapping for gid %d", egid);
 
-	/* Allocate new {g,u}id map list. */
-	idmap = lxc_list_new();
-	if (!idmap)
-		return NULL;
-
-	/* Add container root to the map. */
-	tmplist = lxc_list_new();
-	if (!tmplist)
-		return NULL;
 	/* idmap will now keep track of that memory. */
-	lxc_list_add_elem(tmplist, move_ptr(host_uid_map));
-	lxc_list_add_tail(idmap, tmplist);
+	list_add_tail(&host_uid_map->head, head_ret);
+	move_ptr(host_uid_map);
 
 	if (container_root_uid) {
-		/* Add container root to the map. */
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			return NULL;
 		/* idmap will now keep track of that memory. */
-		lxc_list_add_elem(tmplist, move_ptr(container_root_uid));
-		lxc_list_add_tail(idmap, tmplist);
+		list_add_tail(&container_root_uid->head, head_ret);
+		move_ptr(container_root_uid);
 	}
 
-	tmplist = lxc_list_new();
-	if (!tmplist)
-		return NULL;
 	/* idmap will now keep track of that memory. */
-	lxc_list_add_elem(tmplist, move_ptr(host_gid_map));
-	lxc_list_add_tail(idmap, tmplist);
+	list_add_tail(&host_gid_map->head, head_ret);
+	move_ptr(host_gid_map);
 
 	if (container_root_gid) {
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			return NULL;
 		/* idmap will now keep track of that memory. */
-		lxc_list_add_elem(tmplist, move_ptr(container_root_gid));
-		lxc_list_add_tail(idmap, tmplist);
+		list_add_tail(&container_root_gid->head, head_ret);
+		move_ptr(container_root_gid);
 	}
 
 	TRACE("Allocated minimal idmapping for ns uid %d and ns gid %d", nsuid, nsgid);
@@ -5044,7 +5007,8 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 		*resuid = nsuid;
 	if (resgid)
 		*resgid = nsgid;
-	return move_ptr(idmap);
+
+	return 0;
 }
 
 /*
@@ -5062,7 +5026,8 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		  const char *fn_name)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(minimal_idmap);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &minimal_idmap;
 	int ret = -1, status = -1;
 	char c = '1';
 	struct userns_fn_data d = {
@@ -5076,8 +5041,8 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	if (!conf)
 		return -EINVAL;
 
-	idmap = get_minimal_idmap(conf, NULL, NULL);
-	if (!idmap)
+	ret = get_minimal_idmap(conf, NULL, NULL, idmap);
+	if (ret)
 		return ret_errno(ENOENT);
 
 	ret = pipe2(pipe_fds, O_CLOEXEC);
@@ -5098,13 +5063,10 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	/* Set up {g,u}id mapping for user namespace of child process. */
@@ -5138,7 +5100,8 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 			int (*fn_parent)(void *), void *fn_parent_data,
 			int (*fn_child)(void *), void *fn_child_data)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(minimal_idmap);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &minimal_idmap;
 	uid_t resuid = LXC_INVALID_UID;
 	gid_t resgid = LXC_INVALID_GID;
 	char c = '1';
@@ -5149,8 +5112,8 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 	if (!conf || !fn_child)
 		return ret_errno(EINVAL);
 
-	idmap = get_minimal_idmap(conf, &resuid, &resgid);
-	if (!idmap)
+	ret = get_minimal_idmap(conf, &resuid, &resgid, idmap);
+	if (ret)
 		return ret_errno(ENOENT);
 
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, sock_fds);
@@ -5212,13 +5175,10 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	ret = lxc_read_nointr(sock_fds[1], &c, 1);
@@ -5260,26 +5220,24 @@ on_error:
 int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		     const char *fn_name)
 {
+	LIST_HEAD(full_idmap);
+	int ret = -1;
+	char c = '1';
+	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
+		      *host_uid_map = NULL, *host_gid_map = NULL;
 	pid_t pid;
 	uid_t euid, egid;
 	int p[2];
 	struct id_map *map;
-	struct lxc_list *cur;
 	struct userns_fn_data d;
-	int ret = -1;
-	char c = '1';
-	struct lxc_list *idmap = NULL, *tmplist = NULL;
-	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
-		      *host_uid_map = NULL, *host_gid_map = NULL;
 
 	if (!conf)
 		return -EINVAL;
 
 	ret = pipe2(p, O_CLOEXEC);
-	if (ret < 0) {
-		SYSERROR("opening pipe");
-		return -1;
-	}
+	if (ret < 0)
+		return -errno;
+
 	d.fn = fn;
 	d.fn_name = fn_name;
 	d.arg = data;
@@ -5299,32 +5257,16 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	euid = geteuid();
 	egid = getegid();
 
-	/* Allocate new {g,u}id map list. */
-	idmap = lxc_list_new();
-	if (!idmap)
-		goto on_error;
-
 	/* Find container root. */
-	lxc_list_for_each (cur, &conf->id_map) {
-		struct id_map *tmpmap;
+	list_for_each_entry(map, &conf->id_map, head) {
+		__do_free struct id_map *dup_map = NULL;
 
-		tmplist = lxc_list_new();
-		if (!tmplist)
+		dup_map = memdup(map, sizeof(struct id_map));
+		if (!dup_map)
 			goto on_error;
 
-		tmpmap = zalloc(sizeof(*tmpmap));
-		if (!tmpmap) {
-			free(tmplist);
-			goto on_error;
-		}
-
-		memset(tmpmap, 0, sizeof(*tmpmap));
-		memcpy(tmpmap, cur->elem, sizeof(*tmpmap));
-		tmplist->elem = tmpmap;
-
-		lxc_list_add_tail(idmap, tmplist);
-
-		map = cur->elem;
+		list_add_tail(&dup_map->head, &full_idmap);
+		move_ptr(dup_map);
 
 		if (map->idtype == ID_TYPE_UID)
 			if (euid >= map->hostid && euid < map->hostid + map->range)
@@ -5373,39 +5315,27 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	if (host_uid_map && (host_uid_map != container_root_uid)) {
-		/* Add container root to the map. */
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			goto on_error;
-		lxc_list_add_elem(tmplist, host_uid_map);
-		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		list_add_tail(&host_uid_map->head, &full_idmap);
+		move_ptr(host_uid_map);
 	}
-	/* idmap will now keep track of that memory. */
-	host_uid_map = NULL;
 
 	if (host_gid_map && (host_gid_map != container_root_gid)) {
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			goto on_error;
-		lxc_list_add_elem(tmplist, host_gid_map);
-		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		list_add_tail(&host_gid_map->head, &full_idmap);
+		move_ptr(host_gid_map);
 	}
-	/* idmap will now keep track of that memory. */
-	host_gid_map = NULL;
 
 	if (lxc_log_trace()) {
-		lxc_list_for_each (cur, idmap) {
-			map = cur->elem;
-			TRACE("establishing %cid mapping for \"%d\" in new "
-			      "user namespace: nsuid %lu - hostid %lu - range "
-			      "%lu",
+		list_for_each_entry(map, &full_idmap, head) {
+			TRACE("establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid,
 			      map->nsid, map->hostid, map->range);
 		}
 	}
 
 	/* Set up {g,u}id mapping for user namespace of child process. */
-	ret = lxc_map_ids(idmap, pid);
+	ret = lxc_map_ids(&full_idmap, pid);
 	if (ret < 0) {
 		ERROR("error setting up {g,u}id mappings for child process \"%d\"", pid);
 		goto on_error;
@@ -5426,8 +5356,7 @@ on_error:
 	if (pid > 0)
 		ret = wait_for_pid(pid);
 
-	if (idmap)
-		__lxc_free_idmap(idmap);
+	__lxc_free_idmap(&full_idmap);
 
 	if (host_uid_map && (host_uid_map != container_root_uid))
 		free(host_uid_map);
@@ -5437,12 +5366,11 @@ on_error:
 	return ret;
 }
 
-static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
+static int add_idmap_entry(struct list_head *idmap_list, enum idtype idtype,
 			   unsigned long nsid, unsigned long hostid,
 			   unsigned long range)
 {
 	__do_free struct id_map *new_idmap = NULL;
-	__do_free struct lxc_list *new_list = NULL;
 
 	new_idmap = zalloc(sizeof(*new_idmap));
 	if (!new_idmap)
@@ -5453,12 +5381,8 @@ static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
 	new_idmap->nsid = nsid;
 	new_idmap->range = range;
 
-	new_list = zalloc(sizeof(*new_list));
-	if (!new_list)
-		return ret_errno(ENOMEM);
-
-	new_list->elem = move_ptr(new_idmap);
-	lxc_list_add_tail(idmap, move_ptr(new_list));
+	list_add_tail(&new_idmap->head, idmap_list);
+	move_ptr(new_idmap);
 
 	INFO("Adding id map: type %c nsid %lu hostid %lu range %lu",
 	     idtype == ID_TYPE_UID ? 'u' : 'g', nsid, hostid, range);
@@ -5468,7 +5392,8 @@ static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
 int userns_exec_mapped_root(const char *path, int path_fd,
 			    const struct lxc_conf *conf)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(idmap_list);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &idmap_list;
 	__do_close int fd = -EBADF;
 	int target_fd = -EBADF;
 	char c = '1';
@@ -5533,10 +5458,6 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 					       target_fd, path, hostgid);
 		TRACE("Chowned %d(%s) to -1:%d", target_fd, path, hostgid);
 	}
-
-	idmap = lxc_list_new();
-	if (!idmap)
-		return -ENOMEM;
 
 	/* "u:0:rootuid:1" */
 	ret = add_idmap_entry(idmap, ID_TYPE_UID, 0, container_host_uid, 1);
@@ -5615,13 +5536,10 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	ret = lxc_read_nointr(sock_fds[1], &c, 1);

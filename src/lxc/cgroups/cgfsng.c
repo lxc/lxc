@@ -575,7 +575,7 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	if (ret < 0)
 		WARN("Failed to detach bpf program from cgroup");
 
-	if (!lxc_list_empty(&handler->conf->id_map)) {
+	if (!list_empty(&handler->conf->id_map)) {
 		struct generic_userns_exec_data wrap = {
 			.conf			= handler->conf,
 			.path_prune		= ops->container_limit_cgroup,
@@ -1363,7 +1363,7 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	if (!conf)
 		return ret_set_errno(false, EINVAL);
 
-	if (lxc_list_empty(&conf->id_map))
+	if (list_empty(&conf->id_map))
 		return true;
 
 	wrap.origuid = geteuid();
@@ -2289,7 +2289,7 @@ static int __cg_unified_attach(const struct hierarchy *h,
 	if (unified_fd < 0)
 		return ret_errno(EBADF);
 
-	if (!lxc_list_empty(&conf->id_map)) {
+	if (!list_empty(&conf->id_map)) {
 		struct userns_exec_unified_attach_data args = {
 			.conf		= conf,
 			.unified_fd	= unified_fd,
@@ -3344,7 +3344,7 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 	 */
 	ops->dfd_mnt = dfd;
 
-	ret = __initialize_cgroups(ops, conf->cgroup_meta.relative, !lxc_list_empty(&conf->id_map));
+	ret = __initialize_cgroups(ops, conf->cgroup_meta.relative, !list_empty(&conf->id_map));
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to initialize cgroups");
 
@@ -3421,7 +3421,7 @@ static int __unified_attach_fd(const struct lxc_conf *conf, int fd_unified, pid_
 {
 	int ret;
 
-	if (!lxc_list_empty(&conf->id_map)) {
+	if (!list_empty(&conf->id_map)) {
 		struct userns_exec_unified_attach_data args = {
 			.conf		= conf,
 			.unified_fd	= fd_unified,

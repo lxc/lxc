@@ -181,6 +181,7 @@ define_cleanup_function(struct lxc_proc *, free_lxc_proc);
 struct id_map {
 	enum idtype idtype;
 	unsigned long hostid, nsid, range;
+	struct list_head head;
 };
 
 /* Defines the number of tty configured and contains the
@@ -352,7 +353,7 @@ struct lxc_conf {
 	};
 
 	struct {
-		struct lxc_list id_map;
+		struct list_head id_map;
 
 		/*
 		 * Pointer to the idmap entry for the container's root uid in
@@ -525,7 +526,7 @@ __hidden extern void lxc_storage_put(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_init(struct lxc_conf *conf, bool userns);
 __hidden extern int lxc_rootfs_prepare_parent(struct lxc_handler *handler);
 __hidden extern int lxc_idmapped_mounts_parent(struct lxc_handler *handler);
-__hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
+__hidden extern int lxc_map_ids(struct list_head *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
