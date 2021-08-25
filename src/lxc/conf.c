@@ -3378,7 +3378,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->cgroup2);
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
-	lxc_list_init(&(new->bpf_devices).device_item);
+	INIT_LIST_HEAD(&(new->bpf_devices).devices);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
 	lxc_list_init(&new->keepcaps);

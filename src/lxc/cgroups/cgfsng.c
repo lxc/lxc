@@ -2858,8 +2858,7 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 
 	unified = ops->unified;
 	if (!unified || !device_utility_controller(unified) ||
-	    !unified->path_con ||
-	    lxc_list_empty(&(conf->bpf_devices).device_item))
+	    !unified->path_con || list_empty(&(conf->bpf_devices).devices))
 		return true;
 
 	return bpf_cgroup_devices_attach(ops, &conf->bpf_devices);
