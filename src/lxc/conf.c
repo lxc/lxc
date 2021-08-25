@@ -3249,15 +3249,15 @@ static int parse_resource(const char *res)
 	return resid;
 }
 
-int setup_resource_limits(struct lxc_list *limits, pid_t pid)
+int setup_resource_limits(struct lxc_conf *conf, pid_t pid)
 {
 	int resid;
-	struct lxc_list *it;
 	struct lxc_limit *lim;
 
-	lxc_list_for_each (it, limits) {
-		lim = it->elem;
+	if (list_empty(&conf->limits))
+		return 0;
 
+	list_for_each_entry(lim, &conf->limits, head) {
 		resid = parse_resource(lim->resource);
 		if (resid < 0)
 			return log_error(-1, "Unknown resource %s", lim->resource);
@@ -3272,6 +3272,7 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 #endif
 	}
 
+	TRACE("Setup resource limits");
 	return 0;
 }
 
@@ -3388,7 +3389,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->includes);
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
-	lxc_list_init(&new->limits);
+	INIT_LIST_HEAD(&new->limits);
 	lxc_list_init(&new->sysctls);
 	lxc_list_init(&new->procs);
 	new->hooks_version = 0;
@@ -4588,9 +4589,9 @@ static inline void lxc_clear_cgroups_devices(struct lxc_conf *conf)
 
 int lxc_clear_limits(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false;
+	struct lxc_limit *lim, *nlim;
 
 	if (strequal(key, "lxc.limit") || strequal(key, "lxc.prlimit"))
 		all = true;
@@ -4601,21 +4602,17 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe (it, &c->limits, next) {
-		struct lxc_limit *lim = it->elem;
-
+	list_for_each_entry_safe(lim, nlim, &c->limits, head) {
 		if (!all && !strequal(lim->resource, k))
 			continue;
 
-		lxc_list_del(it);
-
+		list_del(&lim->head);
 		free_disarm(lim->resource);
 		free(lim);
-		free(it);
 	}
 
 	if (all)
-		lxc_list_init(&c->limits);
+		INIT_LIST_HEAD(&c->limits);
 
 	return 0;
 }

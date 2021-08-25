@@ -1822,12 +1822,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 	}
 
-	if (!lxc_list_empty(&conf->limits)) {
-		ret = setup_resource_limits(&conf->limits, handler->pid);
-		if (ret < 0) {
-			ERROR("Failed to setup resource limits");
-			goto out_delete_net;
-		}
+	ret = setup_resource_limits(conf, handler->pid);
+	if (ret < 0) {
+		ERROR("Failed to setup resource limits");
+		goto out_delete_net;
 	}
 
 	/* Tell the child to continue its initialization. */
