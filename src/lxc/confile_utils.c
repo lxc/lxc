@@ -159,9 +159,8 @@ bool lxc_config_value_empty(const char *value)
 	return true;
 }
 
-struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail)
+static struct lxc_netdev *lxc_network_add(struct list_head *head, int idx, bool tail)
 {
-	__do_free struct lxc_list *newlist = NULL;
 	__do_free struct lxc_netdev *netdev = NULL;
 
 	/* network does not exist */
@@ -175,17 +174,10 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	/* give network a unique index */
 	netdev->idx = idx;
 
-	/* prepare new list */
-	newlist = lxc_list_new();
-	if (!newlist)
-		return ret_set_errno(NULL, ENOMEM);
-	newlist->elem = netdev;
-
 	if (tail)
-		lxc_list_add_tail(networks, newlist);
+		list_add_tail(&netdev->head, head);
 	else
-		lxc_list_add(networks, newlist);
-	move_ptr(newlist);
+		list_add(&netdev->head, head);
 
 	return move_ptr(netdev);
 }
@@ -196,25 +188,26 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 					 unsigned int idx, bool allocate)
 {
-	struct lxc_list *networks = &conf->network;
-	struct lxc_list *insert = networks;
+	struct list_head *netdevs = &conf->netdevs;
+	struct list_head *head = netdevs;
+	struct lxc_netdev *netdev;
 
 	/* lookup network */
-	if (!lxc_list_empty(networks)) {
-		lxc_list_for_each(insert, networks) {
-			struct lxc_netdev *netdev = insert->elem;
-
+	if (!list_empty(netdevs)) {
+		list_for_each_entry(netdev, netdevs, head) {
 			/* found network device */
 			if (netdev->idx == idx)
 				return netdev;
 
-			if (netdev->idx > idx)
+			if (netdev->idx > idx) {
+				head = &netdev->head;
 				break;
+			}
 		}
 	}
 
 	if (allocate)
-		return lxc_network_add(insert, idx, true);
+		return lxc_network_add(head, idx, true);
 
 	return NULL;
 }
@@ -222,23 +215,21 @@ struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 {
 	struct lxc_netdev *netdev;
-	struct lxc_list *it = (struct lxc_list *)&conf->network;;
+	const struct list_head *netdevs = &conf->netdevs;
 
 	if (!lxc_log_trace())
 		return;
 
-	if (lxc_list_empty(it)) {
+	if (list_empty(netdevs)) {
 		TRACE("container has no networks configured");
 		return;
 	}
 
-	lxc_list_for_each(it, &conf->network) {
+	list_for_each_entry(netdev, netdevs, head) {
 		struct lxc_list *cur, *next;
 		struct lxc_inetdev *inet4dev;
 		struct lxc_inet6dev *inet6dev;
 		char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
-
-		netdev = it->elem;
 
 		TRACE("index: %zd", netdev->idx);
 		TRACE("ifindex: %d", netdev->ifindex);
@@ -406,6 +397,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 void lxc_clear_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
+	struct list_head head;
 	ssize_t idx;
 
 	if (!netdev)
@@ -451,7 +443,9 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 		}
 	}
 
+	head = netdev->head;
 	memset(netdev, 0, sizeof(struct lxc_netdev));
+	netdev->head = head;
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
 	netdev->type = -1;
@@ -468,40 +462,37 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 
 bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 {
-	struct lxc_list *cur, *next;
+	struct lxc_netdev *netdev;
 
-	if (lxc_list_empty(&conf->network))
+	if (list_empty(&conf->netdevs))
 		return false;
 
-	lxc_list_for_each_safe(cur, &conf->network, next) {
-		struct lxc_netdev *netdev = cur->elem;
-
+	list_for_each_entry(netdev, &conf->netdevs, head) {
 		if (netdev->idx != idx)
 			continue;
 
-		lxc_list_del(cur);
+		list_del(&netdev->head);
 		lxc_free_netdev(netdev);
-		free(cur);
 		return true;
 	}
 
 	return false;
 }
 
-void lxc_free_networks(struct lxc_list *networks)
+void lxc_free_networks(struct lxc_conf *conf)
 {
-	struct lxc_list *cur, *next;
+	struct lxc_netdev *netdev, *n;
 
-	lxc_list_for_each_safe (cur, networks, next) {
-		struct lxc_netdev *netdev = cur->elem;
+	if (list_empty(&conf->netdevs))
+		return;
 
-		lxc_list_del(cur);
+	list_for_each_entry_safe(netdev, n, &conf->netdevs, head) {
+		list_del(&netdev->head);
 		lxc_free_netdev(netdev);
-		free(cur);
 	}
 
 	/* prevent segfaults */
-	lxc_list_init(networks);
+	INIT_LIST_HEAD(&conf->netdevs);
 }
 
 static struct lxc_veth_mode {

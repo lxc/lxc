@@ -3379,7 +3379,6 @@ struct lxc_conf *lxc_conf_init(void)
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 	lxc_list_init(&(new->bpf_devices).device_item);
-	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
 	lxc_list_init(&new->keepcaps);
@@ -3415,6 +3414,8 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
 	memset(&new->timens, 0, sizeof(struct timens_offsets));
 	seccomp_conf_init(new);
+
+	INIT_LIST_HEAD(&new->netdevs);
 
 	return new;
 }
@@ -4312,8 +4313,7 @@ int lxc_setup(struct lxc_handler *handler)
 		if (ret < 0)
 			return log_error(-1, "Failed to receive veth names from parent");
 
-		ret = lxc_setup_network_in_child_namespaces(lxc_conf,
-							    &lxc_conf->network);
+		ret = lxc_setup_network_in_child_namespaces(lxc_conf);
 		if (ret < 0)
 			return log_error(-1, "Failed to setup network");
 	}
@@ -4831,7 +4831,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->init_cwd);
 	free(conf->unexpanded_config);
 	free(conf->syslog);
-	lxc_free_networks(&conf->network);
+	lxc_free_networks(conf);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_aa_profile_computed);
 	free(conf->lsm_se_context);

@@ -168,7 +168,6 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	char log[PATH_MAX];
 	int static_args = 23, ret;
 	int netnr = 0;
-	struct lxc_list *it;
 	struct mntent mntent;
 
 	char buf[4096], ttys[32];
@@ -233,7 +232,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (ttys[0])
 			static_args += 2;
 
-		static_args += lxc_list_len(&opts->c->lxc_conf->network) * 2;
+		static_args += list_len(&opts->c->lxc_conf->netdevs) * 2;
 	} else {
 		return log_error_errno(-EINVAL, EINVAL, "Invalid criu operation specified");
 	}
@@ -454,6 +453,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			DECLARE_ARG("--leave-running");
 	} else if (strequal(opts->action, "restore")) {
 		struct lxc_conf *lxc_conf = opts->c->lxc_conf;
+		struct lxc_netdev *netdev;
 
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
@@ -492,10 +492,9 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			DECLARE_ARG(buf);
 		}
 
-		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
+		list_for_each_entry(netdev, &opts->c->lxc_conf->netdevs, head) {
 			size_t retlen;
 			char eth[128], *veth;
-			struct lxc_netdev *n = it->elem;
 			bool external_not_veth;
 
 			if (cmp_version(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
@@ -508,8 +507,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				external_not_veth = false;
 			}
 
-			if (n->name[0] != '\0') {
-				retlen = strlcpy(eth, n->name, sizeof(eth));
+			if (netdev->name[0] != '\0') {
+				retlen = strlcpy(eth, netdev->name, sizeof(eth));
 				if (retlen >= sizeof(eth))
 					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			} else {
@@ -518,17 +517,17 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			}
 
-			switch (n->type) {
+			switch (netdev->type) {
 			case LXC_NET_VETH:
-				veth = n->priv.veth_attr.pair;
+				veth = netdev->priv.veth_attr.pair;
 				if (veth[0] == '\0')
-					veth = n->priv.veth_attr.veth1;
+					veth = netdev->priv.veth_attr.veth1;
 
-				if (n->link[0] != '\0') {
+				if (netdev->link[0] != '\0') {
 					if (external_not_veth)
-						ret = strnprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
+						ret = strnprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, netdev->link);
 					else
-						ret = strnprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
+						ret = strnprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, netdev->link);
 				} else {
 					if (external_not_veth)
 						ret = strnprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
@@ -541,10 +540,10 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				TRACE("Added veth device entry %s", buf);
 				break;
 			case LXC_NET_MACVLAN:
-				if (n->link[0] == '\0')
-					return log_error_errno(-EINVAL, EINVAL, "Failed to find host interface for macvlan %s", n->name);
+				if (netdev->link[0] == '\0')
+					return log_error_errno(-EINVAL, EINVAL, "Failed to find host interface for macvlan %s", netdev->name);
 
-				ret = strnprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
+				ret = strnprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, netdev->link);
 				if (ret < 0)
 					return log_error_errno(-EIO, EIO, "Failed to add macvlan entry");
 
@@ -556,7 +555,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				break;
 			default:
 				/* we have screened for this earlier... */
-				return log_error_errno(-EINVAL, EINVAL, "Unsupported network type %d", n->type);
+				return log_error_errno(-EINVAL, EINVAL, "Unsupported network type %d", netdev->type);
 			}
 
 			if (external_not_veth)
@@ -809,7 +808,7 @@ version_error:
  * dump. */
 static bool criu_ok(struct lxc_container *c, char **criu_version)
 {
-	struct lxc_list *it;
+	struct lxc_netdev *netdev;
 
 	if (geteuid()) {
 		ERROR("Must be root to checkpoint");
@@ -820,16 +819,15 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 		return false;
 
 	/* We only know how to restore containers with veth networks. */
-	lxc_list_for_each(it, &c->lxc_conf->network) {
-		struct lxc_netdev *n = it->elem;
-		switch(n->type) {
+	list_for_each_entry(netdev, &c->lxc_conf->netdevs, head) {
+		switch(netdev->type) {
 		case LXC_NET_VETH:
 		case LXC_NET_NONE:
 		case LXC_NET_EMPTY:
 		case LXC_NET_MACVLAN:
 			break;
 		default:
-			ERROR("Found un-dumpable network: %s (%s)", lxc_net_type_to_str(n->type), n->name);
+			ERROR("Found un-dumpable network: %s (%s)", lxc_net_type_to_str(netdev->type), netdev->name);
 			if (criu_version) {
 				free(*criu_version);
 				*criu_version = NULL;
@@ -844,14 +842,13 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 static bool restore_net_info(struct lxc_container *c)
 {
 	int ret;
-	struct lxc_list *it;
 	bool has_error = true;
+	struct lxc_netdev *netdev;
 
 	if (container_mem_lock(c))
 		return false;
 
-	lxc_list_for_each(it, &c->lxc_conf->network) {
-		struct lxc_netdev *netdev = it->elem;
+	list_for_each_entry(netdev, &c->lxc_conf->netdevs, head) {
 		char template[IFNAMSIZ];
 
 		if (netdev->type != LXC_NET_VETH)
