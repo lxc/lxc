@@ -153,6 +153,7 @@ define_cleanup_function(struct lxc_sysctl *, free_lxc_sysctl);
 struct lxc_proc {
 	char *filename;
 	char *value;
+	struct list_head head;
 };
 
 static void free_lxc_proc(struct lxc_proc *ptr)
@@ -496,7 +497,7 @@ struct lxc_conf {
 	struct list_head sysctls;
 
 	/* procs */
-	struct lxc_list procs;
+	struct list_head procs;
 
 	struct shmount {
 		/* Absolute path to the shared mount point on the host */
@@ -575,7 +576,7 @@ static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
 
 __hidden extern int setup_sysctl_parameters(struct lxc_conf *conf);
 __hidden extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
-__hidden extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
+__hidden extern int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid);
 __hidden extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
 __hidden extern int lxc_clear_namespace(struct lxc_conf *c);

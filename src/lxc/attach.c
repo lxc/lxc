@@ -1659,13 +1659,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		goto on_error;
 
 	/* Setup /proc limits */
-	if (!lxc_list_empty(&conf->procs)) {
-		ret = setup_proc_filesystem(&conf->procs, pid);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Setup /proc/%d settings", pid);
-	}
+	ret = setup_proc_filesystem(conf, pid);
+	if (ret < 0)
+		goto on_error;
 
 	/* Setup resource limits */
 	ret = setup_resource_limits(conf, pid);

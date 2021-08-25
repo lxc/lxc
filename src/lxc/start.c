@@ -1816,10 +1816,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!lxc_list_empty(&conf->procs)) {
-		ret = setup_proc_filesystem(&conf->procs, handler->pid);
-		if (ret < 0)
-			goto out_delete_net;
+	ret = setup_proc_filesystem(conf, handler->pid);
+	if (ret < 0) {
+		ERROR("Failed to setup procfs limits");
+		goto out_delete_net;
 	}
 
 	ret = setup_resource_limits(conf, handler->pid);
