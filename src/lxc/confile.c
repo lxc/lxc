@@ -2056,11 +2056,10 @@ static bool parse_limit_value(const char **value, rlim_t *res)
 static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *list = NULL;
-	call_cleaner(free_lxc_limit) struct lxc_limit *elem = NULL;
-	struct lxc_list *iter;
+	call_cleaner(free_lxc_limit) struct lxc_limit *new_lim = NULL;
 	struct rlimit limit;
 	rlim_t limit_value;
+	struct lxc_limit *lim;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
@@ -2107,32 +2106,25 @@ static int set_config_prlimit(const char *key, const char *value,
 	}
 
 	/* find existing list element */
-	lxc_list_for_each(iter, &lxc_conf->limits) {
-		struct lxc_limit *cur = iter->elem;
-
-		if (!strequal(key, cur->resource))
+	list_for_each_entry(lim, &lxc_conf->limits, head) {
+		if (!strequal(key, lim->resource))
 			continue;
 
-		cur->limit = limit;
+		lim->limit = limit;
 		return 0;
 	}
 
-	/* allocate list element */
-	list = lxc_list_new();
-	if (!list)
+	new_lim = zalloc(sizeof(*new_lim));
+	if (!new_lim)
 		return ret_errno(ENOMEM);
 
-	elem = zalloc(sizeof(*elem));
-	if (!elem)
+	new_lim->resource = strdup(key);
+	if (!new_lim->resource)
 		return ret_errno(ENOMEM);
 
-	elem->resource = strdup(key);
-	if (!elem->resource)
-		return ret_errno(ENOMEM);
-
-	elem->limit = limit;
-	lxc_list_add_elem(list, move_ptr(elem));;
-	lxc_list_add_tail(&lxc_conf->limits, move_ptr(list));
+	new_lim->limit = limit;
+	list_add_tail(&new_lim->head, &lxc_conf->limits);
+	move_ptr(new_lim);
 
 	return 0;
 }
@@ -4561,7 +4553,7 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 {
 	int fulllen = 0, len;
 	bool get_all = false;
-	struct lxc_list *it;
+	struct lxc_limit *lim;
 
 	if (!retv)
 		inlen = 0;
@@ -4575,11 +4567,10 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->limits) {
+	list_for_each_entry(lim, &c->limits, head) {
 		/* 2 colon separated 64 bit integers or the word 'unlimited' */
 		char buf[INTTYPE_TO_STRLEN(uint64_t) * 2 + 2];
 		int partlen;
-		struct lxc_limit *lim = it->elem;
 
 		if (lim->limit.rlim_cur == RLIM_INFINITY) {
 			memcpy(buf, "unlimited", STRLITERALLEN("unlimited") + 1);

@@ -95,6 +95,7 @@ define_cleanup_function(struct lxc_cgroup *, free_lxc_cgroup);
 struct rlimit {
 	unsigned long rlim_cur;
 	unsigned long rlim_max;
+	struct list_head head;
 };
 #endif
 
@@ -106,6 +107,7 @@ struct rlimit {
 struct lxc_limit {
 	char *resource;
 	struct rlimit limit;
+	struct list_head head;
 };
 
 static void free_lxc_limit(struct lxc_limit *ptr)
@@ -468,7 +470,7 @@ struct lxc_conf {
 	bool no_new_privs;
 
 	/* RLIMIT_* limits */
-	struct lxc_list limits;
+	struct list_head limits;
 
 	/* Contains generic info about the cgroup configuration for this
 	 * container. Note that struct lxc_cgroup contains a union. It is only
@@ -539,7 +541,7 @@ __hidden extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const c
 						  const char *lxcpath);
 __hidden extern int lxc_setup(struct lxc_handler *handler);
 __hidden extern int lxc_setup_parent(struct lxc_handler *handler);
-__hidden extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
+__hidden extern int setup_resource_limits(struct lxc_conf *conf, pid_t pid);
 __hidden extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
 __hidden extern int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype);
 __hidden extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,

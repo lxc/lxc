@@ -1668,13 +1668,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	/* Setup resource limits */
-	if (!lxc_list_empty(&conf->limits)) {
-		ret = setup_resource_limits(&conf->limits, pid);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Setup resource limits");
-	}
+	ret = setup_resource_limits(conf, pid);
+	if (ret < 0)
+		goto on_error;
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
 		ret = lxc_attach_terminal_mainloop_init(&terminal, &descr);
