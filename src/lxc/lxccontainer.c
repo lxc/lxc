@@ -1219,7 +1219,7 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 		ret = 0;
 	}
 
-	if (!lxc_list_empty(&conf->id_map)) {
+	if (!list_empty(&conf->id_map)) {
 		ret = chown_mapped_root(path, conf);
 		if (ret < 0)
 			ret = -1;
@@ -1290,7 +1290,7 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 	/* If we are not root, chown the rootfs dir to root in the target user
 	 * namespace.
 	 */
-	if (am_guest_unpriv() || !lxc_list_empty(&c->lxc_conf->id_map)) {
+	if (am_guest_unpriv() || !list_empty(&c->lxc_conf->id_map)) {
 		ret = chown_mapped_root(bdev->dest, c->lxc_conf);
 		if (ret < 0) {
 			ERROR("Error chowning \"%s\" to container root", bdev->dest);
@@ -1482,11 +1482,10 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		 * ... <-m mapn> -- and we append "--mapped-uid x", where x is
 		 * the mapped uid for our geteuid()
 		 */
-		if (!lxc_list_empty(&conf->id_map)) {
+		if (!list_empty(&conf->id_map)) {
 			int extraargs, hostuid_mapped, hostgid_mapped;
 			char **n2;
 			char txtuid[20], txtgid[20];
-			struct lxc_list *it;
 			struct id_map *map;
 			int n2args = 1;
 
@@ -1498,8 +1497,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			tpath = "lxc-usernsexec";
 			n2[0] = "lxc-usernsexec";
 
-			lxc_list_for_each(it, &conf->id_map) {
-				map = it->elem;
+			list_for_each_entry(map, &conf->id_map, head) {
 				n2args += 2;
 				n2 = realloc(n2, n2args * sizeof(char *));
 				if (!n2)
@@ -2239,7 +2237,7 @@ static inline bool enter_net_ns(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 
-	if ((geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) &&
+	if ((geteuid() != 0 || (c->lxc_conf && !list_empty(&c->lxc_conf->id_map))) &&
 	    (access("/proc/self/ns/user", F_OK) == 0))
 		if (!switch_to_ns(pid, "user"))
 			return false;
@@ -5077,7 +5075,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 		}
 
 		/* Enter the container namespaces */
-		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
+		if (!list_empty(&c->lxc_conf->id_map)) {
 			if (!switch_to_ns(init_pid, "user")) {
 				ERROR("Failed to enter user namespace");
 				_exit(EXIT_FAILURE);
@@ -5170,7 +5168,7 @@ static int do_lxcapi_umount(struct lxc_container *c, const char *target,
 		}
 
 		/* Enter the container namespaces */
-		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
+		if (!list_empty(&c->lxc_conf->id_map)) {
 			if (!switch_to_ns(init_pid, "user")) {
 				ERROR("Failed to enter user namespace");
 				_exit(EXIT_FAILURE);

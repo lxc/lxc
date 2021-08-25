@@ -1110,7 +1110,7 @@ static int do_start(void *data)
 	/* If we are in a new user namespace, become root there to have
 	 * privilege over our namespace.
 	 */
-	if (!lxc_list_empty(&handler->conf->id_map)) {
+	if (!list_empty(&handler->conf->id_map)) {
 		if (!handler->conf->root_nsuid_map)
 			nsuid = handler->conf->init_uid;
 
@@ -1406,7 +1406,7 @@ static int do_start(void *data)
 	 * we switched to root in the new user namespace further above. Only
 	 * drop groups if we can, so ensure that we have necessary privilege.
 	 */
-	if (lxc_list_empty(&handler->conf->id_map)) {
+	if (list_empty(&handler->conf->id_map)) {
 		#if HAVE_LIBCAP
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif
@@ -1473,7 +1473,7 @@ int resolve_clone_flags(struct lxc_handler *handler)
 			if ((conf->ns_clone & ns_info[i].clone_flag))
 				handler->ns_clone_flags |= ns_info[i].clone_flag;
 		} else {
-			if (i == LXC_NS_USER && lxc_list_empty(&handler->conf->id_map))
+			if (i == LXC_NS_USER && list_empty(&handler->conf->id_map))
 				continue;
 
 			if (i == LXC_NS_NET && lxc_requests_empty_network(handler))
@@ -1576,7 +1576,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
-	struct lxc_list *id_map;
+	struct list_head *id_map;
 	const char *name = handler->name;
 	const char *lxcpath = handler->lxcpath;
 	bool share_ns = false;
@@ -1584,7 +1584,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	id_map = &conf->id_map;
-	wants_to_map_ids = !lxc_list_empty(id_map);
+	wants_to_map_ids = !list_empty(id_map);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (!conf->ns_share[i])
@@ -2012,14 +2012,14 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	ret = lxc_rootfs_init(conf, !lxc_list_empty(&conf->id_map));
+	ret = lxc_rootfs_init(conf, !list_empty(&conf->id_map));
 	if (ret) {
 		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
 		ret = -1;
 		goto out_abort;
 	}
 
-	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
+	if (geteuid() == 0 && !list_empty(&conf->id_map)) {
 		/*
 		 * Most filesystems can't be mounted inside a userns so handle them here.
 		 */

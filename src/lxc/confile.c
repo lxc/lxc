@@ -2210,7 +2210,6 @@ static int set_config_proc(const char *key, const char *value,
 static int set_config_idmaps(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *idmaplist = NULL;
 	__do_free struct id_map *idmap = NULL;
 	unsigned long hostid, nsid, range;
 	char type;
@@ -2218,10 +2217,6 @@ static int set_config_idmaps(const char *key, const char *value,
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
-
-	idmaplist = lxc_list_new();
-	if (!idmaplist)
-		return ret_errno(ENOMEM);
 
 	idmap = zalloc(sizeof(*idmap));
 	if (!idmap)
@@ -2242,8 +2237,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	idmap->hostid = hostid;
 	idmap->nsid = nsid;
 	idmap->range = range;
-	idmaplist->elem = idmap;
-	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+	list_add_tail(&idmap->head, &lxc_conf->id_map);
 
 	if (!lxc_conf->root_nsuid_map && idmap->idtype == ID_TYPE_UID)
 		if (idmap->nsid == 0)
@@ -2254,7 +2248,6 @@ static int set_config_idmaps(const char *key, const char *value,
 			lxc_conf->root_nsgid_map = idmap;
 
 	move_ptr(idmap);
-	move_ptr(idmaplist);
 
 	return 0;
 }
@@ -3996,7 +3989,7 @@ static inline int get_config_cgroup_relative(const char *key, char *retv,
 static int get_config_idmaps(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
-	struct lxc_list *it;
+	struct id_map *map;
 	int len, listlen, ret;
 	int fulllen = 0;
 /* "u 1000 1000000 65536"
@@ -4027,9 +4020,8 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&c->id_map);
-	lxc_list_for_each(it, &c->id_map) {
-		struct id_map *map = it->elem;
+	listlen = list_len(&c->id_map);
+	list_for_each_entry(map, &c->id_map, head) {
 		ret = strnprintf(buf, sizeof(buf), "%c %lu %lu %lu",
 				 (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
 				 map->nsid, map->hostid, map->range);

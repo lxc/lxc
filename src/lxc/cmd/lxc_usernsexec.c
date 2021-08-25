@@ -114,11 +114,10 @@ static int do_child(void *vargv)
 	return -1;
 }
 
-static struct lxc_list active_map;
+static LIST_HEAD(active_map);
 
 static int add_map_entry(long host_id, long ns_id, long range, int which)
 {
-	struct lxc_list *tmp = NULL;
 	struct id_map *newmap;
 
 	newmap = malloc(sizeof(*newmap));
@@ -129,14 +128,8 @@ static int add_map_entry(long host_id, long ns_id, long range, int which)
 	newmap->nsid = ns_id;
 	newmap->range = range;
 	newmap->idtype = which;
-	tmp = malloc(sizeof(*tmp));
-	if (!tmp) {
-		free(newmap);
-		return -1;
-	}
 
-	tmp->elem = newmap;
-	lxc_list_add_tail(&active_map, tmp);
+	list_add_tail(&newmap->head, &active_map);
 	return 0;
 }
 
@@ -280,11 +273,9 @@ static bool do_map_self(void)
 {
 	struct id_map *map;
 	long nsuid = 0, nsgid = 0;
-	struct lxc_list *tmp = NULL;
 	int ret;
 
-	lxc_list_for_each(tmp, &active_map) {
-		map = tmp->elem;
+	list_for_each_entry(map, &active_map, head) {
 		if (map->idtype == ID_TYPE_UID) {
 			if (is_in_ns_range(nsuid, map))
 				nsuid += map->range;
@@ -336,8 +327,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	lxc_list_init(&active_map);
-
 	while ((c = getopt(argc, argv, "m:hs")) != EOF) {
 		switch (c) {
 		case 'm':
@@ -359,7 +348,7 @@ int main(int argc, char *argv[])
 		}
 	};
 
-	if (lxc_list_empty(&active_map)) {
+	if (list_empty(&active_map)) {
 		ret = find_default_map();
 		if (ret < 0) {
 			fprintf(stderr, "Failed to find subuid or subgid allocation\n");
