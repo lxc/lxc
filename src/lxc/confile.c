@@ -3378,7 +3378,6 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 bool network_new_hwaddrs(struct lxc_conf *conf)
 {
 	char *lend, *p, *p2;
-	struct lxc_list *it;
 	char *lstart = conf->unexpanded_config;
 
 	if (!conf->unexpanded_config)
@@ -3386,6 +3385,7 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 
 	while (*lstart) {
 		char newhwaddr[18], oldhwaddr[17];
+		struct lxc_netdev *netdev;
 
 		lend = strchr(lstart, '\n');
 		if (!lend)
@@ -3426,11 +3426,9 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 			return false;
 
 		memcpy(p, newhwaddr, 17);
-		lxc_list_for_each(it, &conf->network) {
-			struct lxc_netdev *n = it->elem;
-
-			if (n->hwaddr && memcmp(oldhwaddr, n->hwaddr, 17) == 0)
-				memcpy(n->hwaddr, newhwaddr, 17);
+		list_for_each_entry(netdev, &conf->netdevs, head) {
+			if (netdev->hwaddr && memcmp(oldhwaddr, netdev->hwaddr, 17) == 0)
+				memcpy(netdev->hwaddr, newhwaddr, 17);
 		}
 
 		lstart = lend;
@@ -3983,16 +3981,15 @@ static int get_config_net(const char *key, char *retv, int inlen,
 			  struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct lxc_netdev *netdev;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->network) {
-		struct lxc_netdev *n = it->elem;
-		const char *t = lxc_net_type_to_str(n->type);
+	list_for_each_entry(netdev, &c->netdevs, head) {
+		const char *t = lxc_net_type_to_str(netdev->type);
 		strprint(retv, inlen, "%s\n", t ? t : "(invalid)");
 	}
 
@@ -4697,7 +4694,7 @@ static inline int clr_config_hooks_version(const char *key, struct lxc_conf *c,
 static inline int clr_config_net(const char *key, struct lxc_conf *c,
 				 void *data)
 {
-	lxc_free_networks(&c->network);
+	lxc_free_networks(c);
 
 	return 0;
 }

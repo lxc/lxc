@@ -19,6 +19,7 @@
 #include "caps.h"
 #include "compiler.h"
 #include "config.h"
+#include "hlist.h"
 #include "list.h"
 #include "lxcseccomp.h"
 #include "memory_utils.h"
@@ -358,7 +359,7 @@ struct lxc_conf {
 		const struct id_map *root_nsgid_map;
 	};
 
-	struct lxc_list network;
+	struct list_head netdevs;
 
 	struct {
 		char *fstab;
