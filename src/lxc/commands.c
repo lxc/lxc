@@ -1905,22 +1905,14 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       const lxc_cmd_t cmd)
 {
 	if (cmd == LXC_CMD_ADD_STATE_CLIENT) {
-		struct lxc_list *cur, *next;
+		struct lxc_state_client *client, *nclient;
 
-		lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-			struct lxc_state_client *client = cur->elem;
-
+		list_for_each_entry_safe(client, nclient, &handler->conf->state_clients, head) {
 			if (client->clientfd != fd)
 				continue;
 
-			/*
-			 * Only kick client from list so it can't be found
-			 * anymore. The actual close happens, as for all other
-			 * file descriptors, below.
-			 */
-			lxc_list_del(cur);
-			free(cur->elem);
-			free(cur);
+			list_del(&client->head);
+			free(client);
 
 			/*
 			 * No need to walk the whole list. If we found the state

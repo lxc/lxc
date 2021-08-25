@@ -245,6 +245,7 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 	DIR *dir;
 	struct dirent *direntp;
 	unsigned int listen_fds_max;
+	struct lxc_state_client *client, *nclient;
 
 	if (conf && conf->close_all_fds)
 		closeall = true;
@@ -267,7 +268,6 @@ restart:
 
 	while ((direntp = readdir(dir))) {
 		int ret;
-		struct lxc_list *cur;
 		bool matched = false;
 
 		if (strequal(direntp->d_name, "."))
@@ -292,9 +292,7 @@ restart:
 
 		/* Keep state clients that wait on reboots. */
 		if (conf) {
-			lxc_list_for_each(cur, &conf->state_clients) {
-				struct lxc_state_client *client = cur->elem;
-
+			list_for_each_entry_safe(client, nclient, &conf->state_clients, head) {
 				if (client->clientfd != fd)
 					continue;
 
@@ -472,10 +470,13 @@ static int signal_handler(int fd, uint32_t events, void *data,
 int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 			    lxc_state_t state)
 {
+	struct lxc_msg msg = {
+		.type	= lxc_msg_state,
+		.value	= state,
+	};
 	size_t retlen;
 	ssize_t ret;
-	struct lxc_list *cur, *next;
-	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
+	struct lxc_state_client *client, *nclient;
 
 	if (state == THAWED)
 		handler->state = RUNNING;
@@ -484,16 +485,14 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 
 	TRACE("Set container state to %s", lxc_state2str(state));
 
-	if (lxc_list_empty(&handler->conf->state_clients))
+	if (list_empty(&handler->conf->state_clients))
 		return log_trace(0, "No state clients registered");
 
 	retlen = strlcpy(msg.name, name, sizeof(msg.name));
 	if (retlen >= sizeof(msg.name))
 		return -E2BIG;
 
-	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-		struct lxc_state_client *client = cur->elem;
-
+	list_for_each_entry_safe(client, nclient, &handler->conf->state_clients, head) {
 		if (client->states[state] == 0) {
 			TRACE("State %s not registered for state client %d",
 			      lxc_state2str(state), client->clientfd);
@@ -508,10 +507,9 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 			SYSERROR("Failed to send message to client");
 
 		/* kick client from list */
-		lxc_list_del(cur);
+		list_del(&client->head);
 		close(client->clientfd);
-		free(cur->elem);
-		free(cur);
+		free(client);
 	}
 
 	return 0;
@@ -706,7 +704,7 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 	handler->state_socket_pair[0] = -EBADF;
 	handler->state_socket_pair[1] = -EBADF;
 	if (handler->conf->reboot == REBOOT_NONE)
-		lxc_list_init(&handler->conf->state_clients);
+		INIT_LIST_HEAD(&handler->conf->state_clients);
 
 	for (lxc_namespace_t idx = 0; idx < LXC_NS_MAX; idx++) {
 		handler->nsfd[idx] = -EBADF;
@@ -915,9 +913,9 @@ void lxc_expose_namespace_environment(const struct lxc_handler *handler)
 void lxc_end(struct lxc_handler *handler)
 {
 	int ret;
-	struct lxc_list *cur, *next;
 	const char *name = handler->name;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
+	struct lxc_state_client *client, *nclient;
 
 	/* The STOPPING state is there for future cleanup code which can take
 	 * awhile.
@@ -1009,19 +1007,16 @@ void lxc_end(struct lxc_handler *handler)
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
 	 */
-	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-		struct lxc_state_client *client = cur->elem;
-
+	list_for_each_entry_safe(client, nclient, &handler->conf->state_clients, head) {
 		/* Keep state clients that want to be notified about reboots. */
 		if ((handler->conf->reboot > REBOOT_NONE) &&
 		    (client->states[RUNNING] == 2))
 			continue;
 
 		/* close state client socket */
-		lxc_list_del(cur);
+		list_del(&client->head);
 		close(client->clientfd);
-		free(cur->elem);
-		free(cur);
+		free(client);
 	}
 
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != REBOOT_REQ)
