@@ -2237,7 +2237,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 
 		/* This is a recursive bind-mount. */
 		if (strequal(mo->name, "rbind")) {
-			opts->recursive = 1;
+			opts->bind_recursively = 1;
 			opts->bind = 1;
 			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND | MS_REC */
 			return 0;
@@ -2933,10 +2933,10 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			dfd_from = rootfs->dfd_host;
 		fd_from = open_tree(dfd_from, source_relative,
 				    OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC |
-				    (opts.recursive ? AT_RECURSIVE : 0));
+				    (opts.bind_recursively ? AT_RECURSIVE : 0));
 		if (fd_from < 0)
 			return syserror("Failed to create detached %smount of %d/%s",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative);
 
 		if (strequal(opts.userns_path, "container"))
@@ -2951,7 +2951,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to open user namespace \"%s\" for detached %smount of %d/%s",
-					opts.userns_path, opts.recursive ? "recursive " : "",
+					opts.userns_path, opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative);
 		}
 
@@ -2965,7 +2965,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to send file descriptor %d for detached %smount of %d/%s and file descriptor %d of user namespace \"%s\" to parent",
-					fd_from, opts.recursive ? "recursive " : "",
+					fd_from, opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative, fd_userns,
 					opts.userns_path);
 		}
@@ -2980,7 +2980,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to receive notification that parent idmapped detached %smount %d/%s to user namespace %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative, fd_userns);
 		}
 
@@ -2991,7 +2991,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 
 		/* Set remaining mount options. */
 		ret = mount_setattr(fd_from, "", AT_EMPTY_PATH |
-				    (opts.recursive ? AT_RECURSIVE : 0),
+				    (opts.bind_recursively ? AT_RECURSIVE : 0),
 				    &opts.attr, sizeof(opts.attr));
 		if (ret < 0) {
 			if (opts.optional) {
@@ -3000,7 +3000,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to receive notification that parent idmapped detached %smount %d/%s to user namespace %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative, fd_userns);
 		}
 
@@ -3025,7 +3025,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 
 			return syserror("Failed to open target mountpoint %d/%s for detached idmapped %smount %d:%d/%s",
 					dfd_from, target_relative,
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_userns, dfd_from, source_relative);
 		}
 
@@ -3037,12 +3037,12 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to attach detached idmapped %smount %d:%d/%s to target mountpoint %d/%s",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_userns, dfd_from, source_relative, dfd_from, target_relative);
 		}
 
 		TRACE("Attached detached idmapped %smount %d:%d/%s to target mountpoint %d/%s",
-		      opts.recursive ? "recursive " : "", fd_userns, dfd_from,
+		      opts.bind_recursively ? "recursive " : "", fd_userns, dfd_from,
 		      source_relative, dfd_from, target_relative);
 	}
 
@@ -4100,11 +4100,11 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 		attr.userns_fd	= fd_userns;
 		ret = mount_setattr(fd_from, "",
 				    AT_EMPTY_PATH |
-				    (opts.recursive ? AT_RECURSIVE : 0),
+				    (opts.bind_recursively ? AT_RECURSIVE : 0),
 				    &attr, sizeof(attr));
 		if (ret)
 			return syserror("Failed to idmap detached %smount %d to %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_from, fd_userns);
 
 		ret = lxc_abstract_unix_send_credential(handler->data_sock[1],
@@ -4112,11 +4112,11 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 							sizeof(mnt_seq));
 		if (ret < 0)
 			return syserror("Parent failed to notify child that detached %smount %d was idmapped to user namespace %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_from, fd_userns);
 
 		TRACE("Parent idmapped detached %smount %d to user namespace %d",
-		      opts.recursive ? "recursive " : "", fd_from, fd_userns);
+		      opts.bind_recursively ? "recursive " : "", fd_from, fd_userns);
 		mnt_seq++;
 	}
 }
