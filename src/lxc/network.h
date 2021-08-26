@@ -58,6 +58,7 @@ struct lxc_inet6dev {
 	struct in6_addr mcast;
 	struct in6_addr acast;
 	unsigned int prefix;
+	struct list_head head;
 };
 
 struct lxc_route6 {
@@ -172,8 +173,8 @@ struct lxc_netdev {
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;
-	struct list_head ipv4_list;
-	struct lxc_list ipv6;
+	struct list_head ipv4_addresses;
+	struct list_head ipv6_addresses;
 	bool ipv4_gateway_auto;
 	bool ipv4_gateway_dev;
 	struct in_addr *ipv4_gateway;
