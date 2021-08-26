@@ -39,6 +39,7 @@ struct lxc_inetdev {
 	struct in_addr addr;
 	struct in_addr bcast;
 	unsigned int prefix;
+	struct list_head head;
 };
 
 struct lxc_route {
@@ -171,7 +172,7 @@ struct lxc_netdev {
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;
-	struct lxc_list ipv4;
+	struct list_head ipv4_list;
 	struct lxc_list ipv6;
 	bool ipv4_gateway_auto;
 	bool ipv4_gateway_dev;
