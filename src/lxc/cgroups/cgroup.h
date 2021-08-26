@@ -26,7 +26,6 @@
 
 struct lxc_handler;
 struct lxc_conf;
-struct lxc_list;
 
 typedef enum {
         CGROUP_LAYOUT_UNKNOWN = -1,

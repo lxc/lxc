@@ -1052,12 +1052,11 @@ static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
 	__lxc_unused __do_close int data_sock0 = handler->data_sock[0],
-					   data_sock1 = handler->data_sock[1];
+				    data_sock1 = handler->data_sock[1];
 	__do_close int devnull_fd = -EBADF, status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
 	gid_t new_gid;
-	struct lxc_list *iterator;
 	uid_t nsuid = 0;
 	gid_t nsgid = 0;
 
@@ -1110,7 +1109,7 @@ static int do_start(void *data)
 	/* If we are in a new user namespace, become root there to have
 	 * privilege over our namespace.
 	 */
-	if (!lxc_list_empty(&handler->conf->id_map)) {
+	if (!list_empty(&handler->conf->id_map)) {
 		if (!handler->conf->root_nsuid_map)
 			nsuid = handler->conf->init_uid;
 
@@ -1257,18 +1256,14 @@ static int do_start(void *data)
 		}
 	}
 
-	/* Add the requested environment variables to the current environment to
-	 * allow them to be used by the various hooks, such as the start hook
-	 * below.
+	/*
+	 * Add the requested environment variables to the current environment
+	 * to allow them to be used by the various hooks, such as the start
+	 * hook below.
 	 */
-	lxc_list_for_each(iterator, &handler->conf->environment) {
-		ret = putenv((char *)iterator->elem);
-		if (ret < 0) {
-			SYSERROR("Failed to set environment variable: %s",
-				 (char *)iterator->elem);
-			goto out_warn_father;
-		}
-	}
+	ret = lxc_set_environment(handler->conf);
+	if (ret < 0)
+		goto out_warn_father;
 
 	if (!lxc_sync_wait_parent(handler, START_SYNC_POST_CONFIGURE))
 		goto out_warn_father;
@@ -1361,14 +1356,9 @@ static int do_start(void *data)
 	if (ret < 0)
 		SYSERROR("Failed to clear environment.");
 
-	lxc_list_for_each(iterator, &handler->conf->environment) {
-		ret = putenv((char *)iterator->elem);
-		if (ret < 0) {
-			SYSERROR("Failed to set environment variable: %s",
-				 (char *)iterator->elem);
-			goto out_warn_father;
-		}
-	}
+	ret = lxc_set_environment(handler->conf);
+	if (ret < 0)
+		goto out_warn_father;
 
 	ret = putenv("container=lxc");
 	if (ret < 0) {
@@ -1406,7 +1396,7 @@ static int do_start(void *data)
 	 * we switched to root in the new user namespace further above. Only
 	 * drop groups if we can, so ensure that we have necessary privilege.
 	 */
-	if (lxc_list_empty(&handler->conf->id_map)) {
+	if (list_empty(&handler->conf->id_map)) {
 		#if HAVE_LIBCAP
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif
@@ -1473,7 +1463,7 @@ int resolve_clone_flags(struct lxc_handler *handler)
 			if ((conf->ns_clone & ns_info[i].clone_flag))
 				handler->ns_clone_flags |= ns_info[i].clone_flag;
 		} else {
-			if (i == LXC_NS_USER && lxc_list_empty(&handler->conf->id_map))
+			if (i == LXC_NS_USER && list_empty(&handler->conf->id_map))
 				continue;
 
 			if (i == LXC_NS_NET && lxc_requests_empty_network(handler))
@@ -1576,7 +1566,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
-	struct lxc_list *id_map;
+	struct list_head *id_map;
 	const char *name = handler->name;
 	const char *lxcpath = handler->lxcpath;
 	bool share_ns = false;
@@ -1584,7 +1574,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	id_map = &conf->id_map;
-	wants_to_map_ids = !lxc_list_empty(id_map);
+	wants_to_map_ids = !list_empty(id_map);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (!conf->ns_share[i])
@@ -1816,18 +1806,16 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!lxc_list_empty(&conf->procs)) {
-		ret = setup_proc_filesystem(&conf->procs, handler->pid);
-		if (ret < 0)
-			goto out_delete_net;
+	ret = setup_proc_filesystem(conf, handler->pid);
+	if (ret < 0) {
+		ERROR("Failed to setup procfs limits");
+		goto out_delete_net;
 	}
 
-	if (!lxc_list_empty(&conf->limits)) {
-		ret = setup_resource_limits(&conf->limits, handler->pid);
-		if (ret < 0) {
-			ERROR("Failed to setup resource limits");
-			goto out_delete_net;
-		}
+	ret = setup_resource_limits(conf, handler->pid);
+	if (ret < 0) {
+		ERROR("Failed to setup resource limits");
+		goto out_delete_net;
 	}
 
 	/* Tell the child to continue its initialization. */
@@ -2014,14 +2002,14 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	ret = lxc_rootfs_init(conf, !lxc_list_empty(&conf->id_map));
+	ret = lxc_rootfs_init(conf, !list_empty(&conf->id_map));
 	if (ret) {
 		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
 		ret = -1;
 		goto out_abort;
 	}
 
-	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
+	if (geteuid() == 0 && !list_empty(&conf->id_map)) {
 		/*
 		 * Most filesystems can't be mounted inside a userns so handle them here.
 		 */

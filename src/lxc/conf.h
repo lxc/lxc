@@ -78,6 +78,8 @@ struct lxc_cgroup {
 			bool relative;
 		};
 	};
+
+	struct list_head head;
 };
 
 static void free_lxc_cgroup(struct lxc_cgroup *ptr)
@@ -95,6 +97,7 @@ define_cleanup_function(struct lxc_cgroup *, free_lxc_cgroup);
 struct rlimit {
 	unsigned long rlim_cur;
 	unsigned long rlim_max;
+	struct list_head head;
 };
 #endif
 
@@ -106,6 +109,7 @@ struct rlimit {
 struct lxc_limit {
 	char *resource;
 	struct rlimit limit;
+	struct list_head head;
 };
 
 static void free_lxc_limit(struct lxc_limit *ptr)
@@ -130,6 +134,7 @@ enum idtype {
 struct lxc_sysctl {
 	char *key;
 	char *value;
+	struct list_head head;
 };
 
 static void free_lxc_sysctl(struct lxc_sysctl *ptr)
@@ -150,6 +155,7 @@ define_cleanup_function(struct lxc_sysctl *, free_lxc_sysctl);
 struct lxc_proc {
 	char *filename;
 	char *value;
+	struct list_head head;
 };
 
 static void free_lxc_proc(struct lxc_proc *ptr)
@@ -175,6 +181,7 @@ define_cleanup_function(struct lxc_proc *, free_lxc_proc);
 struct id_map {
 	enum idtype idtype;
 	unsigned long hostid, nsid, range;
+	struct list_head head;
 };
 
 /* Defines the number of tty configured and contains the
@@ -204,13 +211,15 @@ struct lxc_mount_options {
 	unsigned int create_file : 1;
 	unsigned int optional : 1;
 	unsigned int relative : 1;
-	unsigned int recursive : 1;
+	unsigned int bind_recursively : 1;
+	unsigned int propagate_recursively : 1;
 	unsigned int bind : 1;
 	char userns_path[PATH_MAX];
 	unsigned long mnt_flags;
 	unsigned long prop_flags;
 	char *data;
 	struct lxc_mount_attr attr;
+	char *raw_options;
 };
 
 /* Defines a structure to store the rootfs location, the
@@ -219,7 +228,6 @@ struct lxc_mount_options {
  * @mount        : where it is mounted
  * @buf		 : static buffer to construct paths
  * @bev_type     : optional backing store type
- * @options      : mount options
  * @managed      : whether it is managed by LXC
  * @dfd_mnt	 : fd for @mount
  * @dfd_dev : fd for /dev of the container
@@ -238,8 +246,6 @@ struct lxc_rootfs {
 
 	char buf[PATH_MAX];
 	char *bdev_type;
-	char *options;
-	unsigned long mountflags;
 	bool managed;
 	struct lxc_mount_options mnt_opts;
 	struct lxc_storage *storage;
@@ -331,6 +337,23 @@ struct timens_offsets {
 	int64_t ns_monotonic;
 };
 
+struct environment_entry {
+	char *key;
+	char *val;
+	struct list_head head;
+};
+
+struct cap_entry {
+	char *cap_name;
+	int cap;
+	struct list_head head;
+};
+
+struct caps {
+	int keep;
+	struct list_head list;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -340,13 +363,13 @@ struct lxc_conf {
 	struct utsname *utsname;
 
 	struct {
-		struct lxc_list cgroup;
-		struct lxc_list cgroup2;
+		struct list_head cgroup;
+		struct list_head cgroup2;
 		struct bpf_devices bpf_devices;
 	};
 
 	struct {
-		struct lxc_list id_map;
+		struct list_head id_map;
 
 		/*
 		 * Pointer to the idmap entry for the container's root uid in
@@ -369,8 +392,7 @@ struct lxc_conf {
 		struct lxc_list mount_list;
 	};
 
-	struct lxc_list caps;
-	struct lxc_list keepcaps;
+	struct caps caps;
 
 	/* /dev/tty<idx> devices */
 	struct lxc_tty_info ttys;
@@ -430,14 +452,9 @@ struct lxc_conf {
 	unsigned int monitor_unshare;
 	unsigned int monitor_signal_pdeath;
 
-	/* list of included files */
-	struct lxc_list includes;
-	/* config entries which are not "lxc.*" are aliens */
-	struct lxc_list aliens;
-
 	/* list of environment variables we'll add to the container when
 	 * started */
-	struct lxc_list environment;
+	struct list_head environment;
 
 	/* text representation of the config file */
 	char *unexpanded_config;
@@ -468,7 +485,7 @@ struct lxc_conf {
 	bool no_new_privs;
 
 	/* RLIMIT_* limits */
-	struct lxc_list limits;
+	struct list_head limits;
 
 	/* Contains generic info about the cgroup configuration for this
 	 * container. Note that struct lxc_cgroup contains a union. It is only
@@ -490,10 +507,10 @@ struct lxc_conf {
 	struct list_head state_clients;
 
 	/* sysctls */
-	struct lxc_list sysctls;
+	struct list_head sysctls;
 
 	/* procs */
-	struct lxc_list procs;
+	struct list_head procs;
 
 	struct shmount {
 		/* Absolute path to the shared mount point on the host */
@@ -519,11 +536,10 @@ __hidden extern void lxc_storage_put(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_init(struct lxc_conf *conf, bool userns);
 __hidden extern int lxc_rootfs_prepare_parent(struct lxc_handler *handler);
 __hidden extern int lxc_idmapped_mounts_parent(struct lxc_handler *handler);
-__hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
+__hidden extern int lxc_map_ids(struct list_head *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
-__hidden extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 __hidden extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
 __hidden extern int lxc_clear_mount_entries(struct lxc_conf *c);
 __hidden extern int lxc_clear_automounts(struct lxc_conf *c);
@@ -534,12 +550,11 @@ __hidden extern int lxc_clear_environment(struct lxc_conf *c);
 __hidden extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_delete_autodev(struct lxc_handler *handler);
 __hidden extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
-__hidden extern void lxc_clear_includes(struct lxc_conf *conf);
 __hidden extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 						  const char *lxcpath);
 __hidden extern int lxc_setup(struct lxc_handler *handler);
 __hidden extern int lxc_setup_parent(struct lxc_handler *handler);
-__hidden extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
+__hidden extern int setup_resource_limits(struct lxc_conf *conf, pid_t pid);
 __hidden extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
 __hidden extern int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype);
 __hidden extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
@@ -553,26 +568,23 @@ __hidden extern int parse_mount_attrs(struct lxc_mount_options *opts, const char
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
-__hidden extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
+__hidden extern void sort_cgroup_settings(struct lxc_conf *conf);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
-__hidden extern int in_caplist(int cap, struct lxc_list *caps);
 
+__hidden extern bool has_cap(int cap, struct lxc_conf *conf);
 static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
 {
 	if (lxc_caps_last_cap() < cap)
 		return false;
 
-	if (!lxc_list_empty(&conf->keepcaps))
-		return in_caplist(cap, &conf->keepcaps);
-
-	return !in_caplist(cap, &conf->caps);
+	return has_cap(cap, conf);
 }
 
-__hidden extern int setup_sysctl_parameters(struct lxc_list *sysctls);
+__hidden extern int setup_sysctl_parameters(struct lxc_conf *conf);
 __hidden extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
-__hidden extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
+__hidden extern int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid);
 __hidden extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
 __hidden extern int lxc_clear_namespace(struct lxc_conf *c);
@@ -607,6 +619,7 @@ static inline void put_lxc_mount_options(struct lxc_mount_options *mnt_opts)
 	mnt_opts->prop_flags = 0;
 
 	free_disarm(mnt_opts->data);
+	free_disarm(mnt_opts->raw_options);
 }
 
 static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
@@ -641,5 +654,8 @@ static inline int lxc_personality(personality_t persona)
 
 	return personality(persona);
 }
+
+__hidden extern int lxc_set_environment(const struct lxc_conf *conf);
+__hidden extern int parse_cap(const char *cap);
 
 #endif /* __LXC_CONF_H */

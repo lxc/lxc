@@ -1539,35 +1539,40 @@ static int set_config_group(const char *key, const char *value,
 static int set_config_environment(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *list_item = NULL;
+	__do_free char *dup = NULL, *val = NULL;
+	__do_free struct environment_entry *new_env = NULL;
+	char *env_val;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
-	list_item = lxc_list_new();
-	if (!list_item)
+	new_env = zalloc(sizeof(struct environment_entry));
+	if (!new_env)
 		return ret_errno(ENOMEM);
 
-	if (!strchr(value, '=')) {
-		const char *env_val;
-		const char *env_key = value;
-		const char *env_var[3] = {0};
+	dup = strdup(value);
+	if (!dup)
+		return ret_errno(ENOMEM);
 
-		env_val = getenv(env_key);
-		if (!env_val)
-			return ret_errno(ENOENT);
-
-		env_var[0] = env_key;
-		env_var[1] = env_val;
-		list_item->elem = lxc_string_join("=", env_var, false);
+	env_val = strchr(dup, '=');
+	if (!env_val) {
+		env_val = getenv(dup);
 	} else {
-		list_item->elem = strdup(value);
+		*env_val = '\0';
+		env_val++;
 	}
+	if (!env_val)
+		return ret_errno(ENOENT);
 
-	if (!list_item->elem)
+	val = strdup(env_val);
+	if (!val)
 		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(&lxc_conf->environment, move_ptr(list_item));
+	new_env->key = move_ptr(dup);
+	new_env->val = move_ptr(val);
+
+	list_add_tail(&new_env->head, &lxc_conf->environment);
+	move_ptr(new_env);
 
 	return 0;
 }
@@ -1858,8 +1863,7 @@ static int set_config_signal_stop(const char *key, const char *value,
 static int __set_config_cgroup_controller(const char *key, const char *value,
 					  struct lxc_conf *lxc_conf, int version)
 {
-	__do_free struct lxc_list *cglist = NULL;
-	call_cleaner(free_lxc_cgroup) struct lxc_cgroup *cgelem = NULL;
+	call_cleaner(free_lxc_cgroup) struct lxc_cgroup *new_cgroup = NULL;
 	const char *subkey, *token;
 	size_t token_len;
 
@@ -1883,31 +1887,25 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	cglist = lxc_list_new();
-	if (!cglist)
+	new_cgroup = zalloc(sizeof(*new_cgroup));
+	if (!new_cgroup)
 		return ret_errno(ENOMEM);
 
-	cgelem = zalloc(sizeof(*cgelem));
-	if (!cgelem)
+	new_cgroup->subsystem = strdup(subkey);
+	if (!new_cgroup->subsystem)
 		return ret_errno(ENOMEM);
 
-	cgelem->subsystem = strdup(subkey);
-	if (!cgelem->subsystem)
+	new_cgroup->value = strdup(value);
+	if (!new_cgroup->value)
 		return ret_errno(ENOMEM);
 
-	cgelem->value = strdup(value);
-	if (!cgelem->value)
-		return ret_errno(ENOMEM);
-
-	cgelem->version = version;
-
-	lxc_list_add_elem(cglist, move_ptr(cgelem));
+	new_cgroup->version = version;
 
 	if (version == CGROUP2_SUPER_MAGIC)
-		lxc_list_add_tail(&lxc_conf->cgroup2, cglist);
+		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup2);
 	else
-		lxc_list_add_tail(&lxc_conf->cgroup, cglist);
-	move_ptr(cglist);
+		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup);
+	move_ptr(new_cgroup);
 
 	return 0;
 }
@@ -2056,11 +2054,10 @@ static bool parse_limit_value(const char **value, rlim_t *res)
 static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *list = NULL;
-	call_cleaner(free_lxc_limit) struct lxc_limit *elem = NULL;
-	struct lxc_list *iter;
+	call_cleaner(free_lxc_limit) struct lxc_limit *new_lim = NULL;
 	struct rlimit limit;
 	rlim_t limit_value;
+	struct lxc_limit *lim;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
@@ -2107,32 +2104,25 @@ static int set_config_prlimit(const char *key, const char *value,
 	}
 
 	/* find existing list element */
-	lxc_list_for_each(iter, &lxc_conf->limits) {
-		struct lxc_limit *cur = iter->elem;
-
-		if (!strequal(key, cur->resource))
+	list_for_each_entry(lim, &lxc_conf->limits, head) {
+		if (!strequal(key, lim->resource))
 			continue;
 
-		cur->limit = limit;
+		lim->limit = limit;
 		return 0;
 	}
 
-	/* allocate list element */
-	list = lxc_list_new();
-	if (!list)
+	new_lim = zalloc(sizeof(*new_lim));
+	if (!new_lim)
 		return ret_errno(ENOMEM);
 
-	elem = zalloc(sizeof(*elem));
-	if (!elem)
+	new_lim->resource = strdup(key);
+	if (!new_lim->resource)
 		return ret_errno(ENOMEM);
 
-	elem->resource = strdup(key);
-	if (!elem->resource)
-		return ret_errno(ENOMEM);
-
-	elem->limit = limit;
-	lxc_list_add_elem(list, move_ptr(elem));;
-	lxc_list_add_tail(&lxc_conf->limits, move_ptr(list));
+	new_lim->limit = limit;
+	list_add_tail(&new_lim->head, &lxc_conf->limits);
+	move_ptr(new_lim);
 
 	return 0;
 }
@@ -2140,9 +2130,8 @@ static int set_config_prlimit(const char *key, const char *value,
 static int set_config_sysctl(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *sysctl_list = NULL;
 	call_cleaner(free_lxc_sysctl) struct lxc_sysctl *sysctl_elem = NULL;
-	struct lxc_list *iter;
+	struct lxc_sysctl *sysctl, *nsysctl;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_sysctl(key, lxc_conf, NULL);
@@ -2155,27 +2144,21 @@ static int set_config_sysctl(const char *key, const char *value,
 		return ret_errno(EINVAL);
 
 	/* find existing list element */
-	lxc_list_for_each(iter, &lxc_conf->sysctls) {
+	list_for_each_entry_safe(sysctl, nsysctl, &lxc_conf->sysctls, head) {
 		__do_free char *replace_value = NULL;
-		struct lxc_sysctl *cur = iter->elem;
 
-		if (!strequal(key, cur->key))
+		if (!strequal(key, sysctl->key))
 			continue;
 
 		replace_value = strdup(value);
 		if (!replace_value)
 			return ret_errno(EINVAL);
 
-		free(cur->value);
-		cur->value = move_ptr(replace_value);
+		free(sysctl->value);
+		sysctl->value = move_ptr(replace_value);
 
 		return 0;
 	}
-
-	/* allocate list element */
-	sysctl_list = lxc_list_new();
-	if (!sysctl_list)
-		return ret_errno(ENOMEM);
 
 	sysctl_elem = zalloc(sizeof(*sysctl_elem));
 	if (!sysctl_elem)
@@ -2189,8 +2172,8 @@ static int set_config_sysctl(const char *key, const char *value,
 	if (!sysctl_elem->value)
 		return ret_errno(ENOMEM);
 
-	lxc_list_add_elem(sysctl_list, move_ptr(sysctl_elem));
-	lxc_list_add_tail(&lxc_conf->sysctls, move_ptr(sysctl_list));
+	list_add_tail(&sysctl_elem->head, &lxc_conf->sysctls);
+	move_ptr(sysctl_elem);
 
 	return 0;
 }
@@ -2198,8 +2181,7 @@ static int set_config_sysctl(const char *key, const char *value,
 static int set_config_proc(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *proclist = NULL;
-	call_cleaner(free_lxc_proc) struct lxc_proc *procelem = NULL;
+	call_cleaner(free_lxc_proc) struct lxc_proc *new_proc = NULL;
 	const char *subkey;
 
 	if (lxc_config_value_empty(value))
@@ -2212,24 +2194,20 @@ static int set_config_proc(const char *key, const char *value,
 	if (*subkey == '\0')
 		return ret_errno(EINVAL);
 
-	proclist = lxc_list_new();
-	if (!proclist)
+	new_proc = zalloc(sizeof(*new_proc));
+	if (!new_proc)
 		return ret_errno(ENOMEM);
 
-	procelem = zalloc(sizeof(*procelem));
-	if (!procelem)
+	new_proc->filename = strdup(subkey);
+	if (!new_proc->filename)
 		return ret_errno(ENOMEM);
 
-	procelem->filename = strdup(subkey);
-	if (!procelem->filename)
+	new_proc->value = strdup(value);
+	if (!new_proc->value)
 		return ret_errno(ENOMEM);
 
-	procelem->value = strdup(value);
-	if (!procelem->value)
-		return ret_errno(ENOMEM);
-
-	proclist->elem = move_ptr(procelem);
-	lxc_list_add_tail(&lxc_conf->procs, move_ptr(proclist));
+	list_add_tail(&new_proc->head, &lxc_conf->procs);
+	move_ptr(new_proc);
 
 	return 0;
 }
@@ -2237,7 +2215,6 @@ static int set_config_proc(const char *key, const char *value,
 static int set_config_idmaps(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *idmaplist = NULL;
 	__do_free struct id_map *idmap = NULL;
 	unsigned long hostid, nsid, range;
 	char type;
@@ -2245,10 +2222,6 @@ static int set_config_idmaps(const char *key, const char *value,
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
-
-	idmaplist = lxc_list_new();
-	if (!idmaplist)
-		return ret_errno(ENOMEM);
 
 	idmap = zalloc(sizeof(*idmap));
 	if (!idmap)
@@ -2269,8 +2242,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	idmap->hostid = hostid;
 	idmap->nsid = nsid;
 	idmap->range = range;
-	idmaplist->elem = idmap;
-	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+	list_add_tail(&idmap->head, &lxc_conf->id_map);
 
 	if (!lxc_conf->root_nsuid_map && idmap->idtype == ID_TYPE_UID)
 		if (idmap->nsid == 0)
@@ -2281,7 +2253,6 @@ static int set_config_idmaps(const char *key, const char *value,
 			lxc_conf->root_nsgid_map = idmap;
 
 	move_ptr(idmap);
-	move_ptr(idmaplist);
 
 	return 0;
 }
@@ -2429,70 +2400,96 @@ int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 	return set_config_mount(NULL, value, lxc_conf, NULL);
 }
 
+static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
+{
+	char *token;
+
+	/*
+	 * In case several capability keep is specified in a single line split
+	 * these caps in a single element for the list.
+	 */
+	lxc_iterate_parts(token, caps, " \t") {
+		__do_free struct cap_entry *new_cap = NULL;
+		int cap;
+
+		if (strequal(token, "none")) {
+			if (!keep)
+				return syserror_set(-EINVAL, "The \"none\" keyword is only valid when keeping caps");
+
+			lxc_clear_config_caps(conf);
+			continue;
+		}
+
+		cap = parse_cap(token);
+		if (cap < 0) {
+			if (cap != -2)
+				return syserror_set(-EINVAL, "Invalid capability specified");
+
+			INFO("Ignoring unknown capability \"%s\"", token);
+			continue;
+		}
+
+		new_cap = zalloc(sizeof(struct cap_entry));
+		if (!new_cap)
+			return ret_errno(ENOMEM);
+
+		new_cap->cap_name = strdup(token);
+		if (!new_cap->cap_name)
+			return ret_errno(ENOMEM);
+		new_cap->cap = cap;
+
+		list_add_tail(&new_cap->head, &conf->caps.list);
+		move_ptr(new_cap);
+	}
+
+	return 0;
+}
+
 static int set_config_cap_keep(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *keepcaps = NULL;
-	__do_free struct lxc_list *keeplist = NULL;
-	char *token;
+	__do_free char *caps = NULL;
+	int ret;
 
 	if (lxc_config_value_empty(value))
-		return lxc_clear_config_keepcaps(lxc_conf);
+		return lxc_clear_config_caps(lxc_conf);
 
-	keepcaps = strdup(value);
-	if (!keepcaps)
+	caps = strdup(value);
+	if (!caps)
 		return ret_errno(ENOMEM);
 
-	/* In case several capability keep is specified in a single line
-	 * split these caps in a single element for the list.
-	 */
-	lxc_iterate_parts(token, keepcaps, " \t") {
-		if (strequal(token, "none"))
-			lxc_clear_config_keepcaps(lxc_conf);
+	if (!lxc_conf->caps.keep && !list_empty(&lxc_conf->caps.list))
+		return syserror_set(-EINVAL, "Keeping and dropping capabilities are mutually exclusive");
 
-		keeplist = lxc_list_new();
-		if (!keeplist)
-			return ret_errno(ENOMEM);
+	ret = add_cap_entry(lxc_conf, caps, true);
+	if (ret < 0)
+		return ret;
 
-		keeplist->elem = strdup(token);
-		if (!keeplist->elem)
-			return ret_errno(ENOMEM);
-
-		lxc_list_add_tail(&lxc_conf->keepcaps, move_ptr(keeplist));
-	}
-
+	lxc_conf->caps.keep = true;
 	return 0;
 }
 
 static int set_config_cap_drop(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *dropcaps = NULL;
-	__do_free struct lxc_list *droplist = NULL;
-	char *token;
+	__do_free char *caps = NULL;
+	int ret;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
 
-	dropcaps = strdup(value);
-	if (!dropcaps)
+	if (lxc_conf->caps.keep)
+		return syserror_set(-EINVAL, "Keeping and dropping capabilities are mutually exclusive");
+
+	caps = strdup(value);
+	if (!caps)
 		return ret_errno(ENOMEM);
 
-	/* In case several capability drop is specified in a single line
-	 * split these caps in a single element for the list.
-	 */
-	lxc_iterate_parts(token, dropcaps, " \t") {
-		droplist = lxc_list_new();
-		if (!droplist)
-			return ret_errno(ENOMEM);
+	ret = add_cap_entry(lxc_conf, caps, false);
+	if (ret < 0)
+		return ret;
 
-		droplist->elem = strdup(token);
-		if (!droplist->elem)
-			return ret_errno(ENOMEM);
-
-		lxc_list_add_tail(&lxc_conf->caps, move_ptr(droplist));
-	}
-
+	lxc_conf->caps.keep = false;
 	return 0;
 }
 
@@ -2818,7 +2815,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (ret < 0)
 		return ret_errno(EINVAL);
 
-	rootfs->options	= move_ptr(raw_options);
+	rootfs->mnt_opts.raw_options = move_ptr(raw_options);
 	return 0;
 }
 
@@ -3862,12 +3859,13 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 					  int inlen, struct lxc_conf *c,
 					  int version)
 {
+	int fulllen = 0;
+	bool get_all = false;
 	int len;
 	size_t namespaced_token_len;
 	char *global_token, *namespaced_token;
-	struct lxc_list *it;
-	int fulllen = 0;
-	bool get_all = false;
+	struct list_head *list;
+	struct lxc_cgroup *cgroup;
 
 	if (!retv)
 		inlen = 0;
@@ -3878,10 +3876,12 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 		global_token = "lxc.cgroup2";
 		namespaced_token = "lxc.cgroup2.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
+		list = &c->cgroup2;
 	} else if (version == CGROUP_SUPER_MAGIC) {
 		global_token = "lxc.cgroup";
 		namespaced_token = "lxc.cgroup.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
+		list = &c->cgroup;
 	} else {
 		return ret_errno(EINVAL);
 	}
@@ -3893,17 +3893,15 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->cgroup) {
-		struct lxc_cgroup *cg = it->elem;
-
+	list_for_each_entry(cgroup, list, head) {
 		if (get_all) {
-			if (version != cg->version)
+			if (version != cgroup->version)
 				continue;
 
 			strprint(retv, inlen, "%s.%s = %s\n", global_token,
-				 cg->subsystem, cg->value);
-		} else if (strequal(cg->subsystem, key)) {
-			strprint(retv, inlen, "%s\n", cg->value);
+				 cgroup->subsystem, cgroup->value);
+		} else if (strequal(cgroup->subsystem, key)) {
+			strprint(retv, inlen, "%s\n", cgroup->value);
 		}
 	}
 
@@ -4022,7 +4020,7 @@ static inline int get_config_cgroup_relative(const char *key, char *retv,
 static int get_config_idmaps(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
-	struct lxc_list *it;
+	struct id_map *map;
 	int len, listlen, ret;
 	int fulllen = 0;
 /* "u 1000 1000000 65536"
@@ -4053,9 +4051,8 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&c->id_map);
-	lxc_list_for_each(it, &c->id_map) {
-		struct id_map *map = it->elem;
+	listlen = list_len(&c->id_map);
+	list_for_each_entry(map, &c->id_map, head) {
 		ret = strnprintf(buf, sizeof(buf), "%c %lu %lu %lu",
 				 (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
 				 map->nsid, map->hostid, map->range);
@@ -4203,7 +4200,7 @@ static int get_config_rootfs_mount(const char *key, char *retv, int inlen,
 static int get_config_rootfs_options(const char *key, char *retv, int inlen,
 				     struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->rootfs.options);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.mnt_opts.raw_options);
 }
 
 static int get_config_uts_name(const char *key, char *retv, int inlen,
@@ -4284,15 +4281,15 @@ static int get_config_cap_drop(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct cap_entry *cap;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->caps) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(cap, &c->caps.list, head) {
+		strprint(retv, inlen, "%s\n", cap->cap_name);
 	}
 
 	return fulllen;
@@ -4302,15 +4299,15 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct cap_entry *cap;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->keepcaps) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(cap, &c->caps.list, head) {
+		strprint(retv, inlen, "%s\n", cap->cap_name);
 	}
 
 	return fulllen;
@@ -4476,15 +4473,15 @@ static int get_config_environment(const char *key, char *retv, int inlen,
 				  struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct environment_entry *env;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->environment) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(env, &c->environment, head) {
+		strprint(retv, inlen, "%s=%s\n", env->key, env->val);
 	}
 
 	return fulllen;
@@ -4561,7 +4558,7 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 {
 	int fulllen = 0, len;
 	bool get_all = false;
-	struct lxc_list *it;
+	struct lxc_limit *lim;
 
 	if (!retv)
 		inlen = 0;
@@ -4575,11 +4572,10 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->limits) {
+	list_for_each_entry(lim, &c->limits, head) {
 		/* 2 colon separated 64 bit integers or the word 'unlimited' */
 		char buf[INTTYPE_TO_STRLEN(uint64_t) * 2 + 2];
 		int partlen;
-		struct lxc_limit *lim = it->elem;
 
 		if (lim->limit.rlim_cur == RLIM_INFINITY) {
 			memcpy(buf, "unlimited", STRLITERALLEN("unlimited") + 1);
@@ -4616,10 +4612,10 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 static int get_config_sysctl(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
-	int len;
-	struct lxc_list *it;
 	int fulllen = 0;
 	bool get_all = false;
+	int len;
+	struct lxc_sysctl *sysctl;
 
 	if (!retv)
 		inlen = 0;
@@ -4633,13 +4629,12 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->sysctls) {
-		struct lxc_sysctl *elem = it->elem;
+	list_for_each_entry(sysctl, &c->sysctls, head) {
 		if (get_all) {
-			strprint(retv, inlen, "lxc.sysctl.%s = %s\n", elem->key,
-				 elem->value);
-		} else if (strequal(elem->key, key)) {
-			strprint(retv, inlen, "%s", elem->value);
+			strprint(retv, inlen, "lxc.sysctl.%s = %s\n", sysctl->key,
+				 sysctl->value);
+		} else if (strequal(sysctl->key, key)) {
+			strprint(retv, inlen, "%s", sysctl->value);
 		}
 	}
 
@@ -4649,10 +4644,10 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 static int get_config_proc(const char *key, char *retv, int inlen,
 			   struct lxc_conf *c, void *data)
 {
-	struct lxc_list *it;
-	int len;
 	int fulllen = 0;
 	bool get_all = false;
+	int len;
+	struct lxc_proc *proc;
 
 	if (!retv)
 		inlen = 0;
@@ -4666,9 +4661,7 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &c->procs) {
-		struct lxc_proc *proc = it->elem;
-
+	list_for_each_entry(proc, &c->procs, head) {
 		if (get_all) {
 			strprint(retv, inlen, "lxc.proc.%s = %s\n",
 			         proc->filename, proc->value);
@@ -5014,7 +5007,6 @@ static inline int clr_config_rootfs_mount(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 					    void *data)
 {
-	free_disarm(c->rootfs.options);
 	put_lxc_mount_options(&c->rootfs.mnt_opts);
 
 	return 0;
@@ -5058,7 +5050,7 @@ static inline int clr_config_cap_drop(const char *key, struct lxc_conf *c,
 static inline int clr_config_cap_keep(const char *key, struct lxc_conf *c,
 				      void *data)
 {
-	return lxc_clear_config_keepcaps(c);
+	return lxc_clear_config_caps(c);
 }
 
 static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
@@ -5296,7 +5288,6 @@ static inline int clr_config_proc(const char *key, struct lxc_conf *c,
 static inline int clr_config_includefiles(const char *key, struct lxc_conf *c,
 					  void *data)
 {
-	lxc_clear_includes(c);
 	return 0;
 }
 

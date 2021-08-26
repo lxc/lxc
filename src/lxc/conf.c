@@ -512,7 +512,7 @@ int lxc_storage_prepare(struct lxc_conf *conf)
 	if (!rootfs->storage)
 		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
 				 rootfs->path, rootfs->mount,
-				 rootfs->options ? rootfs->options : "(null)");
+				 rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	return 0;
 }
@@ -619,7 +619,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	int ret;
 	const char *path_source;
 
-	if (lxc_list_empty(&handler->conf->id_map))
+	if (list_empty(&handler->conf->id_map))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -828,17 +828,14 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		 * container can't remount it read-write.
 		 */
 		if ((cg_flags == LXC_AUTO_CGROUP_NOSPEC) || (cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC)) {
-			int has_sys_admin = 0;
-
-			if (!lxc_list_empty(&conf->keepcaps))
-				has_sys_admin = in_caplist(CAP_SYS_ADMIN, &conf->keepcaps);
-			else
-				has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &conf->caps);
-
 			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC)
-				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_RW : LXC_AUTO_CGROUP_MIXED;
+				cg_flags = has_cap(CAP_SYS_ADMIN, conf)
+					       ? LXC_AUTO_CGROUP_RW
+					       : LXC_AUTO_CGROUP_MIXED;
 			else
-				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_FULL_RW : LXC_AUTO_CGROUP_FULL_MIXED;
+				cg_flags = has_cap(CAP_SYS_ADMIN, conf)
+					       ? LXC_AUTO_CGROUP_FULL_RW
+					       : LXC_AUTO_CGROUP_FULL_MIXED;
 		}
 
 		if (flags & LXC_AUTO_CGROUP_FORCE)
@@ -1425,11 +1422,11 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 	if (ret < 0)
 		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
 				 rootfs->path, rootfs->mount,
-				 rootfs->options ? rootfs->options : "(null)");
+				 rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\"",
 	      rootfs->path, rootfs->mount,
-	      rootfs->options ? rootfs->options : "(null)");
+	      rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	rootfs->dfd_mnt = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (rootfs->dfd_mnt < 0)
@@ -1616,7 +1613,6 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 						   unsigned id,
 						   enum idtype idtype)
 {
-	struct lxc_list *it;
 	struct id_map *map;
 	struct id_map *retmap = NULL;
 
@@ -1629,8 +1625,7 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 			return conf->root_nsgid_map;
 	}
 
-	lxc_list_for_each(it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -2239,7 +2234,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 
 		/* This is a recursive bind-mount. */
 		if (strequal(mo->name, "rbind")) {
-			opts->recursive = 1;
+			opts->bind_recursively = 1;
 			opts->bind = 1;
 			opts->mnt_flags |= mo->legacy_flag; /* MS_BIND | MS_REC */
 			return 0;
@@ -2272,9 +2267,14 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 		if (!strnequal(opt, mo->name, strlen(mo->name)))
 			continue;
 
-		/* TODO: Handle recursive propagation requests. */
+		if (strequal(mo->name, "rslave") ||
+		    strequal(mo->name, "rshared") ||
+		    strequal(mo->name, "runbindable") ||
+		    strequal(mo->name, "rprivate"))
+			opts->propagate_recursively = 1;
+
 		opts->attr.propagation = mo->flag;
-		opts->mnt_flags |= mo->legacy_flag;
+		opts->prop_flags |= mo->legacy_flag;
 		return 0;
 	}
 
@@ -2324,43 +2324,6 @@ int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 
 	if (*mntopts_new)
 		opts->data = move_ptr(mntopts_new);
-
-	return 0;
-}
-
-static void parse_propagationopt(char *opt, unsigned long *flags)
-{
-	struct mount_opt *mo;
-
-	/* If opt is found in propagation_opt, set or clear flags. */
-	for (mo = &propagation_opt[0]; mo->name != NULL; mo++) {
-		if (!strnequal(opt, mo->name, strlen(mo->name)))
-			continue;
-
-		if (mo->clear)
-			*flags &= ~mo->legacy_flag;
-		else
-			*flags |= mo->legacy_flag;
-
-		return;
-	}
-}
-
-int parse_propagationopts(const char *mntopts, unsigned long *pflags)
-{
-	__do_free char *s = NULL;
-	char *p;
-
-	if (!mntopts)
-		return 0;
-
-	s = strdup(mntopts);
-	if (!s)
-		return log_error_errno(-ENOMEM, errno, "Failed to allocate memory");
-
-	*pflags = 0L;
-	lxc_iterate_parts(p, s, ",")
-		parse_propagationopt(p, pflags);
 
 	return 0;
 }
@@ -2616,7 +2579,6 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_path)
 {
 	__do_free char *mntdata = NULL;
-	unsigned long mntflags = 0, pflags = 0;
 	char *rootfs_path = NULL;
 	int ret;
 	bool dev, optional, relative;
@@ -2652,16 +2614,20 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	if (!is_empty_string(opts.userns_path))
 		return systrace_ret(0, "Skipping idmapped mount entry");
 
-	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
+	ret = parse_mount_attrs(&opts, mntent->mnt_opts);
 	if (ret < 0)
 		return -1;
 
-	ret = parse_mntopts_legacy(mntent->mnt_opts, &mntflags, &mntdata);
-	if (ret < 0)
-		return ret;
-
-	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  pflags, mntdata, optional, dev, relative, rootfs_path);
+	ret = mount_entry(mntent->mnt_fsname,
+			  path,
+			  mntent->mnt_type,
+			  opts.mnt_flags,
+			  opts.prop_flags,
+			  opts.data,
+			  optional,
+			  dev,
+			  relative,
+			  rootfs_path);
 
 	return ret;
 }
@@ -2894,6 +2860,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		struct lxc_mount_options opts = {};
 		int dfd_from;
 		const char *source_relative, *target_relative;
+		struct lxc_mount_attr attr = {};
 
 		ret = parse_lxc_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
@@ -2935,10 +2902,10 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			dfd_from = rootfs->dfd_host;
 		fd_from = open_tree(dfd_from, source_relative,
 				    OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC |
-				    (opts.recursive ? AT_RECURSIVE : 0));
+				    (opts.bind_recursively ? AT_RECURSIVE : 0));
 		if (fd_from < 0)
 			return syserror("Failed to create detached %smount of %d/%s",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative);
 
 		if (strequal(opts.userns_path, "container"))
@@ -2953,7 +2920,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to open user namespace \"%s\" for detached %smount of %d/%s",
-					opts.userns_path, opts.recursive ? "recursive " : "",
+					opts.userns_path, opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative);
 		}
 
@@ -2967,7 +2934,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to send file descriptor %d for detached %smount of %d/%s and file descriptor %d of user namespace \"%s\" to parent",
-					fd_from, opts.recursive ? "recursive " : "",
+					fd_from, opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative, fd_userns,
 					opts.userns_path);
 		}
@@ -2982,7 +2949,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to receive notification that parent idmapped detached %smount %d/%s to user namespace %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					dfd_from, source_relative, fd_userns);
 		}
 
@@ -2991,20 +2958,50 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 					mnt_seq, cur_mnt_seq);
 		mnt_seq++;
 
-		/* Set remaining mount options. */
-		ret = mount_setattr(fd_from, "", AT_EMPTY_PATH |
-				    (opts.recursive ? AT_RECURSIVE : 0),
-				    &opts.attr, sizeof(opts.attr));
+		/* Set regular mount options. */
+		attr = opts.attr;
+		attr.propagation = 0;
+		ret = mount_setattr(fd_from,
+				    "",
+				    AT_EMPTY_PATH |
+				    (opts.bind_recursively ? AT_RECURSIVE : 0),
+				    &attr,
+				    sizeof(attr));
 		if (ret < 0) {
 			if (opts.optional) {
 				TRACE("Skipping optional idmapped mount");
 				continue;
 			}
 
-			return syserror("Failed to receive notification that parent idmapped detached %smount %d/%s to user namespace %d",
-					opts.recursive ? "recursive " : "",
-					dfd_from, source_relative, fd_userns);
+			return syserror("Failed to set %smount options on detached %d/%s",
+					opts.bind_recursively ? "recursive " : "",
+					dfd_from, source_relative);
 		}
+
+		/* Set propagation mount options. */
+		if (opts.attr.propagation) {
+			attr = (struct lxc_mount_attr) {
+				attr.propagation = opts.attr.propagation,
+			};
+
+			ret = mount_setattr(fd_from,
+					"",
+					AT_EMPTY_PATH |
+					(opts.propagate_recursively ? AT_RECURSIVE : 0),
+					&attr,
+					sizeof(attr));
+			if (ret < 0) {
+				if (opts.optional) {
+					TRACE("Skipping optional idmapped mount");
+					continue;
+				}
+
+				return syserror("Failed to set %spropagation mount options on detached %d/%s",
+						opts.bind_recursively ? "recursive " : "",
+						dfd_from, source_relative);
+			}
+		}
+
 
 		/*
 		 * In contrast to the legacy mount codepath we will simplify
@@ -3027,7 +3024,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 
 			return syserror("Failed to open target mountpoint %d/%s for detached idmapped %smount %d:%d/%s",
 					dfd_from, target_relative,
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_userns, dfd_from, source_relative);
 		}
 
@@ -3039,12 +3036,12 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			}
 
 			return syserror("Failed to attach detached idmapped %smount %d:%d/%s to target mountpoint %d/%s",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_userns, dfd_from, source_relative, dfd_from, target_relative);
 		}
 
 		TRACE("Attached detached idmapped %smount %d:%d/%s to target mountpoint %d/%s",
-		      opts.recursive ? "recursive " : "", fd_userns, dfd_from,
+		      opts.bind_recursively ? "recursive " : "", fd_userns, dfd_from,
 		      source_relative, dfd_from, target_relative);
 	}
 
@@ -3105,7 +3102,7 @@ out:
 	return fret;
 }
 
-static int parse_cap(const char *cap)
+int parse_cap(const char *cap)
 {
 	size_t i;
 	int capid = -1;
@@ -3142,86 +3139,70 @@ static int parse_cap(const char *cap)
 	return capid;
 }
 
-int in_caplist(int cap, struct lxc_list *caps)
+bool has_cap(int cap, struct lxc_conf *conf)
 {
-	int capid;
-	struct lxc_list *iterator;
+	bool cap_in_list = false;
+	struct cap_entry *cap_entry;
 
-	lxc_list_for_each (iterator, caps) {
-		capid = parse_cap(iterator->elem);
-		if (capid == cap)
-			return 1;
+	list_for_each_entry(cap_entry, &conf->caps.list, head) {
+		if (cap_entry->cap != cap)
+			continue;
+
+		cap_in_list = true;
 	}
 
-	return 0;
+	/* The capability is kept. */
+	if (conf->caps.keep)
+		return cap_in_list;
+
+	/* The capability is not dropped. */
+	return !cap_in_list;
 }
 
-static int setup_caps(struct lxc_list *caps)
+static int setup_caps(struct lxc_conf *conf)
 {
-	int capid;
-	char *drop_entry;
-	struct lxc_list *iterator;
+	struct cap_entry *cap;
 
-	lxc_list_for_each (iterator, caps) {
+	list_for_each_entry(cap, &conf->caps.list, head) {
 		int ret;
 
-		drop_entry = iterator->elem;
-
-		capid = parse_cap(drop_entry);
-		if (capid < 0)
-			return log_error(-1, "unknown capability %s", drop_entry);
-
-		ret = prctl(PR_CAPBSET_DROP, prctl_arg(capid), prctl_arg(0),
+		ret = prctl(PR_CAPBSET_DROP, prctl_arg(cap->cap), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remove %s capability", drop_entry);
-		DEBUG("Dropped %s (%d) capability", drop_entry, capid);
+			return log_error_errno(-1, errno, "Failed to remove %s capability", cap->cap_name);
+
+		DEBUG("Dropped %s (%d) capability", cap->cap_name, cap->cap);
 	}
 
 	DEBUG("Capabilities have been setup");
 	return 0;
 }
 
-static int dropcaps_except(struct lxc_list *caps)
+static int dropcaps_except(struct lxc_conf *conf)
 {
-	__do_free int *caplist = NULL;
-	int i, capid, numcaps;
-	char *keep_entry;
-	struct lxc_list *iterator;
+	int numcaps;
+	struct cap_entry *cap;
 
 	numcaps = lxc_caps_last_cap() + 1;
 	if (numcaps <= 0 || numcaps > 200)
-		return -1;
+		return ret_errno(EINVAL);
+
 	TRACE("Found %d capabilities", numcaps);
 
-	/* caplist[i] is 1 if we keep capability i */
-	caplist = must_realloc(NULL, numcaps * sizeof(int));
-	memset(caplist, 0, numcaps * sizeof(int));
-
-	lxc_list_for_each (iterator, caps) {
-		keep_entry = iterator->elem;
-
-		capid = parse_cap(keep_entry);
-		if (capid == -2)
-			continue;
-
-		if (capid < 0)
-			return log_error(-1, "Unknown capability %s", keep_entry);
-
-		DEBUG("Keep capability %s (%d)", keep_entry, capid);
-		caplist[capid] = 1;
-	}
-
-	for (i = 0; i < numcaps; i++) {
+	list_for_each_entry(cap, &conf->caps.list, head) {
 		int ret;
 
-		if (caplist[i])
+		if (cap->cap >= numcaps)
 			continue;
 
-		ret = prctl(PR_CAPBSET_DROP, prctl_arg(i), prctl_arg(0),
+		ret = prctl(PR_CAPBSET_DROP, prctl_arg(cap->cap), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remove capability %d", i);
+			return log_error_errno(-1, errno,
+					       "Failed to remove capability %s (%d)",
+					       cap->cap_name, cap->cap);
+
+		DEBUG("Keep capability %s (%d)", cap->cap_name, cap->cap);
 	}
 
 	DEBUG("Capabilities have been setup");
@@ -3249,15 +3230,15 @@ static int parse_resource(const char *res)
 	return resid;
 }
 
-int setup_resource_limits(struct lxc_list *limits, pid_t pid)
+int setup_resource_limits(struct lxc_conf *conf, pid_t pid)
 {
 	int resid;
-	struct lxc_list *it;
 	struct lxc_limit *lim;
 
-	lxc_list_for_each (it, limits) {
-		lim = it->elem;
+	if (list_empty(&conf->limits))
+		return 0;
 
+	list_for_each_entry(lim, &conf->limits, head) {
 		resid = parse_resource(lim->resource);
 		if (resid < 0)
 			return log_error(-1, "Unknown resource %s", lim->resource);
@@ -3272,61 +3253,66 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 #endif
 	}
 
+	TRACE("Setup resource limits");
 	return 0;
 }
 
-int setup_sysctl_parameters(struct lxc_list *sysctls)
+int setup_sysctl_parameters(struct lxc_conf *conf)
 {
 	__do_free char *tmp = NULL;
-	struct lxc_list *it;
-	struct lxc_sysctl *elem;
 	int ret = 0;
 	char filename[PATH_MAX] = {0};
+	struct lxc_sysctl *sysctl, *nsysctl;
 
-	lxc_list_for_each (it, sysctls) {
-		elem = it->elem;
-		tmp = lxc_string_replace(".", "/", elem->key);
+	if (!list_empty(&conf->sysctls))
+		return 0;
+
+	list_for_each_entry_safe(sysctl, nsysctl, &conf->sysctls, head) {
+		tmp = lxc_string_replace(".", "/", sysctl->key);
 		if (!tmp)
-			return log_error(-1, "Failed to replace key %s", elem->key);
+			return log_error(-1, "Failed to replace key %s", sysctl->key);
 
 		ret = strnprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
 		if (ret < 0)
 			return log_error(-1, "Error setting up sysctl parameters path");
 
-		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false, 0666);
+		ret = lxc_write_to_file(filename, sysctl->value,
+					strlen(sysctl->value), false, 0666);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to setup sysctl parameters %s to %s",
-					       elem->key, elem->value);
+					       sysctl->key, sysctl->value);
 	}
 
 	return 0;
 }
 
-int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
+int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid)
 {
 	__do_free char *tmp = NULL;
-	struct lxc_list *it;
-	struct lxc_proc *elem;
 	int ret = 0;
 	char filename[PATH_MAX] = {0};
+	struct lxc_proc *proc;
 
-	lxc_list_for_each (it, procs) {
-		elem = it->elem;
-		tmp = lxc_string_replace(".", "/", elem->filename);
+	if (!list_empty(&conf->procs))
+		return 0;
+
+	list_for_each_entry(proc, &conf->procs, head) {
+		tmp = lxc_string_replace(".", "/", proc->filename);
 		if (!tmp)
-			return log_error(-1, "Failed to replace key %s", elem->filename);
+			return log_error(-1, "Failed to replace key %s", proc->filename);
 
 		ret = strnprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
 		if (ret < 0)
 			return log_error(-1, "Error setting up proc filesystem path");
 
-		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false, 0666);
+		ret = lxc_write_to_file(filename, proc->value,
+					strlen(proc->value), false, 0666);
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to setup proc filesystem %s to %s", elem->filename, elem->value);
+			return log_error_errno(-1, errno, "Failed to setup proc filesystem %s to %s",
+					       proc->filename, proc->value);
 	}
 
+	TRACE("Setup /proc/%d settings", pid);
 	return 0;
 }
 
@@ -3374,23 +3360,20 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.fd_path_pin = -EBADF;
 	new->rootfs.dfd_idmapped = -EBADF;
 	new->logfd = -1;
-	lxc_list_init(&new->cgroup);
-	lxc_list_init(&new->cgroup2);
+	INIT_LIST_HEAD(&new->cgroup);
+	INIT_LIST_HEAD(&new->cgroup2);
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 	INIT_LIST_HEAD(&(new->bpf_devices).devices);
 	lxc_list_init(&new->mount_list);
-	lxc_list_init(&new->caps);
-	lxc_list_init(&new->keepcaps);
-	lxc_list_init(&new->id_map);
+	INIT_LIST_HEAD(&new->caps.list);
+	INIT_LIST_HEAD(&new->id_map);
 	new->root_nsuid_map = NULL;
 	new->root_nsgid_map = NULL;
-	lxc_list_init(&new->includes);
-	lxc_list_init(&new->aliens);
-	lxc_list_init(&new->environment);
-	lxc_list_init(&new->limits);
-	lxc_list_init(&new->sysctls);
-	lxc_list_init(&new->procs);
+	INIT_LIST_HEAD(&new->environment);
+	INIT_LIST_HEAD(&new->limits);
+	INIT_LIST_HEAD(&new->sysctls);
+	INIT_LIST_HEAD(&new->procs);
 	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
@@ -3523,24 +3506,22 @@ static int lxc_map_ids_exec_wrapper(void *args)
 	return -1;
 }
 
-static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
+static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 					       unsigned id, enum idtype idtype);
 
-int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
+int lxc_map_ids(struct list_head *idmap, pid_t pid)
 {
-	int fill, left;
+	int hostuid, hostgid, fill, left;
 	char u_or_g;
 	char *pos;
 	char cmd_output[PATH_MAX];
 	struct id_map *map;
-	struct lxc_list *iterator;
 	enum idtype type;
 	int ret = 0, gidmap = 0, uidmap = 0;
 	char mapbuf[STRLITERALLEN("new@idmap") + STRLITERALLEN(" ") +
 		    INTTYPE_TO_STRLEN(pid_t) + STRLITERALLEN(" ") +
 		    LXC_IDMAPLEN] = {0};
 	bool had_entry = false, maps_host_root = false, use_shadow = false;
-	int hostuid, hostgid;
 
 	hostuid = geteuid();
 	hostgid = getegid();
@@ -3590,10 +3571,9 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	/* Check if we really need to use newuidmap and newgidmap.
 	* If the user is only remapping their own {g,u}id, we don't need it.
 	*/
-	if (use_shadow && lxc_list_len(idmap) == 2) {
+	if (use_shadow && list_len(idmap) == 2) {
 		use_shadow = false;
-		lxc_list_for_each(iterator, idmap) {
-			map = iterator->elem;
+		list_for_each_entry(map, idmap, head) {
 			if (map->idtype == ID_TYPE_UID && map->range == 1 &&
 			    map->nsid == hostuid && map->hostid == hostuid)
 				continue;
@@ -3612,8 +3592,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (use_shadow)
 			pos += sprintf(mapbuf, "new%cidmap %d", u_or_g, pid);
 
-		lxc_list_for_each(iterator, idmap) {
-			map = iterator->elem;
+		list_for_each_entry(map, idmap, head) {
 			if (map->idtype != type)
 				continue;
 
@@ -3667,15 +3646,13 @@ static id_t get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	unsigned nsid;
 	struct id_map *map;
-	struct lxc_list *it;
 
 	if (idtype == ID_TYPE_UID)
 		nsid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	else
 		nsid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
 
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry (map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 		if (map->nsid != nsid)
@@ -3692,10 +3669,8 @@ static id_t get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype)
 int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
-	struct lxc_list *it;
 
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -3709,12 +3684,10 @@ int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
-	struct lxc_list *it;
 	unsigned int freeid = 0;
 
 again:
-	lxc_list_for_each (it, &conf->id_map) {
-		map = it->elem;
+	list_for_each_entry(map, &conf->id_map, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -4066,7 +4039,7 @@ static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
 	int dfd_idmapped = -EBADF;
 	int ret;
 
-	if (lxc_list_empty(&handler->conf->id_map))
+	if (list_empty(&handler->conf->id_map))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -4107,11 +4080,11 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 		attr.userns_fd	= fd_userns;
 		ret = mount_setattr(fd_from, "",
 				    AT_EMPTY_PATH |
-				    (opts.recursive ? AT_RECURSIVE : 0),
+				    (opts.bind_recursively ? AT_RECURSIVE : 0),
 				    &attr, sizeof(attr));
 		if (ret)
 			return syserror("Failed to idmap detached %smount %d to %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_from, fd_userns);
 
 		ret = lxc_abstract_unix_send_credential(handler->data_sock[1],
@@ -4119,11 +4092,11 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 							sizeof(mnt_seq));
 		if (ret < 0)
 			return syserror("Parent failed to notify child that detached %smount %d was idmapped to user namespace %d",
-					opts.recursive ? "recursive " : "",
+					opts.bind_recursively ? "recursive " : "",
 					fd_from, fd_userns);
 
 		TRACE("Parent idmapped detached %smount %d to user namespace %d",
-		      opts.recursive ? "recursive " : "", fd_from, fd_userns);
+		      opts.bind_recursively ? "recursive " : "", fd_from, fd_userns);
 		mnt_seq++;
 	}
 }
@@ -4282,6 +4255,20 @@ int lxc_sync_fds_child(struct lxc_handler *handler)
 	return 0;
 }
 
+static int setcup_capabilities(struct lxc_conf *conf)
+{
+	int ret;
+
+	if (conf->caps.keep)
+		ret = dropcaps_except(conf);
+	else
+		ret = setup_caps(conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to %s capabilities", conf->caps.keep ? "keep" : "drop");
+
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
@@ -4421,21 +4408,13 @@ int lxc_setup(struct lxc_handler *handler)
 	 * key. For e.g. net.ipv4.ip_forward translated to
 	 * /proc/sys/net/ipv4/ip_forward.
 	 */
-	if (!lxc_list_empty(&lxc_conf->sysctls)) {
-		ret = setup_sysctl_parameters(&lxc_conf->sysctls);
-		if (ret < 0)
-			return log_error(-1, "Failed to setup sysctl parameters");
-	}
+	ret = setup_sysctl_parameters(lxc_conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to setup sysctl parameters");
 
-	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
-		if (!lxc_list_empty(&lxc_conf->caps))
-			return log_error(-1, "Container requests lxc.cap.drop and lxc.cap.keep: either use lxc.cap.drop or lxc.cap.keep, not both");
-
-		if (dropcaps_except(&lxc_conf->keepcaps))
-			return log_error(-1, "Failed to keep capabilities");
-	} else if (setup_caps(&lxc_conf->caps)) {
-		return log_error(-1, "Failed to drop capabilities");
-	}
+	ret = setcup_capabilities(lxc_conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to setup capabilities");
 
 	put_lxc_rootfs(&handler->conf->rootfs, true);
 	NOTICE("The container \"%s\" is set up", name);
@@ -4472,57 +4451,42 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 
 int lxc_clear_config_caps(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct cap_entry *cap, *ncap;
 
-	lxc_list_for_each_safe (it, &c->caps, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(cap, ncap, &c->caps.list, head) {
+		list_del(&cap->head);
+		free(cap->cap_name);
+		free(cap);
 	}
 
-	lxc_list_init(&c->caps);
+	c->caps.keep = false;
+	INIT_LIST_HEAD(&c->caps.list);
 	return 0;
 }
 
-static int lxc_free_idmap(struct lxc_list *id_map)
+static int lxc_free_idmap(struct list_head *id_map)
 {
-	struct lxc_list *it, *next;
+	struct id_map *map, *nmap;
 
-	lxc_list_for_each_safe(it, id_map, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(map, nmap, id_map, head) {
+		list_del(&map->head);
+		free(map);
 	}
 
-	lxc_list_init(id_map);
+	INIT_LIST_HEAD(id_map);
 	return 0;
 }
 
-static int __lxc_free_idmap(struct lxc_list *id_map)
+static int __lxc_free_idmap(struct list_head *id_map)
 {
 	lxc_free_idmap(id_map);
-	free(id_map);
 	return 0;
 }
-define_cleanup_function(struct lxc_list *, __lxc_free_idmap);
+define_cleanup_function(struct list_head *, __lxc_free_idmap);
 
 int lxc_clear_idmaps(struct lxc_conf *c)
 {
 	return lxc_free_idmap(&c->id_map);
-}
-
-int lxc_clear_config_keepcaps(struct lxc_conf *c)
-{
-	struct lxc_list *it, *next;
-
-	lxc_list_for_each_safe (it, &c->keepcaps, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
-	}
-
-	lxc_list_init(&c->keepcaps);
-	return 0;
 }
 
 int lxc_clear_namespace(struct lxc_conf *c)
@@ -4535,11 +4499,12 @@ int lxc_clear_namespace(struct lxc_conf *c)
 
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 {
-	char *global_token, *namespaced_token;
-	size_t namespaced_token_len;
-	struct lxc_list *it, *next, *list;
 	const char *k = key;
 	bool all = false;
+	char *global_token, *namespaced_token;
+	size_t namespaced_token_len;
+	struct list_head *list;
+	struct lxc_cgroup *cgroup, *ncgroup;
 
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token		= "lxc.cgroup2";
@@ -4562,21 +4527,18 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe(it, list, next) {
-		struct lxc_cgroup *cg = it->elem;
-
-		if (!all && !strequal(cg->subsystem, k))
+	list_for_each_entry_safe(cgroup, ncgroup, list, head) {
+		if (!all && !strequal(cgroup->subsystem, k))
 			continue;
 
-		lxc_list_del(it);
-		free(cg->subsystem);
-		free(cg->value);
-		free(cg);
-		free(it);
+		list_del(&cgroup->head);
+		free(cgroup->subsystem);
+		free(cgroup->value);
+		free(cgroup);
 	}
 
 	if (all)
-		lxc_list_init(list);
+		INIT_LIST_HEAD(list);
 
 	return 0;
 }
@@ -4588,9 +4550,9 @@ static inline void lxc_clear_cgroups_devices(struct lxc_conf *conf)
 
 int lxc_clear_limits(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false;
+	struct lxc_limit *lim, *nlim;
 
 	if (strequal(key, "lxc.limit") || strequal(key, "lxc.prlimit"))
 		all = true;
@@ -4601,30 +4563,26 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	else
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe (it, &c->limits, next) {
-		struct lxc_limit *lim = it->elem;
-
+	list_for_each_entry_safe(lim, nlim, &c->limits, head) {
 		if (!all && !strequal(lim->resource, k))
 			continue;
 
-		lxc_list_del(it);
-
+		list_del(&lim->head);
 		free_disarm(lim->resource);
 		free(lim);
-		free(it);
 	}
 
 	if (all)
-		lxc_list_init(&c->limits);
+		INIT_LIST_HEAD(&c->limits);
 
 	return 0;
 }
 
 int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false;
+	struct lxc_sysctl *sysctl, *nsysctl;
 
 	if (strequal(key, "lxc.sysctl"))
 		all = true;
@@ -4633,30 +4591,27 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe(it, &c->sysctls, next) {
-		struct lxc_sysctl *elem = it->elem;
-
-		if (!all && !strequal(elem->key, k))
+	list_for_each_entry_safe(sysctl, nsysctl, &c->sysctls, head) {
+		if (!all && !strequal(sysctl->key, k))
 			continue;
 
-		lxc_list_del(it);
-		free(elem->key);
-		free(elem->value);
-		free(elem);
-		free(it);
+		list_del(&sysctl->head);
+		free(sysctl->key);
+		free(sysctl->value);
+		free(sysctl);
 	}
 
 	if (all)
-		lxc_list_init(&c->sysctls);
+		INIT_LIST_HEAD(&c->sysctls);
 
 	return 0;
 }
 
 int lxc_clear_procs(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false;
+	struct lxc_proc *proc, *nproc;
 
 	if (strequal(key, "lxc.proc"))
 		all = true;
@@ -4665,21 +4620,18 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	else
 		return -1;
 
-	lxc_list_for_each_safe(it, &c->procs, next) {
-		struct lxc_proc *proc = it->elem;
-
+	list_for_each_entry_safe(proc, nproc, &c->procs, head) {
 		if (!all && !strequal(proc->filename, k))
 			continue;
 
-		lxc_list_del(it);
+		list_del(&proc->head);
 		free(proc->filename);
 		free(proc->value);
 		free(proc);
-		free(it);
 	}
 
 	if (all)
-		lxc_list_init(&c->procs);
+		INIT_LIST_HEAD(&c->procs);
 
 	return 0;
 }
@@ -4700,15 +4652,16 @@ int lxc_clear_groups(struct lxc_conf *c)
 
 int lxc_clear_environment(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct environment_entry *env, *nenv;
 
-	lxc_list_for_each_safe (it, &c->environment, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(env, nenv, &c->environment, head) {
+		list_del(&env->head);
+		free(env->key);
+		free(env->val);
+		free(env);
 	}
 
-	lxc_list_init(&c->environment);
+	INIT_LIST_HEAD(&c->environment);
 	return 0;
 }
 
@@ -4764,32 +4717,6 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
-static inline void lxc_clear_aliens(struct lxc_conf *conf)
-{
-	struct lxc_list *it, *next;
-
-	lxc_list_for_each_safe (it, &conf->aliens, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
-	}
-
-	lxc_list_init(&conf->aliens);
-}
-
-void lxc_clear_includes(struct lxc_conf *conf)
-{
-	struct lxc_list *it, *next;
-
-	lxc_list_for_each_safe(it, &conf->includes, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
-	}
-
-	lxc_list_init(&conf->includes);
-}
-
 int lxc_clear_apparmor_raw(struct lxc_conf *c)
 {
 	struct lxc_list *it, *next;
@@ -4814,7 +4741,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_terminal_conf_free(&conf->console);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
-	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
@@ -4838,7 +4764,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->lsm_se_keyring_context);
 	lxc_seccomp_free(&conf->seccomp);
 	lxc_clear_config_caps(conf);
-	lxc_clear_config_keepcaps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);
 	lxc_clear_cgroups(conf, "lxc.cgroup2", CGROUP2_SUPER_MAGIC);
 	lxc_clear_cgroups_devices(conf);
@@ -4846,8 +4771,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_mount_entries(conf);
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
-	lxc_clear_includes(conf);
-	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");
@@ -4914,15 +4837,13 @@ static struct id_map *mapped_nsid_add(const struct lxc_conf *conf, unsigned id,
 	return retmap;
 }
 
-static struct id_map *find_mapped_hostid_entry(const struct lxc_list *idmap,
+static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 					       unsigned id, enum idtype idtype)
 {
-	struct id_map *map;
-	struct lxc_list *it;
 	struct id_map *retmap = NULL;
+	struct id_map *map;
 
-	lxc_list_for_each (it, idmap) {
-		map = it->elem;
+	list_for_each_entry(map, idmap, head) {
 		if (map->idtype != idtype)
 			continue;
 
@@ -4968,22 +4889,20 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 	return move_ptr(entry);
 }
 
-static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
-					  uid_t *resuid, gid_t *resgid)
+static int get_minimal_idmap(const struct lxc_conf *conf, uid_t *resuid,
+			     gid_t *resgid, struct list_head *head_ret)
 {
 	__do_free struct id_map *container_root_uid = NULL,
 				*container_root_gid = NULL,
 				*host_uid_map = NULL, *host_gid_map = NULL;
-	__do_free struct lxc_list *idmap = NULL;
 	uid_t euid, egid;
 	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
-	struct lxc_list *tmplist = NULL;
 
 	/* Find container root mappings. */
 	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
 	if (!container_root_uid)
-		return log_debug(NULL, "Failed to find mapping for namespace uid %d", 0);
+		return sysdebug("Failed to find mapping for namespace uid %d", 0);
 	euid = geteuid();
 	if (euid >= container_root_uid->hostid &&
 	    euid < (container_root_uid->hostid + container_root_uid->range))
@@ -4991,7 +4910,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid)
-		return log_debug(NULL, "Failed to find mapping for namespace gid %d", 0);
+		return sysdebug("Failed to find mapping for namespace gid %d", 0);
 	egid = getegid();
 	if (egid >= container_root_gid->hostid &&
 	    egid < (container_root_gid->hostid + container_root_gid->range))
@@ -5001,50 +4920,31 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	if (!host_uid_map)
 		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	if (!host_uid_map)
-		return log_debug(NULL, "Failed to find mapping for uid %d", euid);
+		return sysdebug("Failed to find mapping for uid %d", euid);
 
 	if (!host_gid_map)
 		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	if (!host_gid_map)
-		return log_debug(NULL, "Failed to find mapping for gid %d", egid);
+		return sysdebug("Failed to find mapping for gid %d", egid);
 
-	/* Allocate new {g,u}id map list. */
-	idmap = lxc_list_new();
-	if (!idmap)
-		return NULL;
-
-	/* Add container root to the map. */
-	tmplist = lxc_list_new();
-	if (!tmplist)
-		return NULL;
 	/* idmap will now keep track of that memory. */
-	lxc_list_add_elem(tmplist, move_ptr(host_uid_map));
-	lxc_list_add_tail(idmap, tmplist);
+	list_add_tail(&host_uid_map->head, head_ret);
+	move_ptr(host_uid_map);
 
 	if (container_root_uid) {
-		/* Add container root to the map. */
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			return NULL;
 		/* idmap will now keep track of that memory. */
-		lxc_list_add_elem(tmplist, move_ptr(container_root_uid));
-		lxc_list_add_tail(idmap, tmplist);
+		list_add_tail(&container_root_uid->head, head_ret);
+		move_ptr(container_root_uid);
 	}
 
-	tmplist = lxc_list_new();
-	if (!tmplist)
-		return NULL;
 	/* idmap will now keep track of that memory. */
-	lxc_list_add_elem(tmplist, move_ptr(host_gid_map));
-	lxc_list_add_tail(idmap, tmplist);
+	list_add_tail(&host_gid_map->head, head_ret);
+	move_ptr(host_gid_map);
 
 	if (container_root_gid) {
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			return NULL;
 		/* idmap will now keep track of that memory. */
-		lxc_list_add_elem(tmplist, move_ptr(container_root_gid));
-		lxc_list_add_tail(idmap, tmplist);
+		list_add_tail(&container_root_gid->head, head_ret);
+		move_ptr(container_root_gid);
 	}
 
 	TRACE("Allocated minimal idmapping for ns uid %d and ns gid %d", nsuid, nsgid);
@@ -5053,7 +4953,8 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 		*resuid = nsuid;
 	if (resgid)
 		*resgid = nsgid;
-	return move_ptr(idmap);
+
+	return 0;
 }
 
 /*
@@ -5071,7 +4972,8 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		  const char *fn_name)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(minimal_idmap);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &minimal_idmap;
 	int ret = -1, status = -1;
 	char c = '1';
 	struct userns_fn_data d = {
@@ -5085,8 +4987,8 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	if (!conf)
 		return -EINVAL;
 
-	idmap = get_minimal_idmap(conf, NULL, NULL);
-	if (!idmap)
+	ret = get_minimal_idmap(conf, NULL, NULL, idmap);
+	if (ret)
 		return ret_errno(ENOENT);
 
 	ret = pipe2(pipe_fds, O_CLOEXEC);
@@ -5107,13 +5009,10 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	/* Set up {g,u}id mapping for user namespace of child process. */
@@ -5147,7 +5046,8 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 			int (*fn_parent)(void *), void *fn_parent_data,
 			int (*fn_child)(void *), void *fn_child_data)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(minimal_idmap);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &minimal_idmap;
 	uid_t resuid = LXC_INVALID_UID;
 	gid_t resgid = LXC_INVALID_GID;
 	char c = '1';
@@ -5158,8 +5058,8 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 	if (!conf || !fn_child)
 		return ret_errno(EINVAL);
 
-	idmap = get_minimal_idmap(conf, &resuid, &resgid);
-	if (!idmap)
+	ret = get_minimal_idmap(conf, &resuid, &resgid, idmap);
+	if (ret)
 		return ret_errno(ENOENT);
 
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, sock_fds);
@@ -5221,13 +5121,10 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	ret = lxc_read_nointr(sock_fds[1], &c, 1);
@@ -5269,26 +5166,24 @@ on_error:
 int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		     const char *fn_name)
 {
+	LIST_HEAD(full_idmap);
+	int ret = -1;
+	char c = '1';
+	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
+		      *host_uid_map = NULL, *host_gid_map = NULL;
 	pid_t pid;
 	uid_t euid, egid;
 	int p[2];
 	struct id_map *map;
-	struct lxc_list *cur;
 	struct userns_fn_data d;
-	int ret = -1;
-	char c = '1';
-	struct lxc_list *idmap = NULL, *tmplist = NULL;
-	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
-		      *host_uid_map = NULL, *host_gid_map = NULL;
 
 	if (!conf)
 		return -EINVAL;
 
 	ret = pipe2(p, O_CLOEXEC);
-	if (ret < 0) {
-		SYSERROR("opening pipe");
-		return -1;
-	}
+	if (ret < 0)
+		return -errno;
+
 	d.fn = fn;
 	d.fn_name = fn_name;
 	d.arg = data;
@@ -5308,32 +5203,16 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	euid = geteuid();
 	egid = getegid();
 
-	/* Allocate new {g,u}id map list. */
-	idmap = lxc_list_new();
-	if (!idmap)
-		goto on_error;
-
 	/* Find container root. */
-	lxc_list_for_each (cur, &conf->id_map) {
-		struct id_map *tmpmap;
+	list_for_each_entry(map, &conf->id_map, head) {
+		__do_free struct id_map *dup_map = NULL;
 
-		tmplist = lxc_list_new();
-		if (!tmplist)
+		dup_map = memdup(map, sizeof(struct id_map));
+		if (!dup_map)
 			goto on_error;
 
-		tmpmap = zalloc(sizeof(*tmpmap));
-		if (!tmpmap) {
-			free(tmplist);
-			goto on_error;
-		}
-
-		memset(tmpmap, 0, sizeof(*tmpmap));
-		memcpy(tmpmap, cur->elem, sizeof(*tmpmap));
-		tmplist->elem = tmpmap;
-
-		lxc_list_add_tail(idmap, tmplist);
-
-		map = cur->elem;
+		list_add_tail(&dup_map->head, &full_idmap);
+		move_ptr(dup_map);
 
 		if (map->idtype == ID_TYPE_UID)
 			if (euid >= map->hostid && euid < map->hostid + map->range)
@@ -5382,39 +5261,27 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	if (host_uid_map && (host_uid_map != container_root_uid)) {
-		/* Add container root to the map. */
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			goto on_error;
-		lxc_list_add_elem(tmplist, host_uid_map);
-		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		list_add_tail(&host_uid_map->head, &full_idmap);
+		move_ptr(host_uid_map);
 	}
-	/* idmap will now keep track of that memory. */
-	host_uid_map = NULL;
 
 	if (host_gid_map && (host_gid_map != container_root_gid)) {
-		tmplist = lxc_list_new();
-		if (!tmplist)
-			goto on_error;
-		lxc_list_add_elem(tmplist, host_gid_map);
-		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		list_add_tail(&host_gid_map->head, &full_idmap);
+		move_ptr(host_gid_map);
 	}
-	/* idmap will now keep track of that memory. */
-	host_gid_map = NULL;
 
 	if (lxc_log_trace()) {
-		lxc_list_for_each (cur, idmap) {
-			map = cur->elem;
-			TRACE("establishing %cid mapping for \"%d\" in new "
-			      "user namespace: nsuid %lu - hostid %lu - range "
-			      "%lu",
+		list_for_each_entry(map, &full_idmap, head) {
+			TRACE("establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid,
 			      map->nsid, map->hostid, map->range);
 		}
 	}
 
 	/* Set up {g,u}id mapping for user namespace of child process. */
-	ret = lxc_map_ids(idmap, pid);
+	ret = lxc_map_ids(&full_idmap, pid);
 	if (ret < 0) {
 		ERROR("error setting up {g,u}id mappings for child process \"%d\"", pid);
 		goto on_error;
@@ -5435,8 +5302,7 @@ on_error:
 	if (pid > 0)
 		ret = wait_for_pid(pid);
 
-	if (idmap)
-		__lxc_free_idmap(idmap);
+	__lxc_free_idmap(&full_idmap);
 
 	if (host_uid_map && (host_uid_map != container_root_uid))
 		free(host_uid_map);
@@ -5446,12 +5312,11 @@ on_error:
 	return ret;
 }
 
-static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
+static int add_idmap_entry(struct list_head *idmap_list, enum idtype idtype,
 			   unsigned long nsid, unsigned long hostid,
 			   unsigned long range)
 {
 	__do_free struct id_map *new_idmap = NULL;
-	__do_free struct lxc_list *new_list = NULL;
 
 	new_idmap = zalloc(sizeof(*new_idmap));
 	if (!new_idmap)
@@ -5462,12 +5327,8 @@ static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
 	new_idmap->nsid = nsid;
 	new_idmap->range = range;
 
-	new_list = zalloc(sizeof(*new_list));
-	if (!new_list)
-		return ret_errno(ENOMEM);
-
-	new_list->elem = move_ptr(new_idmap);
-	lxc_list_add_tail(idmap, move_ptr(new_list));
+	list_add_tail(&new_idmap->head, idmap_list);
+	move_ptr(new_idmap);
 
 	INFO("Adding id map: type %c nsid %lu hostid %lu range %lu",
 	     idtype == ID_TYPE_UID ? 'u' : 'g', nsid, hostid, range);
@@ -5477,7 +5338,8 @@ static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
 int userns_exec_mapped_root(const char *path, int path_fd,
 			    const struct lxc_conf *conf)
 {
-	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
+	LIST_HEAD(idmap_list);
+	call_cleaner(__lxc_free_idmap) struct list_head *idmap = &idmap_list;
 	__do_close int fd = -EBADF;
 	int target_fd = -EBADF;
 	char c = '1';
@@ -5542,10 +5404,6 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 					       target_fd, path, hostgid);
 		TRACE("Chowned %d(%s) to -1:%d", target_fd, path, hostgid);
 	}
-
-	idmap = lxc_list_new();
-	if (!idmap)
-		return -ENOMEM;
 
 	/* "u:0:rootuid:1" */
 	ret = add_idmap_entry(idmap, ID_TYPE_UID, 0, container_host_uid, 1);
@@ -5624,13 +5482,10 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 	if (lxc_log_trace()) {
 		struct id_map *map;
-		struct lxc_list *it;
 
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
+		list_for_each_entry(map, idmap, head)
 			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
 			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
-		}
 	}
 
 	ret = lxc_read_nointr(sock_fds[1], &c, 1);
@@ -5824,54 +5679,42 @@ void suggest_default_idmap(void)
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
 }
 
-static void free_cgroup_settings(struct lxc_list *result)
-{
-	struct lxc_list *iterator, *next;
-
-	lxc_list_for_each_safe (iterator, result, next) {
-		lxc_list_del(iterator);
-		free_disarm(iterator);
-	}
-	free_disarm(result);
-}
-
 /* Return the list of cgroup_settings sorted according to the following rules
  * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
  */
-struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings)
+void sort_cgroup_settings(struct lxc_conf *conf)
 {
-	struct lxc_list *result;
-	struct lxc_cgroup *cg = NULL;
-	struct lxc_list *it = NULL, *item = NULL, *memsw_limit = NULL;
-
-	result = lxc_list_new();
-	if (!result)
-		return NULL;
-	lxc_list_init(result);
+	struct lxc_cgroup *cgroup, *memsw_limit, *ncgroup;
 
 	/* Iterate over the cgroup settings and copy them to the output list. */
-	lxc_list_for_each (it, cgroup_settings) {
-		item = zalloc(sizeof(*item));
-		if (!item) {
-			free_cgroup_settings(result);
-			return NULL;
-		}
-
-		item->elem = it->elem;
-		cg = it->elem;
-		if (strequal(cg->subsystem, "memory.memsw.limit_in_bytes")) {
+	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
+		if (strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes")) {
 			/* Store the memsw_limit location */
-			memsw_limit = item;
-		} else if (strequal(cg->subsystem, "memory.limit_in_bytes") &&
-			   memsw_limit != NULL) {
-			/* lxc.cgroup.memory.memsw.limit_in_bytes is found
+			memsw_limit = cgroup;
+		} else if (memsw_limit && strequal(cgroup->subsystem, "memory.limit_in_bytes")) {
+			/*
+			 * lxc.cgroup.memory.memsw.limit_in_bytes is found
 			 * before lxc.cgroup.memory.limit_in_bytes, swap these
-			 * two items */
-			item->elem = memsw_limit->elem;
-			memsw_limit->elem = it->elem;
+			 * two items.
+			 */
+			list_swap(&memsw_limit->head, &cgroup->head);
 		}
-		lxc_list_add_tail(result, item);
+	}
+}
+
+int lxc_set_environment(const struct lxc_conf *conf)
+{
+	struct environment_entry *env;
+
+	list_for_each_entry(env, &conf->environment, head) {
+		int ret;
+
+		ret = setenv(env->key, env->val, 1);
+		if (ret < 0)
+			return syserror("Failed to set environment variable: %s=%s",
+					env->key, env->val);
+		TRACE("Set environment variable: %s=%s", env->key, env->val);
 	}
 
-	return result;
+	return 0;
 }

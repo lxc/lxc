@@ -782,7 +782,6 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 				      char **extra_env, char **extra_keep)
 {
 	int ret;
-	struct lxc_list *iterator;
 
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		int path_kept = 0;
@@ -863,17 +862,9 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 
 	/* Set container environment variables.*/
 	if (ctx->container->lxc_conf) {
-		lxc_list_for_each(iterator, &ctx->container->lxc_conf->environment) {
-			char *env_tmp;
-
-			env_tmp = strdup((char *)iterator->elem);
-			if (!env_tmp)
-				return -1;
-
-			ret = putenv(env_tmp);
-			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to set environment variable: %s", (char *)iterator->elem);
-		}
+		ret = lxc_set_environment(ctx->container->lxc_conf);
+		if (ret < 0)
+			return -1;
 	}
 
 	/* Set extra environment variables. */
@@ -1659,22 +1650,14 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		goto on_error;
 
 	/* Setup /proc limits */
-	if (!lxc_list_empty(&conf->procs)) {
-		ret = setup_proc_filesystem(&conf->procs, pid);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Setup /proc/%d settings", pid);
-	}
+	ret = setup_proc_filesystem(conf, pid);
+	if (ret < 0)
+		goto on_error;
 
 	/* Setup resource limits */
-	if (!lxc_list_empty(&conf->limits)) {
-		ret = setup_resource_limits(&conf->limits, pid);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Setup resource limits");
-	}
+	ret = setup_resource_limits(conf, pid);
+	if (ret < 0)
+		goto on_error;
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
 		ret = lxc_attach_terminal_mainloop_init(&terminal, &descr);

@@ -57,7 +57,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		return -1;
 	}
 
-	if (am_guest_unpriv() || !lxc_list_empty(&conf->id_map)) {
+	if (am_guest_unpriv() || !list_empty(&conf->id_map)) {
 		ret = chown_mapped_root(new->dest, conf);
 		if (ret < 0)
 			WARN("Failed to update ownership of %s", new->dest);
@@ -88,7 +88,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", work);
 
-		if (am_guest_unpriv() || !lxc_list_empty(&conf->id_map)) {
+		if (am_guest_unpriv() || !list_empty(&conf->id_map)) {
 			__do_free char *lxc_overlay_delta_dir = NULL,
 				       *lxc_overlay_private_dir = NULL;
 
@@ -155,7 +155,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", ndelta);
 
-		if (am_guest_unpriv() || !lxc_list_empty(&conf->id_map)) {
+		if (am_guest_unpriv() || !list_empty(&conf->id_map)) {
 			__do_free char *lxc_overlay_delta_dir = NULL,
 				       *lxc_overlay_private_dir = NULL;
 
@@ -276,7 +276,7 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", delta);
 
-	if (am_guest_unpriv() || !lxc_list_empty(&conf->id_map)) {
+	if (am_guest_unpriv() || !list_empty(&conf->id_map)) {
 		__do_free char *lxc_overlay_private_dir = NULL;
 
 		lxc_overlay_private_dir = must_make_path(tmp, LXC_OVERLAY_PRIVATE_DIR, NULL);

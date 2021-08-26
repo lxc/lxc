@@ -668,7 +668,7 @@ static void must_append_sized(char **buf, size_t *bufsz, const char *data, size_
 
 static bool is_privileged(struct lxc_conf *conf)
 {
-	return lxc_list_empty(&conf->id_map);
+	return list_empty(&conf->id_map);
 }
 
 static const char* AA_ALL_DEST_PATH_LIST[] = {

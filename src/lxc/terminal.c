@@ -876,7 +876,7 @@ static int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *termina
 {
 	int ret;
 
-	if (lxc_list_empty(&c->id_map))
+	if (list_empty(&c->id_map))
 		return 0;
 
 	if (is_empty_string(terminal->name) && terminal->pty < 0)
