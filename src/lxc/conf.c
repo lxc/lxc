@@ -3390,8 +3390,6 @@ struct lxc_conf *lxc_conf_init(void)
 	INIT_LIST_HEAD(&new->id_map);
 	new->root_nsuid_map = NULL;
 	new->root_nsgid_map = NULL;
-	lxc_list_init(&new->includes);
-	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
 	INIT_LIST_HEAD(&new->limits);
 	INIT_LIST_HEAD(&new->sysctls);
@@ -4743,32 +4741,6 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
-static inline void lxc_clear_aliens(struct lxc_conf *conf)
-{
-	struct lxc_list *it, *next;
-
-	lxc_list_for_each_safe (it, &conf->aliens, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
-	}
-
-	lxc_list_init(&conf->aliens);
-}
-
-void lxc_clear_includes(struct lxc_conf *conf)
-{
-	struct lxc_list *it, *next;
-
-	lxc_list_for_each_safe(it, &conf->includes, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
-	}
-
-	lxc_list_init(&conf->includes);
-}
-
 int lxc_clear_apparmor_raw(struct lxc_conf *c)
 {
 	struct lxc_list *it, *next;
@@ -4824,8 +4796,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_mount_entries(conf);
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
-	lxc_clear_includes(conf);
-	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");

@@ -436,11 +436,6 @@ struct lxc_conf {
 	unsigned int monitor_unshare;
 	unsigned int monitor_signal_pdeath;
 
-	/* list of included files */
-	struct lxc_list includes;
-	/* config entries which are not "lxc.*" are aliens */
-	struct lxc_list aliens;
-
 	/* list of environment variables we'll add to the container when
 	 * started */
 	struct lxc_list environment;
@@ -540,7 +535,6 @@ __hidden extern int lxc_clear_environment(struct lxc_conf *c);
 __hidden extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_delete_autodev(struct lxc_handler *handler);
 __hidden extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
-__hidden extern void lxc_clear_includes(struct lxc_conf *conf);
 __hidden extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 						  const char *lxcpath);
 __hidden extern int lxc_setup(struct lxc_handler *handler);
