@@ -173,8 +173,8 @@ struct lxc_netdev {
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;
-	struct list_head ipv4_list;
-	struct list_head ipv6_list;
+	struct list_head ipv4_addresses;
+	struct list_head ipv6_addresses;
 	bool ipv4_gateway_auto;
 	bool ipv4_gateway_dev;
 	struct in_addr *ipv4_gateway;

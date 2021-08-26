@@ -168,8 +168,8 @@ static struct lxc_netdev *lxc_network_add(struct list_head *head, int idx, bool 
 	if (!netdev)
 		return ret_set_errno(NULL, ENOMEM);
 
-	INIT_LIST_HEAD(&netdev->ipv4_list);
-	INIT_LIST_HEAD(&netdev->ipv6_list);
+	INIT_LIST_HEAD(&netdev->ipv4_addresses);
+	INIT_LIST_HEAD(&netdev->ipv6_addresses);
 
 	/* give network a unique index */
 	netdev->idx = idx;
@@ -343,7 +343,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 				TRACE("ipv4 gateway: %s", bufinet4);
 			}
 
-			list_for_each_entry(inet4dev, &netdev->ipv4_list, head) {
+			list_for_each_entry(inet4dev, &netdev->ipv4_addresses, head) {
 				inet_ntop(AF_INET, &inet4dev->addr, bufinet4,
 					  sizeof(bufinet4));
 				TRACE("ipv4 addr: %s", bufinet4);
@@ -361,7 +361,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 				TRACE("ipv6 gateway: %s", bufinet6);
 			}
 
-			list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+			list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 				inet_ntop(AF_INET6, &inet6dev->addr, bufinet6,
 					  sizeof(bufinet6));
 				TRACE("ipv6 addr: %s", bufinet6);
@@ -411,13 +411,13 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	free_disarm(netdev->mtu);
 
 	free_disarm(netdev->ipv4_gateway);
-	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_list, head) {
+	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_addresses, head) {
 		list_del(&inetdev->head);
 		free(inetdev);
 	}
 
 	free_disarm(netdev->ipv6_gateway);
-	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_addresses, head) {
 		list_del(&inet6dev->head);
 		free(inet6dev);
 	}
@@ -444,8 +444,8 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	head = netdev->head;
 	memset(netdev, 0, sizeof(struct lxc_netdev));
 	netdev->head = head;
-	INIT_LIST_HEAD(&netdev->ipv4_list);
-	INIT_LIST_HEAD(&netdev->ipv6_list);
+	INIT_LIST_HEAD(&netdev->ipv4_addresses);
+	INIT_LIST_HEAD(&netdev->ipv6_addresses);
 	netdev->type = -1;
 	netdev->idx = idx;
 }

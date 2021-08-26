@@ -851,7 +851,7 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> shift);
 	}
 
-	list_add_tail(&inetdev->head, &netdev->ipv4_list);
+	list_add_tail(&inetdev->head, &netdev->ipv4_addresses);
 	move_ptr(inetdev);
 
 	return 0;
@@ -992,7 +992,7 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	if (!ret || ret < 0)
 		return log_error_errno(-EINVAL, EINVAL, "Invalid ipv6 address \"%s\"", valdup);
 
-	list_add_tail(&inet6dev->head, &netdev->ipv6_list);
+	list_add_tail(&inet6dev->head, &netdev->ipv6_addresses);
 	move_ptr(inet6dev);
 
 	return 0;
@@ -5721,7 +5721,7 @@ static int clr_config_net_ipv4_address(const char *key,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_list, head) {
+	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_addresses, head) {
 		list_del(&inetdev->head);
 		free(inetdev);
 	}
@@ -5772,7 +5772,7 @@ static int clr_config_net_ipv6_address(const char *key,
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_addresses, head) {
 		list_del(&inet6dev->head);
 		free(inet6dev);
 	}
@@ -6303,9 +6303,9 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv4_list);
+	listlen = list_len(&netdev->ipv4_addresses);
 
-	list_for_each_entry(inetdev, &netdev->ipv4_list, head) {
+	list_for_each_entry(inetdev, &netdev->ipv4_addresses, head) {
 		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
 			return -errno;
 		strprint(retv, inlen, "%s/%u%s", buf, inetdev->prefix,
@@ -6396,8 +6396,8 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv6_list);
-	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+	listlen = list_len(&netdev->ipv6_addresses);
+	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;
 		strprint(retv, inlen, "%s/%u%s", buf, inet6dev->prefix,
