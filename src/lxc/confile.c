@@ -2784,7 +2784,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 	if (ret < 0)
 		return ret_errno(EINVAL);
 
-	rootfs->options	= move_ptr(raw_options);
+	rootfs->mnt_opts.raw_options = move_ptr(raw_options);
 	return 0;
 }
 
@@ -4169,7 +4169,7 @@ static int get_config_rootfs_mount(const char *key, char *retv, int inlen,
 static int get_config_rootfs_options(const char *key, char *retv, int inlen,
 				     struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->rootfs.options);
+	return lxc_get_conf_str(retv, inlen, c->rootfs.mnt_opts.raw_options);
 }
 
 static int get_config_uts_name(const char *key, char *retv, int inlen,
@@ -4976,7 +4976,6 @@ static inline int clr_config_rootfs_mount(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 					    void *data)
 {
-	free_disarm(c->rootfs.options);
 	put_lxc_mount_options(&c->rootfs.mnt_opts);
 
 	return 0;
