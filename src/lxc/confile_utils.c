@@ -168,7 +168,7 @@ static struct lxc_netdev *lxc_network_add(struct list_head *head, int idx, bool 
 	if (!netdev)
 		return ret_set_errno(NULL, ENOMEM);
 
-	lxc_list_init(&netdev->ipv4);
+	INIT_LIST_HEAD(&netdev->ipv4_list);
 	lxc_list_init(&netdev->ipv6);
 
 	/* give network a unique index */
@@ -343,8 +343,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 				TRACE("ipv4 gateway: %s", bufinet4);
 			}
 
-			lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
-				inet4dev = cur->elem;
+			list_for_each_entry(inet4dev, &netdev->ipv4_list, head) {
 				inet_ntop(AF_INET, &inet4dev->addr, bufinet4,
 					  sizeof(bufinet4));
 				TRACE("ipv4 addr: %s", bufinet4);
@@ -398,6 +397,7 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
 	struct list_head head;
+	struct lxc_inetdev *inetdev, *ninetdev;
 	ssize_t idx;
 
 	if (!netdev)
@@ -411,10 +411,9 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	free_disarm(netdev->mtu);
 
 	free_disarm(netdev->ipv4_gateway);
-	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_list, head) {
+		list_del(&inetdev->head);
+		free(inetdev);
 	}
 
 	free_disarm(netdev->ipv6_gateway);
@@ -446,7 +445,7 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	head = netdev->head;
 	memset(netdev, 0, sizeof(struct lxc_netdev));
 	netdev->head = head;
-	lxc_list_init(&netdev->ipv4);
+	INIT_LIST_HEAD(&netdev->ipv4_list);
 	lxc_list_init(&netdev->ipv6);
 	netdev->type = -1;
 	netdev->idx = idx;
