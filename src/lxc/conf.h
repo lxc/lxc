@@ -246,7 +246,6 @@ struct lxc_rootfs {
 	char buf[PATH_MAX];
 	char *bdev_type;
 	char *options;
-	unsigned long mountflags;
 	bool managed;
 	struct lxc_mount_options mnt_opts;
 	struct lxc_storage *storage;
