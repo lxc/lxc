@@ -2400,70 +2400,96 @@ int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 	return set_config_mount(NULL, value, lxc_conf, NULL);
 }
 
+static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
+{
+	char *token;
+
+	/*
+	 * In case several capability keep is specified in a single line split
+	 * these caps in a single element for the list.
+	 */
+	lxc_iterate_parts(token, caps, " \t") {
+		__do_free struct cap_entry *new_cap = NULL;
+		int cap;
+
+		if (strequal(token, "none")) {
+			if (!keep)
+				return syserror_set(-EINVAL, "The \"none\" keyword is only valid when keeping caps");
+
+			lxc_clear_config_caps(conf);
+			continue;
+		}
+
+		cap = parse_cap(token);
+		if (cap < 0) {
+			if (cap != -2)
+				return syserror_set(-EINVAL, "Invalid capability specified");
+
+			INFO("Ignoring unknown capability \"%s\"", token);
+			continue;
+		}
+
+		new_cap = zalloc(sizeof(struct cap_entry));
+		if (!new_cap)
+			return ret_errno(ENOMEM);
+
+		new_cap->cap_name = strdup(token);
+		if (!new_cap->cap_name)
+			return ret_errno(ENOMEM);
+		new_cap->cap = cap;
+
+		list_add_tail(&new_cap->head, &conf->caps.list);
+		move_ptr(new_cap);
+	}
+
+	return 0;
+}
+
 static int set_config_cap_keep(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *keepcaps = NULL;
-	__do_free struct lxc_list *keeplist = NULL;
-	char *token;
+	__do_free char *caps = NULL;
+	int ret;
 
 	if (lxc_config_value_empty(value))
-		return lxc_clear_config_keepcaps(lxc_conf);
+		return lxc_clear_config_caps(lxc_conf);
 
-	keepcaps = strdup(value);
-	if (!keepcaps)
+	caps = strdup(value);
+	if (!caps)
 		return ret_errno(ENOMEM);
 
-	/* In case several capability keep is specified in a single line
-	 * split these caps in a single element for the list.
-	 */
-	lxc_iterate_parts(token, keepcaps, " \t") {
-		if (strequal(token, "none"))
-			lxc_clear_config_keepcaps(lxc_conf);
+	if (!lxc_conf->caps.keep && !list_empty(&lxc_conf->caps.list))
+		return syserror_set(-EINVAL, "Keeping and dropping capabilities are mutually exclusive");
 
-		keeplist = lxc_list_new();
-		if (!keeplist)
-			return ret_errno(ENOMEM);
+	ret = add_cap_entry(lxc_conf, caps, true);
+	if (ret < 0)
+		return ret;
 
-		keeplist->elem = strdup(token);
-		if (!keeplist->elem)
-			return ret_errno(ENOMEM);
-
-		lxc_list_add_tail(&lxc_conf->keepcaps, move_ptr(keeplist));
-	}
-
+	lxc_conf->caps.keep = true;
 	return 0;
 }
 
 static int set_config_cap_drop(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *dropcaps = NULL;
-	__do_free struct lxc_list *droplist = NULL;
-	char *token;
+	__do_free char *caps = NULL;
+	int ret;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
 
-	dropcaps = strdup(value);
-	if (!dropcaps)
+	if (lxc_conf->caps.keep)
+		return syserror_set(-EINVAL, "Keeping and dropping capabilities are mutually exclusive");
+
+	caps = strdup(value);
+	if (!caps)
 		return ret_errno(ENOMEM);
 
-	/* In case several capability drop is specified in a single line
-	 * split these caps in a single element for the list.
-	 */
-	lxc_iterate_parts(token, dropcaps, " \t") {
-		droplist = lxc_list_new();
-		if (!droplist)
-			return ret_errno(ENOMEM);
+	ret = add_cap_entry(lxc_conf, caps, false);
+	if (ret < 0)
+		return ret;
 
-		droplist->elem = strdup(token);
-		if (!droplist->elem)
-			return ret_errno(ENOMEM);
-
-		lxc_list_add_tail(&lxc_conf->caps, move_ptr(droplist));
-	}
-
+	lxc_conf->caps.keep = false;
 	return 0;
 }
 
@@ -4255,15 +4281,15 @@ static int get_config_cap_drop(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct cap_entry *cap;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->caps) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(cap, &c->caps.list, head) {
+		strprint(retv, inlen, "%s\n", cap->cap_name);
 	}
 
 	return fulllen;
@@ -4273,15 +4299,15 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct cap_entry *cap;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->keepcaps) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(cap, &c->caps.list, head) {
+		strprint(retv, inlen, "%s\n", cap->cap_name);
 	}
 
 	return fulllen;
@@ -5024,7 +5050,7 @@ static inline int clr_config_cap_drop(const char *key, struct lxc_conf *c,
 static inline int clr_config_cap_keep(const char *key, struct lxc_conf *c,
 				      void *data)
 {
-	return lxc_clear_config_keepcaps(c);
+	return lxc_clear_config_caps(c);
 }
 
 static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
