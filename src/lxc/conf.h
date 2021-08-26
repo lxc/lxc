@@ -337,6 +337,12 @@ struct timens_offsets {
 	int64_t ns_monotonic;
 };
 
+struct environment_entry {
+	char *key;
+	char *val;
+	struct list_head head;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -438,7 +444,7 @@ struct lxc_conf {
 
 	/* list of environment variables we'll add to the container when
 	 * started */
-	struct lxc_list environment;
+	struct list_head environment;
 
 	/* text representation of the config file */
 	char *unexpanded_config;
@@ -642,5 +648,7 @@ static inline int lxc_personality(personality_t persona)
 
 	return personality(persona);
 }
+
+__hidden extern int lxc_set_environment(const struct lxc_conf *conf);
 
 #endif /* __LXC_CONF_H */

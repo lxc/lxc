@@ -782,7 +782,6 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 				      char **extra_env, char **extra_keep)
 {
 	int ret;
-	struct lxc_list *iterator;
 
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		int path_kept = 0;
@@ -863,17 +862,9 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 
 	/* Set container environment variables.*/
 	if (ctx->container->lxc_conf) {
-		lxc_list_for_each(iterator, &ctx->container->lxc_conf->environment) {
-			char *env_tmp;
-
-			env_tmp = strdup((char *)iterator->elem);
-			if (!env_tmp)
-				return -1;
-
-			ret = putenv(env_tmp);
-			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to set environment variable: %s", (char *)iterator->elem);
-		}
+		ret = lxc_set_environment(ctx->container->lxc_conf);
+		if (ret < 0)
+			return -1;
 	}
 
 	/* Set extra environment variables. */
