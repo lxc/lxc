@@ -2331,43 +2331,6 @@ int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 	return 0;
 }
 
-static void parse_propagationopt(char *opt, unsigned long *flags)
-{
-	struct mount_opt *mo;
-
-	/* If opt is found in propagation_opt, set or clear flags. */
-	for (mo = &propagation_opt[0]; mo->name != NULL; mo++) {
-		if (!strnequal(opt, mo->name, strlen(mo->name)))
-			continue;
-
-		if (mo->clear)
-			*flags &= ~mo->legacy_flag;
-		else
-			*flags |= mo->legacy_flag;
-
-		return;
-	}
-}
-
-int parse_propagationopts(const char *mntopts, unsigned long *pflags)
-{
-	__do_free char *s = NULL;
-	char *p;
-
-	if (!mntopts)
-		return 0;
-
-	s = strdup(mntopts);
-	if (!s)
-		return log_error_errno(-ENOMEM, errno, "Failed to allocate memory");
-
-	*pflags = 0L;
-	lxc_iterate_parts(p, s, ",")
-		parse_propagationopt(p, pflags);
-
-	return 0;
-}
-
 static void null_endofword(char *word)
 {
 	while (*word && *word != ' ' && *word != '\t')
@@ -2619,7 +2582,6 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_path)
 {
 	__do_free char *mntdata = NULL;
-	unsigned long mntflags = 0, pflags = 0;
 	char *rootfs_path = NULL;
 	int ret;
 	bool dev, optional, relative;
@@ -2655,16 +2617,20 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	if (!is_empty_string(opts.userns_path))
 		return systrace_ret(0, "Skipping idmapped mount entry");
 
-	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
+	ret = parse_mount_attrs(&opts, mntent->mnt_opts);
 	if (ret < 0)
 		return -1;
 
-	ret = parse_mntopts_legacy(mntent->mnt_opts, &mntflags, &mntdata);
-	if (ret < 0)
-		return ret;
-
-	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  pflags, mntdata, optional, dev, relative, rootfs_path);
+	ret = mount_entry(mntent->mnt_fsname,
+			  path,
+			  mntent->mnt_type,
+			  opts.mnt_flags,
+			  opts.prop_flags,
+			  opts.data,
+			  optional,
+			  dev,
+			  relative,
+			  rootfs_path);
 
 	return ret;
 }
