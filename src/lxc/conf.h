@@ -343,6 +343,17 @@ struct environment_entry {
 	struct list_head head;
 };
 
+struct cap_entry {
+	char *cap_name;
+	int cap;
+	struct list_head head;
+};
+
+struct caps {
+	int keep;
+	struct list_head list;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -381,8 +392,7 @@ struct lxc_conf {
 		struct lxc_list mount_list;
 	};
 
-	struct lxc_list caps;
-	struct lxc_list keepcaps;
+	struct caps caps;
 
 	/* /dev/tty<idx> devices */
 	struct lxc_tty_info ttys;
@@ -530,7 +540,6 @@ __hidden extern int lxc_map_ids(struct list_head *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
-__hidden extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 __hidden extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
 __hidden extern int lxc_clear_mount_entries(struct lxc_conf *c);
 __hidden extern int lxc_clear_automounts(struct lxc_conf *c);
@@ -563,17 +572,14 @@ __hidden extern void sort_cgroup_settings(struct lxc_conf *conf);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
-__hidden extern int in_caplist(int cap, struct lxc_list *caps);
 
+__hidden extern bool has_cap(int cap, struct lxc_conf *conf);
 static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
 {
 	if (lxc_caps_last_cap() < cap)
 		return false;
 
-	if (!lxc_list_empty(&conf->keepcaps))
-		return in_caplist(cap, &conf->keepcaps);
-
-	return !in_caplist(cap, &conf->caps);
+	return has_cap(cap, conf);
 }
 
 __hidden extern int setup_sysctl_parameters(struct lxc_conf *conf);
@@ -650,5 +656,6 @@ static inline int lxc_personality(personality_t persona)
 }
 
 __hidden extern int lxc_set_environment(const struct lxc_conf *conf);
+__hidden extern int parse_cap(const char *cap);
 
 #endif /* __LXC_CONF_H */
