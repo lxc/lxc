@@ -5257,7 +5257,6 @@ static inline int clr_config_proc(const char *key, struct lxc_conf *c,
 static inline int clr_config_includefiles(const char *key, struct lxc_conf *c,
 					  void *data)
 {
-	lxc_clear_includes(c);
 	return 0;
 }
 
