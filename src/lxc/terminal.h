@@ -30,7 +30,6 @@ struct lxc_terminal_info {
 };
 
 struct lxc_terminal_state {
-	struct lxc_list node;
 	int stdinfd;
 	int stdoutfd;
 	int ptxfd;
