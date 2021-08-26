@@ -2270,9 +2270,14 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 		if (!strnequal(opt, mo->name, strlen(mo->name)))
 			continue;
 
-		/* TODO: Handle recursive propagation requests. */
+		if (strequal(mo->name, "rslave") ||
+		    strequal(mo->name, "rshared") ||
+		    strequal(mo->name, "runbindable") ||
+		    strequal(mo->name, "rprivate"))
+			opts->propagate_recursively = 1;
+
 		opts->attr.propagation = mo->flag;
-		opts->mnt_flags |= mo->legacy_flag;
+		opts->prop_flags |= mo->legacy_flag;
 		return 0;
 	}
 
@@ -2892,6 +2897,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		struct lxc_mount_options opts = {};
 		int dfd_from;
 		const char *source_relative, *target_relative;
+		struct lxc_mount_attr attr = {};
 
 		ret = parse_lxc_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
@@ -2989,20 +2995,50 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 					mnt_seq, cur_mnt_seq);
 		mnt_seq++;
 
-		/* Set remaining mount options. */
-		ret = mount_setattr(fd_from, "", AT_EMPTY_PATH |
+		/* Set regular mount options. */
+		attr = opts.attr;
+		attr.propagation = 0;
+		ret = mount_setattr(fd_from,
+				    "",
+				    AT_EMPTY_PATH |
 				    (opts.bind_recursively ? AT_RECURSIVE : 0),
-				    &opts.attr, sizeof(opts.attr));
+				    &attr,
+				    sizeof(attr));
 		if (ret < 0) {
 			if (opts.optional) {
 				TRACE("Skipping optional idmapped mount");
 				continue;
 			}
 
-			return syserror("Failed to receive notification that parent idmapped detached %smount %d/%s to user namespace %d",
+			return syserror("Failed to set %smount options on detached %d/%s",
 					opts.bind_recursively ? "recursive " : "",
-					dfd_from, source_relative, fd_userns);
+					dfd_from, source_relative);
 		}
+
+		/* Set propagation mount options. */
+		if (opts.attr.propagation) {
+			attr = (struct lxc_mount_attr) {
+				attr.propagation = opts.attr.propagation,
+			};
+
+			ret = mount_setattr(fd_from,
+					"",
+					AT_EMPTY_PATH |
+					(opts.propagate_recursively ? AT_RECURSIVE : 0),
+					&attr,
+					sizeof(attr));
+			if (ret < 0) {
+				if (opts.optional) {
+					TRACE("Skipping optional idmapped mount");
+					continue;
+				}
+
+				return syserror("Failed to set %spropagation mount options on detached %d/%s",
+						opts.bind_recursively ? "recursive " : "",
+						dfd_from, source_relative);
+			}
+		}
+
 
 		/*
 		 * In contrast to the legacy mount codepath we will simplify
