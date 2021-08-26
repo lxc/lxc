@@ -226,7 +226,7 @@ static int setup_ipv4_addr_routes(struct lxc_netdev *netdev)
 		return ret_errno(EINVAL);
 
 	ifindex = netdev->priv.veth_attr.ifindex;
-	list_for_each_entry(inetdev, &netdev->ipv4_list, head) {
+	list_for_each_entry(inetdev, &netdev->ipv4_addresses, head) {
 		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, 32);
 		if (err)
 			return log_error_errno(-1, err, "Failed to setup ipv4 address route for network device with eifindex %d", ifindex);
@@ -245,7 +245,7 @@ static int setup_ipv6_addr_routes(struct lxc_netdev *netdev)
 		return ret_errno(EINVAL);
 
 	ifindex = netdev->priv.veth_attr.ifindex;
-	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 
 		err = lxc_ipv6_dest_add(ifindex, &inet6dev->addr, 128);
 		if (err)
@@ -3234,14 +3234,14 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 
 
 	/* If IPv4 addresses are specified, then check that sysctl is configured correctly. */
-	if (!list_empty(&netdev->ipv4_list)) {
+	if (!list_empty(&netdev->ipv4_addresses)) {
 		/* Check for net.ipv4.conf.[link].forwarding=1 */
 		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET) < 0)
 			return log_error_errno(-1, EINVAL, "Requires sysctl net.ipv4.conf.%s.forwarding=1", netdev->link);
 	}
 
 	/* If IPv6 addresses are specified, then check that sysctl is configured correctly. */
-	if (!list_empty(&netdev->ipv6_list)) {
+	if (!list_empty(&netdev->ipv6_addresses)) {
 		/* Check for net.ipv6.conf.[link].proxy_ndp=1 */
 		if (lxc_is_ip_neigh_proxy_enabled(netdev->link, AF_INET6) < 0)
 			return log_error_errno(-1, EINVAL, "Requires sysctl net.ipv6.conf.%s.proxy_ndp=1", netdev->link);
@@ -3263,7 +3263,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 			return log_error_errno(-1, EINVAL, "Failed to retrieve ifindex for \"%s\" routing cleanup", loop_device);
 	}
 
-	list_for_each_entry(inet4dev, &netdev->ipv4_list, head) {
+	list_for_each_entry(inet4dev, &netdev->ipv4_addresses, head) {
 		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4)))
 			return ret_set_errno(-1, -errno);
 
@@ -3278,7 +3278,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		}
 	}
 
-	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6)))
 			return ret_set_errno(-1, -errno);
 
@@ -3381,12 +3381,12 @@ static int lxc_delete_l2proxy(struct lxc_netdev *netdev)
 		}
 	}
 
-	list_for_each_entry(inet4dev, &netdev->ipv4_list, head) {
+	list_for_each_entry(inet4dev, &netdev->ipv4_addresses, head) {
 		if (lxc_delete_ipv4_l2proxy(&inet4dev->addr, netdev->link, lo_ifindex) < 0)
 			err++;
 	}
 
-	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		if (lxc_delete_ipv6_l2proxy(&inet6dev->addr, netdev->link, lo_ifindex) < 0)
 			err++;
 	}
@@ -3817,7 +3817,7 @@ static int setup_ipv4_addr(struct lxc_netdev *netdev)
 	int err;
 	struct lxc_inetdev *inet4dev;
 
-	list_for_each_entry(inet4dev, &netdev->ipv4_list, head) {
+	list_for_each_entry(inet4dev, &netdev->ipv4_addresses, head) {
 		err = lxc_ipv4_addr_add(ifindex, &inet4dev->addr,
 					&inet4dev->bcast, inet4dev->prefix);
 		if (err)
@@ -3833,7 +3833,7 @@ static int setup_ipv6_addr(struct lxc_netdev *netdev)
 	struct lxc_inet6dev *inet6dev;
 	int ifindex = netdev->ifindex;
 
-	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		err = lxc_ipv6_addr_add(ifindex, &inet6dev->addr,
 					&inet6dev->mcast, &inet6dev->acast,
 					inet6dev->prefix);
@@ -3878,7 +3878,7 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 		if (!(netdev->flags & IFF_UP))
 			return log_error(-1, "Cannot add ipv4 gateway for network device \"%s\" when not bringing up the interface", netdev->name);
 
-		if (list_empty(&netdev->ipv4_list))
+		if (list_empty(&netdev->ipv4_addresses))
 			return log_error(-1, "Cannot add ipv4 gateway for network device \"%s\" when not assigning an address", netdev->name);
 
 		/* Setup device route if ipv4_gateway_dev is enabled */
@@ -3915,7 +3915,7 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 		if (!(netdev->flags & IFF_UP))
 			return log_error(-1, "Cannot add ipv6 gateway for network device \"%s\" when not bringing up the interface", netdev->name);
 
-		if (list_empty(&netdev->ipv6_list) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway))
+		if (list_empty(&netdev->ipv6_addresses) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway))
 			return log_error(-1, "Cannot add ipv6 gateway for network device \"%s\" when not assigning an address", netdev->name);
 
 		/* Setup device route if ipv6_gateway_dev is enabled */
