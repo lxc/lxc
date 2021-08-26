@@ -218,6 +218,7 @@ struct lxc_mount_options {
 	unsigned long prop_flags;
 	char *data;
 	struct lxc_mount_attr attr;
+	char *raw_options;
 };
 
 /* Defines a structure to store the rootfs location, the
@@ -226,7 +227,6 @@ struct lxc_mount_options {
  * @mount        : where it is mounted
  * @buf		 : static buffer to construct paths
  * @bev_type     : optional backing store type
- * @options      : mount options
  * @managed      : whether it is managed by LXC
  * @dfd_mnt	 : fd for @mount
  * @dfd_dev : fd for /dev of the container
@@ -245,7 +245,6 @@ struct lxc_rootfs {
 
 	char buf[PATH_MAX];
 	char *bdev_type;
-	char *options;
 	bool managed;
 	struct lxc_mount_options mnt_opts;
 	struct lxc_storage *storage;
@@ -613,6 +612,7 @@ static inline void put_lxc_mount_options(struct lxc_mount_options *mnt_opts)
 	mnt_opts->prop_flags = 0;
 
 	free_disarm(mnt_opts->data);
+	free_disarm(mnt_opts->raw_options);
 }
 
 static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)

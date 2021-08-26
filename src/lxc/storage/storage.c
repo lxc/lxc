@@ -606,7 +606,7 @@ struct lxc_storage *storage_init(struct lxc_conf *conf)
 	const struct lxc_storage_type *q;
 	const char *src = conf->rootfs.path;
 	const char *dst = conf->rootfs.mount;
-	const char *mntopts = conf->rootfs.options;
+	const char *mntopts = conf->rootfs.mnt_opts.raw_options;
 
 	BUILD_BUG_ON(LXC_STORAGE_INTERNAL_OVERLAY_RESTORE <= LXC_CLONE_MAXFLAGS);
 

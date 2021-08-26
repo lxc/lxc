@@ -512,7 +512,7 @@ int lxc_storage_prepare(struct lxc_conf *conf)
 	if (!rootfs->storage)
 		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
 				 rootfs->path, rootfs->mount,
-				 rootfs->options ? rootfs->options : "(null)");
+				 rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	return 0;
 }
@@ -1425,11 +1425,11 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 	if (ret < 0)
 		return log_error(-1, "Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\"",
 				 rootfs->path, rootfs->mount,
-				 rootfs->options ? rootfs->options : "(null)");
+				 rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\"",
 	      rootfs->path, rootfs->mount,
-	      rootfs->options ? rootfs->options : "(null)");
+	      rootfs->mnt_opts.raw_options ? rootfs->mnt_opts.raw_options : "(null)");
 
 	rootfs->dfd_mnt = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (rootfs->dfd_mnt < 0)
@@ -4791,7 +4791,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_terminal_conf_free(&conf->console);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
-	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
