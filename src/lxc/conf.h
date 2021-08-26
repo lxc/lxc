@@ -211,7 +211,8 @@ struct lxc_mount_options {
 	unsigned int create_file : 1;
 	unsigned int optional : 1;
 	unsigned int relative : 1;
-	unsigned int recursive : 1;
+	unsigned int bind_recursively : 1;
+	unsigned int propagate_recursively : 1;
 	unsigned int bind : 1;
 	char userns_path[PATH_MAX];
 	unsigned long mnt_flags;
