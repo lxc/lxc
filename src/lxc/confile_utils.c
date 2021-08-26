@@ -169,7 +169,7 @@ static struct lxc_netdev *lxc_network_add(struct list_head *head, int idx, bool 
 		return ret_set_errno(NULL, ENOMEM);
 
 	INIT_LIST_HEAD(&netdev->ipv4_list);
-	lxc_list_init(&netdev->ipv6);
+	INIT_LIST_HEAD(&netdev->ipv6_list);
 
 	/* give network a unique index */
 	netdev->idx = idx;
@@ -361,8 +361,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 				TRACE("ipv6 gateway: %s", bufinet6);
 			}
 
-			lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
-				inet6dev = cur->elem;
+			list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
 				inet_ntop(AF_INET6, &inet6dev->addr, bufinet6,
 					  sizeof(bufinet6));
 				TRACE("ipv6 addr: %s", bufinet6);
@@ -398,6 +397,7 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	struct lxc_list *cur, *next;
 	struct list_head head;
 	struct lxc_inetdev *inetdev, *ninetdev;
+	struct lxc_inet6dev *inet6dev, *ninet6dev;
 	ssize_t idx;
 
 	if (!netdev)
@@ -417,10 +417,9 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	}
 
 	free_disarm(netdev->ipv6_gateway);
-	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_list, head) {
+		list_del(&inet6dev->head);
+		free(inet6dev);
 	}
 
 	if (netdev->type == LXC_NET_VETH) {
@@ -446,7 +445,7 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	memset(netdev, 0, sizeof(struct lxc_netdev));
 	netdev->head = head;
 	INIT_LIST_HEAD(&netdev->ipv4_list);
-	lxc_list_init(&netdev->ipv6);
+	INIT_LIST_HEAD(&netdev->ipv6_list);
 	netdev->type = -1;
 	netdev->idx = idx;
 }

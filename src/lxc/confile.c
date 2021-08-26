@@ -959,7 +959,6 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 {
 	__do_free char *valdup = NULL;
 	__do_free struct lxc_inet6dev *inet6dev = NULL;
-	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
 	char *slash, *netmask;
@@ -972,10 +971,6 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 
 	inet6dev = zalloc(sizeof(*inet6dev));
 	if (!inet6dev)
-		return ret_errno(ENOMEM);
-
-	list = lxc_list_new();
-	if (!list)
 		return ret_errno(ENOMEM);
 
 	valdup = strdup(value);
@@ -997,10 +992,8 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	if (!ret || ret < 0)
 		return log_error_errno(-EINVAL, EINVAL, "Invalid ipv6 address \"%s\"", valdup);
 
-	list->elem = inet6dev;
-	lxc_list_add_tail(&netdev->ipv6, list);
+	list_add_tail(&inet6dev->head, &netdev->ipv6_list);
 	move_ptr(inet6dev);
-	move_ptr(list);
 
 	return 0;
 }
@@ -5774,15 +5767,14 @@ static int clr_config_net_ipv6_address(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev = data;
-	struct lxc_list *cur, *next;
+	struct lxc_inet6dev *inet6dev, *ninet6dev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->ipv6_list, head) {
+		list_del(&inet6dev->head);
+		free(inet6dev);
 	}
 
 	return 0;
@@ -6392,9 +6384,9 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	int len;
 	size_t listlen;
 	char buf[INET6_ADDRSTRLEN];
-	struct lxc_list *it;
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
+	struct lxc_inet6dev *inet6dev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
@@ -6404,13 +6396,11 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&netdev->ipv6);
-
-	lxc_list_for_each(it, &netdev->ipv6) {
-		struct lxc_inet6dev *i = it->elem;
-		if (!inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf)))
+	listlen = list_len(&netdev->ipv6_list);
+	list_for_each_entry(inet6dev, &netdev->ipv6_list, head) {
+		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;
-		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
+		strprint(retv, inlen, "%s/%u%s", buf, inet6dev->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
 
