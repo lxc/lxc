@@ -1539,35 +1539,40 @@ static int set_config_group(const char *key, const char *value,
 static int set_config_environment(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free struct lxc_list *list_item = NULL;
+	__do_free char *dup = NULL, *val = NULL;
+	__do_free struct environment_entry *new_env = NULL;
+	char *env_val;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
-	list_item = lxc_list_new();
-	if (!list_item)
+	new_env = zalloc(sizeof(struct environment_entry));
+	if (!new_env)
 		return ret_errno(ENOMEM);
 
-	if (!strchr(value, '=')) {
-		const char *env_val;
-		const char *env_key = value;
-		const char *env_var[3] = {0};
+	dup = strdup(value);
+	if (!dup)
+		return ret_errno(ENOMEM);
 
-		env_val = getenv(env_key);
-		if (!env_val)
-			return ret_errno(ENOENT);
-
-		env_var[0] = env_key;
-		env_var[1] = env_val;
-		list_item->elem = lxc_string_join("=", env_var, false);
+	env_val = strchr(dup, '=');
+	if (!env_val) {
+		env_val = getenv(dup);
 	} else {
-		list_item->elem = strdup(value);
+		*env_val = '\0';
+		env_val++;
 	}
+	if (!env_val)
+		return ret_errno(ENOENT);
 
-	if (!list_item->elem)
+	val = strdup(env_val);
+	if (!val)
 		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(&lxc_conf->environment, move_ptr(list_item));
+	new_env->key = move_ptr(dup);
+	new_env->val = move_ptr(val);
+
+	list_add_tail(&new_env->head, &lxc_conf->environment);
+	move_ptr(new_env);
 
 	return 0;
 }
@@ -4442,15 +4447,15 @@ static int get_config_environment(const char *key, char *retv, int inlen,
 				  struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct environment_entry *env;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->environment) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(env, &c->environment, head) {
+		strprint(retv, inlen, "%s=%s\n", env->key, env->val);
 	}
 
 	return fulllen;

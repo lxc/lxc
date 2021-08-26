@@ -3390,7 +3390,7 @@ struct lxc_conf *lxc_conf_init(void)
 	INIT_LIST_HEAD(&new->id_map);
 	new->root_nsuid_map = NULL;
 	new->root_nsgid_map = NULL;
-	lxc_list_init(&new->environment);
+	INIT_LIST_HEAD(&new->environment);
 	INIT_LIST_HEAD(&new->limits);
 	INIT_LIST_HEAD(&new->sysctls);
 	INIT_LIST_HEAD(&new->procs);
@@ -4677,15 +4677,16 @@ int lxc_clear_groups(struct lxc_conf *c)
 
 int lxc_clear_environment(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct environment_entry *env, *nenv;
 
-	lxc_list_for_each_safe (it, &c->environment, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(env, nenv, &c->environment, head) {
+		list_del(&env->head);
+		free(env->key);
+		free(env->val);
+		free(env);
 	}
 
-	lxc_list_init(&c->environment);
+	INIT_LIST_HEAD(&c->environment);
 	return 0;
 }
 
@@ -5725,4 +5726,21 @@ void sort_cgroup_settings(struct lxc_conf *conf)
 			list_swap(&memsw_limit->head, &cgroup->head);
 		}
 	}
+}
+
+int lxc_set_environment(const struct lxc_conf *conf)
+{
+	struct environment_entry *env;
+
+	list_for_each_entry(env, &conf->environment, head) {
+		int ret;
+
+		ret = setenv(env->key, env->val, 1);
+		if (ret < 0)
+			return syserror("Failed to set environment variable: %s=%s",
+					env->key, env->val);
+		TRACE("Set environment variable: %s=%s", env->key, env->val);
+	}
+
+	return 0;
 }

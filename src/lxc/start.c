@@ -1052,12 +1052,11 @@ static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
 	__lxc_unused __do_close int data_sock0 = handler->data_sock[0],
-					   data_sock1 = handler->data_sock[1];
+				    data_sock1 = handler->data_sock[1];
 	__do_close int devnull_fd = -EBADF, status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
 	gid_t new_gid;
-	struct lxc_list *iterator;
 	uid_t nsuid = 0;
 	gid_t nsgid = 0;
 
@@ -1257,18 +1256,14 @@ static int do_start(void *data)
 		}
 	}
 
-	/* Add the requested environment variables to the current environment to
-	 * allow them to be used by the various hooks, such as the start hook
-	 * below.
+	/*
+	 * Add the requested environment variables to the current environment
+	 * to allow them to be used by the various hooks, such as the start
+	 * hook below.
 	 */
-	lxc_list_for_each(iterator, &handler->conf->environment) {
-		ret = putenv((char *)iterator->elem);
-		if (ret < 0) {
-			SYSERROR("Failed to set environment variable: %s",
-				 (char *)iterator->elem);
-			goto out_warn_father;
-		}
-	}
+	ret = lxc_set_environment(handler->conf);
+	if (ret < 0)
+		goto out_warn_father;
 
 	if (!lxc_sync_wait_parent(handler, START_SYNC_POST_CONFIGURE))
 		goto out_warn_father;
@@ -1361,14 +1356,9 @@ static int do_start(void *data)
 	if (ret < 0)
 		SYSERROR("Failed to clear environment.");
 
-	lxc_list_for_each(iterator, &handler->conf->environment) {
-		ret = putenv((char *)iterator->elem);
-		if (ret < 0) {
-			SYSERROR("Failed to set environment variable: %s",
-				 (char *)iterator->elem);
-			goto out_warn_father;
-		}
-	}
+	ret = lxc_set_environment(handler->conf);
+	if (ret < 0)
+		goto out_warn_father;
 
 	ret = putenv("container=lxc");
 	if (ret < 0) {
