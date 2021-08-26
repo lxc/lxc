@@ -703,7 +703,6 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 {
 	__do_free char *addr = NULL;
 	__do_free struct lxc_inetdev *inetdev = NULL;
-	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
 	char *cursor, *slash;
@@ -717,10 +716,6 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 
 	inetdev = zalloc(sizeof(*inetdev));
 	if (!inetdev)
-		return ret_errno(ENOMEM);
-
-	list = lxc_list_new();
-	if (!list)
 		return ret_errno(ENOMEM);
 
 	addr = strdup(value);
@@ -769,10 +764,8 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> shift);
 	}
 
-	list->elem = inetdev;
-	lxc_list_add_tail(&netdev->ipv4, list);
+	list_add_tail(&inetdev->head, &netdev->ipv4_list);
 	move_ptr(inetdev);
-	move_ptr(list);
 
 	return 0;
 }
@@ -5328,15 +5321,14 @@ static int clr_config_net_ipv4_address(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev = data;
-	struct lxc_list *cur, *next;
+	struct lxc_inetdev *inetdev, *ninetdev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inetdev, ninetdev, &netdev->ipv4_list, head) {
+		list_del(&inetdev->head);
+		free(inetdev);
 	}
 
 	return 0;
@@ -5848,12 +5840,12 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 	int len;
 	size_t listlen;
 	char buf[INET_ADDRSTRLEN];
-	struct lxc_list *it;
-	int fulllen = 0;
-	struct lxc_netdev *netdev = data;
+	struct lxc_inetdev *inetdev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
@@ -5863,13 +5855,12 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&netdev->ipv4);
+	listlen = list_len(&netdev->ipv4_list);
 
-	lxc_list_for_each(it, &netdev->ipv4) {
-		struct lxc_inetdev *i = it->elem;
-		if (!inet_ntop(AF_INET, &i->addr, buf, sizeof(buf)))
+	list_for_each_entry(inetdev, &netdev->ipv4_list, head) {
+		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
 			return -errno;
-		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
+		strprint(retv, inlen, "%s/%u%s", buf, inetdev->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
 
