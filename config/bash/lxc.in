@@ -111,6 +111,10 @@ __lxc_piped_args() {
     fi
 
     COMPREPLY=( $( compgen -P '"' -S '"' -W "$(command echo -e ${extended[@]})" -- "${cur}" ) )
+    # If no more words availables for completion, add space after last match.
+    if [[ "${#completion[@]}" -gt 1 ]]; then
+        compopt -o nospace
+    fi
 }
 
 _lxc_attach() {
@@ -140,12 +144,10 @@ _lxc_attach() {
             ;;
         --elevated-privileges | -e )
             __lxc_piped_args "$cur" '|' CGROUP CAP LSM
-            compopt -o nospace
             return
             ;;
         --namespaces | -s )
             __lxc_piped_args "$cur" '|' MOUNT PID UTSNAME IPC USER NETWORK
-            compopt -o nospace
             return
             ;;
         --remount-sys-proc | -R | --keep-env | --clear-env )
@@ -213,7 +215,6 @@ _lxc_autostart() {
         --groups | -g )
             # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
             __lxc_piped_args "$cur" ',' $( __lxc_groups )
-            compopt -o nospace
             return
             ;;
     esac
@@ -638,7 +639,6 @@ _lxc_ls() {
         --groups | -g )
             # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
             __lxc_piped_args "$cur" ',' $( __lxc_groups )
-            compopt -o nospace
             return
             ;;
         --nesting )
@@ -902,8 +902,7 @@ _lxc_unshare() {
 
     case $prev in
         --namespaces | -s )
-            __lxc_piped_args "$cur" '|' "MOUNT" "PID" "UTSNAME" "IPC" "USER" "NETWORK"
-            compopt -o nospace
+            __lxc_piped_args "$cur" '|' MOUNT PID UTSNAME IPC USER NETWORK
             return
             ;;
         --user | -u )
@@ -1008,7 +1007,6 @@ _lxc_wait() {
             ;;
         --state | -s )
             __lxc_piped_args "$cur" '|' STOPPED STARTING RUNNING STOPPING ABORTING FREEZING FROZEN THAWED
-            compopt -o nospace
             return
             ;;
         --timeout | -t )
