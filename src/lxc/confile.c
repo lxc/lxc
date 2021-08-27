@@ -1401,21 +1401,25 @@ static int set_config_group(const char *key, const char *value,
 	if (!groups)
 		return ret_errno(ENOMEM);
 
-	/* In case several groups are specified in a single line split these
+	/*
+	 * In case several groups are specified in a single line split these
 	 * groups in a single element for the list.
 	 */
 	lxc_iterate_parts(token, groups, " \t") {
-		__do_free struct lxc_list *grouplist = NULL;
+		__do_free char *val = NULL;
+		__do_free struct string_entry *entry = NULL;
 
-		grouplist = lxc_list_new();
-		if (!grouplist)
+		entry = zalloc(sizeof(struct string_entry));
+		if (!entry)
 			return ret_errno(ENOMEM);
 
-		grouplist->elem = strdup(token);
-		if (!grouplist->elem)
+		val = strdup(token);
+		if (!val)
 			return ret_errno(ENOMEM);
 
-		lxc_list_add_tail(&lxc_conf->groups, move_ptr(grouplist));
+		entry->val = move_ptr(val);
+		list_add_tail(&entry->head, &lxc_conf->groups);
+		move_ptr(entry);
 	}
 
 	return 0;
@@ -4145,15 +4149,15 @@ static int get_config_group(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->groups) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->groups, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
