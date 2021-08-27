@@ -35,9 +35,10 @@ __hidden extern int ovl_umount(struct lxc_storage *bdev);
 /* To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
  * with overlay lxc.mount.entry entries we need to update absolute paths for
  * upper- and workdir. This update is done in two locations:
- * lxc_conf->unexpanded_config and lxc_conf->mount_list. Both updates are done
- * independent of each other since lxc_conf->mountlist may container more mount
- * entries (e.g. from other included files) than lxc_conf->unexpanded_config .
+ * lxc_conf->unexpanded_config and lxc_conf->mount_entries. Both updates are
+ * done independent of each other since lxc_conf->mountlist may container more
+ * mount entries (e.g. from other included files) than
+ * lxc_conf->unexpanded_config .
  */
 __hidden extern int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 					 const char *lxc_name, const char *newpath,

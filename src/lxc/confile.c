@@ -2348,21 +2348,22 @@ static int set_config_mount(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	__do_free char *mntelem = NULL;
-	__do_free struct lxc_list *mntlist = NULL;
+	__do_free struct string_entry *entry = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
-	mntlist = lxc_list_new();
-	if (!mntlist)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
 	mntelem = strdup(value);
 	if (!mntelem)
 		return ret_errno(ENOMEM);
 
-	mntlist->elem = move_ptr(mntelem);
-	lxc_list_add_tail(&lxc_conf->mount_list, move_ptr(mntlist));
+	entry->val = move_ptr(mntelem);
+	list_add_tail(&entry->head, &lxc_conf->mount_entries);
+	move_ptr(entry);
 
 	return 0;
 }
@@ -4136,15 +4137,15 @@ static int get_config_mount(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->mount_list) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->mount_entries, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;

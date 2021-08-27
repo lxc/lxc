@@ -246,7 +246,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	if (opts->user->action_script)
 		static_args += 2;
 
-	static_args += 2 * lxc_list_len(&opts->c->lxc_conf->mount_list);
+	static_args += 2 * list_len(&opts->c->lxc_conf->mount_entries);
 
 	ret = strnprintf(log, sizeof(log), "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0)
@@ -348,7 +348,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG(opts->user->action_script);
 	}
 
-	f_mnt = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list,
+	f_mnt = make_anonymous_mount_file(&opts->c->lxc_conf->mount_entries,
 	                                 opts->c->lxc_conf->lsm_aa_allow_nesting);
 	if (!f_mnt)
 		return log_error_errno(-ENOENT, ENOENT, "Failed to create anonymous mount file");
