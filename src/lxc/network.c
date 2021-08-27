@@ -184,14 +184,13 @@ static int lxc_ipv6_dest_del(int ifindex, struct in6_addr *dest, unsigned int ne
 	return lxc_ip_route_dest(RTM_DELROUTE, AF_INET6, ifindex, dest, netmask);
 }
 
-static int lxc_setup_ipv4_routes(struct lxc_list *ip, int ifindex)
+static int setup_ipv4_routes(struct lxc_netdev *netdev)
 {
-	struct lxc_list *iterator;
+	int ifindex = netdev->priv.veth_attr.ifindex;
+	struct lxc_inetdev *inetdev;
 	int err;
 
-	lxc_list_for_each(iterator, ip) {
-		struct lxc_inetdev *inetdev = iterator->elem;
-
+	list_for_each_entry(inetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
 		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, inetdev->prefix);
 		if (err)
 			return log_error_errno(-1, -err, "Failed to setup ipv4 route for network device with ifindex %d", ifindex);
@@ -747,7 +746,7 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 	}
 
 	/* setup ipv4 routes on the host interface */
-	if (lxc_setup_ipv4_routes(&netdev->priv.veth_attr.ipv4_routes, netdev->priv.veth_attr.ifindex)) {
+	if (setup_ipv4_routes(netdev)) {
 		ERROR("Failed to setup ipv4 routes for network device \"%s\"", veth1);
 		goto out_delete;
 	}

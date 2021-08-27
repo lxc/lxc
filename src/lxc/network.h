@@ -42,10 +42,6 @@ struct lxc_inetdev {
 	struct list_head head;
 };
 
-struct lxc_route {
-	struct in_addr addr;
-};
-
 /*
  * Defines the structure to configure an ipv6 address
  * @flags     : set the address up
@@ -80,7 +76,7 @@ struct ifla_veth {
 	char pair[IFNAMSIZ];
 	char veth1[IFNAMSIZ];
 	int ifindex;
-	struct lxc_list ipv4_routes;
+	struct list_head ipv4_routes;
 	struct lxc_list ipv6_routes;
 	int mode; /* bridge, router */
 	short vlan_id;

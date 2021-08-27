@@ -368,8 +368,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			}
 
 			if (netdev->type == LXC_NET_VETH) {
-				lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
-					inet4dev = cur->elem;
+				list_for_each_entry(inet4dev, &netdev->priv.veth_attr.ipv4_routes, head) {
 					if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4))) {
 						ERROR("Invalid ipv4 veth route");
 						return;
@@ -423,10 +422,9 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	}
 
 	if (netdev->type == LXC_NET_VETH) {
-		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
-			lxc_list_del(cur);
-			free(cur->elem);
-			free(cur);
+		list_for_each_entry_safe(inetdev, ninetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
+			list_del(&inetdev->head);
+			free(inetdev);
 		}
 
 		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
