@@ -450,7 +450,7 @@ struct lxc_conf {
 	unsigned int start_auto;
 	unsigned int start_delay;
 	int start_order;
-	struct lxc_list groups;
+	struct list_head groups;
 	int nbd_idx;
 
 	/* unshare the mount namespace in the monitor */

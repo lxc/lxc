@@ -3375,7 +3375,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		INIT_LIST_HEAD(&new->hooks[i]);
-	lxc_list_init(&new->groups);
+	INIT_LIST_HEAD(&new->groups);
 	INIT_LIST_HEAD(&new->state_clients);
 	new->lsm_aa_profile = NULL;
 	INIT_LIST_HEAD(&new->lsm_aa_raw);
@@ -4635,15 +4635,15 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 
 int lxc_clear_groups(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct string_entry *entry, *nentry;
 
-	lxc_list_for_each_safe (it, &c->groups, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(entry, nentry, &c->groups, head) {
+		list_del(&entry->head);
+		free(entry->val);
+		free(entry);
 	}
 
-	lxc_list_init(&c->groups);
+	INIT_LIST_HEAD(&c->groups);
 	return 0;
 }
 
