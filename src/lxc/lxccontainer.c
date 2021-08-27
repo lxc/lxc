@@ -2301,17 +2301,18 @@ static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 	return true;
 }
 
-static char** get_from_array(char ***names, char *cname, int size)
+static char **get_from_array(char ***names, char *cname, int size)
 {
 	if (!*names)
 		return NULL;
 
-	return (char **)bsearch(&cname, *names, size, sizeof(char *), (int (*)(const void *, const void *))string_cmp);
+	return bsearch(&cname, *names, size, sizeof(char *),
+		       (int (*)(const void *, const void *))string_cmp);
 }
 
 static bool array_contains(char ***names, char *cname, int size)
 {
-	if(get_from_array(names, cname, size) != NULL)
+	if (get_from_array(names, cname, size))
 		return true;
 
 	return false;
@@ -2319,16 +2320,19 @@ static bool array_contains(char ***names, char *cname, int size)
 
 static bool remove_from_array(char ***names, char *cname, int size)
 {
-	char **result = get_from_array(names, cname, size);
-	if (result != NULL) {
+	char **result;
+
+	result = get_from_array(names, cname, size);
+	if (result) {
 		size_t i = result - *names;
+		char **newnames;
+
 		free(*result);
-		memmove(*names+i, *names+i+1, (size-i-1) * sizeof(char*));
-		char **newnames = (char**)realloc(*names, (size-1) * sizeof(char *));
-		if (!newnames) {
-			ERROR("Out of memory");
-			return true;
-		}
+		memmove(*names + i, *names + i + 1, (size - i - 1) * sizeof(char *));
+
+		newnames = realloc(*names, (size - 1) * sizeof(char *));
+		if (!newnames)
+			return ret_set_errno(true, ENOMEM);
 
 		*names = newnames;
 		return true;
@@ -5421,10 +5425,11 @@ int lxc_get_wait_states(const char **states)
  * These next two could probably be done smarter with reusing a common function
  * with different iterators and tests...
  */
-int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
+int list_defined_containers(const char *lxcpath, char ***names,
+			    struct lxc_container ***cret)
 {
 	__do_closedir DIR *dir = NULL;
-	int i, cfound = 0, nfound = 0;
+	size_t array_len = 0, name_array_len = 0, ct_array_len = 0;
 	struct dirent *direntp;
 	struct lxc_container *c;
 
@@ -5451,60 +5456,51 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		if (!config_file_exists(lxcpath, direntp->d_name))
 			continue;
 
-		if (names)
-			if (!add_to_array(names, direntp->d_name, cfound))
+		if (cret) {
+			c = lxc_container_new(direntp->d_name, lxcpath);
+			if (!c) {
+				INFO("Container %s:%s has a config but could not be loaded",
+				     lxcpath, direntp->d_name);
+				continue;
+			}
+
+			if (!do_lxcapi_is_defined(c)) {
+				INFO("Container %s:%s has a config but is not defined",
+				     lxcpath, direntp->d_name);
+
+				lxc_container_put(c);
+				continue;
+			}
+		}
+
+		if (names) {
+			if (!add_to_array(names, direntp->d_name, array_len))
 				goto free_bad;
-
-		cfound++;
-
-		if (!cret) {
-			nfound++;
-			continue;
+			name_array_len++;
 		}
 
-		c = lxc_container_new(direntp->d_name, lxcpath);
-		if (!c) {
-			INFO("Container %s:%s has a config but could not be loaded",
-				lxcpath, direntp->d_name);
-
-			if (names)
-				if(!remove_from_array(names, direntp->d_name, cfound--))
-					goto free_bad;
-
-			continue;
+		if (cret) {
+			if (!add_to_clist(cret, c, array_len, true)) {
+				lxc_container_put(c);
+				goto free_bad;
+			}
+			ct_array_len++;
 		}
 
-		if (!do_lxcapi_is_defined(c)) {
-			INFO("Container %s:%s has a config but is not defined",
-				lxcpath, direntp->d_name);
-
-			if (names)
-				if(!remove_from_array(names, direntp->d_name, cfound--))
-					goto free_bad;
-
-			lxc_container_put(c);
-			continue;
-		}
-
-		if (!add_to_clist(cret, c, nfound, true)) {
-			lxc_container_put(c);
-			goto free_bad;
-		}
-
-		nfound++;
+		array_len++;
 	}
 
-	return nfound;
+	return array_len;
 
 free_bad:
 	if (names && *names) {
-		for (i = 0; i < cfound; i++)
+		for (int i = 0; i < name_array_len; i++)
 			free((*names)[i]);
 		free(*names);
 	}
 
 	if (cret && *cret) {
-		for (i = 0; i < nfound; i++)
+		for (int i = 0; i < ct_array_len; i++)
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
