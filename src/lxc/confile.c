@@ -1558,21 +1558,22 @@ static int set_config_apparmor_raw(const char *key,
 {
 #if HAVE_APPARMOR
 	__do_free char *elem = NULL;
-	__do_free struct lxc_list *list = NULL;
+	__do_free struct string_entry *entry = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_apparmor_raw(lxc_conf);
 
-	list = lxc_list_new();
-	if (!list)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
 	elem = strdup(value);
 	if (!elem)
 		return ret_errno(ENOMEM);
 
-	list->elem = move_ptr(elem);
-	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, move_ptr(list));
+	entry->val = move_ptr(elem);
+	list_add_tail(&entry->head, &lxc_conf->lsm_aa_raw);
+	move_ptr(entry);
 
 	return 0;
 #else
@@ -3555,7 +3556,7 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 {
 #if HAVE_APPARMOR
 	int len;
-	struct lxc_list *it;
+	struct string_entry *entry;
 	int fulllen = 0;
 
 	if (!retv)
@@ -3563,8 +3564,8 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lsm_aa_raw) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->lsm_aa_raw, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
