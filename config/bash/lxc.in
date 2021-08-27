@@ -3,7 +3,7 @@
 _lxc_names() {
     case ${words[0]} in
         lxc-attach | lxc-cgroup | lxc-checkpoint | lxc-console | lxc-device | lxc-freeze | lxc-stop )
-            COMPREPLY=( $( compgen -W "$( command lxc-ls --active )" -- "$cur" ) )
+            COMPREPLY=( $( compgen -W "$( command lxc-ls --running )" -- "$cur" ) )
             ;;
         lxc-destroy | lxc-execute | lxc-snapshot | lxc-start )
             COMPREPLY=( $( compgen -W "$( command lxc-ls --stopped )" -- "$cur" ) )
