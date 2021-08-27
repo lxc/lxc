@@ -2260,21 +2260,24 @@ static inline int container_cmp(struct lxc_container **first,
 
 static bool add_to_array(char ***names, char *cname, int pos)
 {
-	char **newnames = (char**)realloc(*names, (pos+1) * sizeof(char *));
-	if (!newnames) {
-		ERROR("Out of memory");
-		return false;
-	}
+	__do_free char *dup_cname = NULL;
+	char **newnames;
 
-	*names = newnames;
-	newnames[pos] = strdup(cname);
-	if (!newnames[pos])
+	dup_cname = strdup(cname);
+	if (!dup_cname)
 		return false;
+
+	newnames = realloc(*names, (pos + 1) * sizeof(char *));
+	if (!newnames)
+		return ret_set_errno(false, ENOMEM);
+
+	newnames[pos] = move_ptr(dup_cname);
 
 	/* Sort the array as we will use binary search on it. */
 	qsort(newnames, pos + 1, sizeof(char *),
 	      (int (*)(const void *, const void *))string_cmp);
 
+	*names = newnames;
 	return true;
 }
 
