@@ -3378,7 +3378,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->groups);
 	INIT_LIST_HEAD(&new->state_clients);
 	new->lsm_aa_profile = NULL;
-	lxc_list_init(&new->lsm_aa_raw);
+	INIT_LIST_HEAD(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
 	new->lsm_se_keyring_context = NULL;
 	new->keyring_disable_session = false;
@@ -4716,15 +4716,15 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 
 int lxc_clear_apparmor_raw(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct string_entry *entry, *nentry;
 
-	lxc_list_for_each_safe (it, &c->lsm_aa_raw, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(entry, nentry, &c->lsm_aa_raw, head) {
+		list_del(&entry->head);
+		free(entry->val);
+		free(entry);
 	}
 
-	lxc_list_init(&c->lsm_aa_raw);
+	INIT_LIST_HEAD(&c->lsm_aa_raw);
 	return 0;
 }
 

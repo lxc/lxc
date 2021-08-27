@@ -424,7 +424,7 @@ struct lxc_conf {
 	bool lsm_aa_profile_created;
 	unsigned int lsm_aa_allow_nesting;
 	unsigned int lsm_aa_allow_incomplete;
-	struct lxc_list lsm_aa_raw;
+	struct list_head lsm_aa_raw;
 	char *lsm_se_context;
 	char *lsm_se_keyring_context;
 	bool keyring_disable_session;
