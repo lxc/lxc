@@ -2775,14 +2775,13 @@ static const char nesting_helpers[] =
 "proc dev/.lxc/proc proc create=dir,optional 0 0\n"
 "sys dev/.lxc/sys sysfs create=dir,optional 0 0\n";
 
-FILE *make_anonymous_mount_file(struct lxc_list *mount,
+FILE *make_anonymous_mount_file(const struct list_head *mount_entries,
 				bool include_nesting_helpers)
 {
 	__do_close int fd = -EBADF;
 	FILE *f;
 	int ret;
-	char *mount_entry;
-	struct lxc_list *iterator;
+	struct string_entry *entry;
 
 	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
@@ -2798,13 +2797,12 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 		TRACE("Created temporary mount file");
 	}
 
-	lxc_list_for_each (iterator, mount) {
+	list_for_each_entry(entry, mount_entries, head) {
 		size_t len;
 
-		mount_entry = iterator->elem;
-		len = strlen(mount_entry);
+		len = strlen(entry->val);
 
-		ret = lxc_write_nointr(fd, mount_entry, len);
+		ret = lxc_write_nointr(fd, entry->val, len);
 		if (ret != len)
 			return NULL;
 
@@ -2831,12 +2829,12 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
-			       struct lxc_rootfs *rootfs, struct lxc_list *mount,
+			       struct lxc_rootfs *rootfs,
 			       const char *lxc_name, const char *lxc_path)
 {
 	__do_fclose FILE *f = NULL;
 
-	f = make_anonymous_mount_file(mount, conf->lsm_aa_allow_nesting);
+	f = make_anonymous_mount_file(&conf->mount_entries, conf->lsm_aa_allow_nesting);
 	if (!f)
 		return -1;
 
@@ -3057,10 +3055,10 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 	int fret = -1;
 	struct lxc_conf *conf = handler->conf;
 	const char *fstab = conf->fstab;
-	struct lxc_list *mount = &conf->mount_list;
 	int ret;
 
-	f_entries = make_anonymous_mount_file(mount, conf->lsm_aa_allow_nesting);
+	f_entries = make_anonymous_mount_file(&conf->mount_entries,
+					      conf->lsm_aa_allow_nesting);
 	if (!f_entries) {
 		SYSERROR("Failed to create anonymous mount file");
 		goto out;
@@ -3365,7 +3363,7 @@ struct lxc_conf *lxc_conf_init(void)
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 	INIT_LIST_HEAD(&(new->bpf_devices).devices);
-	lxc_list_init(&new->mount_list);
+	INIT_LIST_HEAD(&new->mount_entries);
 	INIT_LIST_HEAD(&new->caps.list);
 	INIT_LIST_HEAD(&new->id_map);
 	new->root_nsuid_map = NULL;
@@ -4322,9 +4320,8 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup mounts");
 
-	if (!lxc_list_empty(&lxc_conf->mount_list)) {
-		ret = setup_mount_entries(lxc_conf, &lxc_conf->rootfs,
-					  &lxc_conf->mount_list, name, lxcpath);
+	if (!list_empty(&lxc_conf->mount_entries)) {
+		ret = setup_mount_entries(lxc_conf, &lxc_conf->rootfs, name, lxcpath);
 		if (ret < 0)
 			return log_error(-1, "Failed to setup mount entries");
 	}
@@ -4667,15 +4664,15 @@ int lxc_clear_environment(struct lxc_conf *c)
 
 int lxc_clear_mount_entries(struct lxc_conf *c)
 {
-	struct lxc_list *it, *next;
+	struct string_entry *entry, *nentry;
 
-	lxc_list_for_each_safe (it, &c->mount_list, next) {
-		lxc_list_del(it);
-		free(it->elem);
-		free(it);
+	list_for_each_entry_safe(entry, nentry, &c->mount_entries, head) {
+		list_del(&entry->head);
+		free(entry->val);
+		free(entry);
 	}
 
-	lxc_list_init(&c->mount_list);
+	INIT_LIST_HEAD(&c->mount_entries);
 	return 0;
 }
 
@@ -5677,29 +5674,6 @@ void suggest_default_idmap(void)
 	ERROR("lxc.include = %s", LXC_DEFAULT_CONFIG);
 	ERROR("lxc.idmap = u 0 %u %u", uid, urange);
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
-}
-
-/* Return the list of cgroup_settings sorted according to the following rules
- * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
- */
-void sort_cgroup_settings(struct lxc_conf *conf)
-{
-	struct lxc_cgroup *cgroup, *memsw_limit, *ncgroup;
-
-	/* Iterate over the cgroup settings and copy them to the output list. */
-	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
-		if (strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes")) {
-			/* Store the memsw_limit location */
-			memsw_limit = cgroup;
-		} else if (memsw_limit && strequal(cgroup->subsystem, "memory.limit_in_bytes")) {
-			/*
-			 * lxc.cgroup.memory.memsw.limit_in_bytes is found
-			 * before lxc.cgroup.memory.limit_in_bytes, swap these
-			 * two items.
-			 */
-			list_swap(&memsw_limit->head, &cgroup->head);
-		}
-	}
 }
 
 int lxc_set_environment(const struct lxc_conf *conf)

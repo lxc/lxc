@@ -2703,6 +2703,32 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 	return lxc_write_openat(h->path_lim, filename, value, strlen(value));
 }
 
+/*
+ * Return the list of cgroup_settings sorted according to the following rules
+ * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
+ */
+static void sort_cgroup_settings(struct lxc_conf *conf)
+{
+	LIST_HEAD(memsw_list);
+	struct lxc_cgroup *cgroup, *ncgroup;
+
+	/* Iterate over the cgroup settings and copy them to the output list. */
+	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
+		if (!strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes"))
+			continue;
+
+		/* Move the memsw entry from the cgroup settings list. */
+		list_move_tail(&cgroup->head, &memsw_list);
+	}
+
+	/*
+	 * Append all the memsw entries to the end of the cgroup settings list
+	 * to make sure they are applied after all memory limit settings.
+	 */
+	list_splice_tail(&memsw_list, &conf->cgroup);
+
+}
+
 __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 						    struct lxc_conf *conf,
 						    bool do_devices)

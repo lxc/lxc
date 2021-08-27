@@ -513,6 +513,7 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 		return syserror_set(ENOMEM, "Failed to allocate new device item");
 
 	list_add(&new_device->head, &bpf_devices->devices);
+	move_ptr(new_device);
 
 	TRACE("Added new device rule"); /* The device list was altered. */
 	return 1;

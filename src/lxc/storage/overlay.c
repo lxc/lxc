@@ -656,7 +656,7 @@ err:
 /* To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
  * with overlay lxc.mount.entry entries we need to update absolute paths for
  * upper- and workdir. This update is done in two locations:
- * lxc_conf->unexpanded_config and lxc_conf->mount_list. Both updates are done
+ * lxc_conf->unexpanded_config and lxc_conf->mount_entries. Both updates are done
  * independent of each other since lxc_conf->mountlist may contain more mount
  * entries (e.g. from other included files) than lxc_conf->unexpanded_config.
  */
@@ -667,7 +667,7 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 	char new_upper[PATH_MAX], new_work[PATH_MAX], old_upper[PATH_MAX],
 	    old_work[PATH_MAX];
 	size_t i;
-	struct lxc_list *iterator;
+	struct string_entry *entry;
 	char *cleanpath = NULL;
 	int fret = -1;
 	int ret = 0;
@@ -681,7 +681,7 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 
 	/*
 	 * We have to update lxc_conf->unexpanded_config separately from
-	 * lxc_conf->mount_list.
+	 * lxc_conf->mount_entries.
 	 */
 	for (i = 0; i < sizeof(ovl_dirs) / sizeof(ovl_dirs[0]); i++) {
 		if (!clone_update_unexp_ovl_paths(lxc_conf, lxc_path, newpath,
@@ -700,11 +700,11 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 	if (ret < 0 || ret >= PATH_MAX)
 		goto err;
 
-	lxc_list_for_each(iterator, &lxc_conf->mount_list) {
+	list_for_each_entry(entry, &lxc_conf->mount_entries, head) {
 		char *mnt_entry = NULL, *new_mnt_entry = NULL, *tmp = NULL,
 		     *tmp_mnt_entry = NULL;
 
-		mnt_entry = iterator->elem;
+		mnt_entry = entry->val;
 
 		if (strstr(mnt_entry, "overlay"))
 			tmp = "upperdir";
@@ -721,26 +721,26 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 		if (ret < 0 || ret >= PATH_MAX)
 			goto err;
 
-		if (strstr(mnt_entry, old_upper)) {
-			tmp_mnt_entry =
-			    lxc_string_replace(old_upper, new_upper, mnt_entry);
-		}
+		if (strstr(mnt_entry, old_upper))
+			tmp_mnt_entry = lxc_string_replace(old_upper, new_upper, mnt_entry);
 
 		if (strstr(mnt_entry, old_work)) {
 			if (tmp_mnt_entry)
-				new_mnt_entry = lxc_string_replace(
-				    old_work, new_work, tmp_mnt_entry);
+				new_mnt_entry = lxc_string_replace(old_work,
+								   new_work,
+								   tmp_mnt_entry);
 			else
-				new_mnt_entry = lxc_string_replace(
-				    old_work, new_work, mnt_entry);
+				new_mnt_entry = lxc_string_replace(old_work,
+								   new_work,
+								   mnt_entry);
 		}
 
 		if (new_mnt_entry) {
-			free(iterator->elem);
-			iterator->elem = strdup(new_mnt_entry);
+			free(entry->val);
+			entry->val = strdup(new_mnt_entry);
 		} else if (tmp_mnt_entry) {
-			free(iterator->elem);
-			iterator->elem = strdup(tmp_mnt_entry);
+			free(entry->val);
+			entry->val = strdup(tmp_mnt_entry);
 		}
 
 		free(new_mnt_entry);

@@ -412,8 +412,8 @@ static int set_config_net_type(const char *key, const char *value,
 
 	if (strequal(value, "veth")) {
 		netdev->type = LXC_NET_VETH;
-		lxc_list_init(&netdev->priv.veth_attr.ipv4_routes);
-		lxc_list_init(&netdev->priv.veth_attr.ipv6_routes);
+		INIT_LIST_HEAD(&netdev->priv.veth_attr.ipv4_routes);
+		INIT_LIST_HEAD(&netdev->priv.veth_attr.ipv6_routes);
 		lxc_list_init(&netdev->priv.veth_attr.vlan_tagged_ids);
 		if (!lxc_veth_flag_to_mode(netdev->priv.veth_attr.mode))
 			lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, "bridge");
@@ -900,7 +900,6 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 {
 	__do_free char *valdup = NULL;
 	__do_free struct lxc_inetdev *inetdev = NULL;
-	__do_free struct lxc_list *list = NULL;
 	int ret;
 	char *netmask, *slash;
 	struct lxc_netdev *netdev = data;
@@ -917,12 +916,6 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 	inetdev = zalloc(sizeof(*inetdev));
 	if (!inetdev)
 		return ret_errno(ENOMEM);
-
-	list = lxc_list_new();
-	if (!list)
-		return ret_errno(ENOMEM);
-
-	list->elem = inetdev;
 
 	valdup = strdup(value);
 	if (!valdup)
@@ -947,9 +940,8 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 	if (!ret || ret < 0)
 		return ret_errno(EINVAL);
 
-	lxc_list_add_tail(&netdev->priv.veth_attr.ipv4_routes, list);
+	list_add_tail(&inetdev->head, &netdev->priv.veth_attr.ipv4_routes);
 	move_ptr(inetdev);
-	move_ptr(list);
 
 	return 0;
 }
@@ -1042,7 +1034,6 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 {
 	__do_free char *valdup = NULL;
 	__do_free struct lxc_inet6dev *inet6dev = NULL;
-	__do_free struct lxc_list *list = NULL;
 	int ret;
 	char *netmask, *slash;
 	struct lxc_netdev *netdev = data;
@@ -1058,10 +1049,6 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 
 	inet6dev = zalloc(sizeof(*inet6dev));
 	if (!inet6dev)
-		return ret_errno(ENOMEM);
-
-	list = lxc_list_new();
-	if (!list)
 		return ret_errno(ENOMEM);
 
 	valdup = strdup(value);
@@ -1087,10 +1074,8 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 	if (!ret || ret < 0)
 		return ret_errno(EINVAL);
 
-	list->elem = inet6dev;
-	lxc_list_add_tail(&netdev->priv.veth_attr.ipv6_routes, list);
+	list_add_tail(&inet6dev->head, &netdev->priv.veth_attr.ipv6_routes);
 	move_ptr(inet6dev);
-	move_ptr(list);
 
 	return 0;
 }
@@ -2363,21 +2348,22 @@ static int set_config_mount(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	__do_free char *mntelem = NULL;
-	__do_free struct lxc_list *mntlist = NULL;
+	__do_free struct string_entry *entry = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
-	mntlist = lxc_list_new();
-	if (!mntlist)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
 	mntelem = strdup(value);
 	if (!mntelem)
 		return ret_errno(ENOMEM);
 
-	mntlist->elem = move_ptr(mntelem);
-	lxc_list_add_tail(&lxc_conf->mount_list, move_ptr(mntlist));
+	entry->val = move_ptr(mntelem);
+	list_add_tail(&entry->head, &lxc_conf->mount_entries);
+	move_ptr(entry);
 
 	return 0;
 }
@@ -4151,15 +4137,15 @@ static int get_config_mount(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->mount_list) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->mount_entries, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
@@ -5733,7 +5719,7 @@ static int clr_config_net_veth_ipv4_route(const char *key,
 					  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev = data;
-	struct lxc_list *cur, *next;
+	struct lxc_inetdev *inetdev, *ninetdev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
@@ -5741,10 +5727,9 @@ static int clr_config_net_veth_ipv4_route(const char *key,
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
 
-	lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inetdev, ninetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
+		list_del(&inetdev->head);
+		free(inetdev);
 	}
 
 	return 0;
@@ -5784,7 +5769,7 @@ static int clr_config_net_veth_ipv6_route(const char *key,
 					  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev = data;
-	struct lxc_list *cur, *next;
+	struct lxc_inet6dev *inet6dev, *ninet6dev;
 
 	if (!netdev)
 		return ret_errno(EINVAL);
@@ -5792,10 +5777,9 @@ static int clr_config_net_veth_ipv6_route(const char *key,
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
 
-	lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
-		lxc_list_del(cur);
-		free(cur->elem);
-		free(cur);
+	list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
+		list_del(&inet6dev->head);
+		free(inet6dev);
 	}
 
 	return 0;
@@ -6321,7 +6305,7 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 	int len;
 	size_t listlen;
 	char buf[INET_ADDRSTRLEN];
-	struct lxc_list *it;
+	struct lxc_inetdev *inetdev;
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
@@ -6336,13 +6320,11 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&netdev->priv.veth_attr.ipv4_routes);
-
-	lxc_list_for_each(it, &netdev->priv.veth_attr.ipv4_routes) {
-		struct lxc_inetdev *i = it->elem;
-		if (!inet_ntop(AF_INET, &i->addr, buf, sizeof(buf)))
+	listlen = list_len(&netdev->priv.veth_attr.ipv4_routes);
+	list_for_each_entry(inetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
+		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
 			return -errno;
-		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
+		strprint(retv, inlen, "%s/%u%s", buf, inetdev->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
 
@@ -6413,7 +6395,7 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 	int len;
 	size_t listlen;
 	char buf[INET6_ADDRSTRLEN];
-	struct lxc_list *it;
+	struct lxc_inet6dev *inet6dev;
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
@@ -6428,13 +6410,11 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = lxc_list_len(&netdev->priv.veth_attr.ipv6_routes);
-
-	lxc_list_for_each(it, &netdev->priv.veth_attr.ipv6_routes) {
-		struct lxc_inet6dev *i = it->elem;
-		if (!inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf)))
+	listlen = list_len(&netdev->priv.veth_attr.ipv6_routes);
+	list_for_each_entry(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
+		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;
-		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
+		strprint(retv, inlen, "%s/%u%s", buf, inet6dev->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
 

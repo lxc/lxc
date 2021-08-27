@@ -368,8 +368,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			}
 
 			if (netdev->type == LXC_NET_VETH) {
-				lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
-					inet4dev = cur->elem;
+				list_for_each_entry(inet4dev, &netdev->priv.veth_attr.ipv4_routes, head) {
 					if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4))) {
 						ERROR("Invalid ipv4 veth route");
 						return;
@@ -378,8 +377,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 					TRACE("ipv4 veth route: %s/%u", bufinet4, inet4dev->prefix);
 				}
 
-				lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
-					inet6dev = cur->elem;
+				list_for_each_entry(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
 					if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6))) {
 						ERROR("Invalid ipv6 veth route");
 						return;
@@ -423,16 +421,14 @@ void lxc_clear_netdev(struct lxc_netdev *netdev)
 	}
 
 	if (netdev->type == LXC_NET_VETH) {
-		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
-			lxc_list_del(cur);
-			free(cur->elem);
-			free(cur);
+		list_for_each_entry_safe(inetdev, ninetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
+			list_del(&inetdev->head);
+			free(inetdev);
 		}
 
-		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
-			lxc_list_del(cur);
-			free(cur->elem);
-			free(cur);
+		list_for_each_entry_safe(inet6dev, ninet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
+			list_del(&inet6dev->head);
+			free(inet6dev);
 		}
 
 		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.vlan_tagged_ids, next) {
