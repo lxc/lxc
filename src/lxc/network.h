@@ -57,10 +57,6 @@ struct lxc_inet6dev {
 	struct list_head head;
 };
 
-struct lxc_route6 {
-	struct in6_addr addr;
-};
-
 /* Contains information about the host side veth device.
  * @pair    : Name of the host side veth device.
  *            If the user requested that the host veth device be created with a
@@ -77,7 +73,7 @@ struct ifla_veth {
 	char veth1[IFNAMSIZ];
 	int ifindex;
 	struct list_head ipv4_routes;
-	struct lxc_list ipv6_routes;
+	struct list_head ipv6_routes;
 	int mode; /* bridge, router */
 	short vlan_id;
 	bool vlan_id_set;
