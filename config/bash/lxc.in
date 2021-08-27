@@ -5,12 +5,13 @@ _lxc_names() {
         lxc-attach | lxc-cgroup | lxc-checkpoint | lxc-console | lxc-device | lxc-freeze | lxc-stop )
             COMPREPLY=( $( compgen -W "$( command lxc-ls --active )" -- "$cur" ) )
             ;;
-        lxc-start | lxc-destroy | lxc-execute | lxc-snapshot | lxc-start )
+        lxc-destroy | lxc-execute | lxc-snapshot | lxc-start )
             COMPREPLY=( $( compgen -W "$( command lxc-ls --stopped )" -- "$cur" ) )
             ;;
         lxc-copy | lxc-info | lxc-monitor | lxc-wait )
             COMPREPLY=( $( compgen -W "$( command lxc-ls --defined )" -- "$cur" ) )
             ;;
+        lxc-autostart | lxc-create | lxc-checkconfig | lxc-config | lxc-ls | \
         lxc-top | lxc-unshare | lxc-update-config | lxc-usernsexec )
             ;;
         lxc-unfreeze )
