@@ -354,6 +354,11 @@ struct caps {
 	struct list_head list;
 };
 
+struct string_entry {
+	char *val;
+	struct list_head head;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -389,7 +394,7 @@ struct lxc_conf {
 	struct {
 		char *fstab;
 		int auto_mounts;
-		struct lxc_list mount_list;
+		struct list_head mount_entries;
 	};
 
 	struct caps caps;
@@ -567,7 +572,8 @@ __hidden extern int parse_lxc_mount_attrs(struct lxc_mount_options *opts, char *
 __hidden extern int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts);
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
-__hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
+__hidden extern FILE *make_anonymous_mount_file(const struct list_head *mount,
+						bool include_nesting_helpers);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
