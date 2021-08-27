@@ -568,7 +568,6 @@ __hidden extern int parse_mount_attrs(struct lxc_mount_options *opts, const char
 __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
-__hidden extern void sort_cgroup_settings(struct lxc_conf *conf);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);

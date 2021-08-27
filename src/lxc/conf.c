@@ -5679,29 +5679,6 @@ void suggest_default_idmap(void)
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
 }
 
-/* Return the list of cgroup_settings sorted according to the following rules
- * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
- */
-void sort_cgroup_settings(struct lxc_conf *conf)
-{
-	struct lxc_cgroup *cgroup, *memsw_limit, *ncgroup;
-
-	/* Iterate over the cgroup settings and copy them to the output list. */
-	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
-		if (strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes")) {
-			/* Store the memsw_limit location */
-			memsw_limit = cgroup;
-		} else if (memsw_limit && strequal(cgroup->subsystem, "memory.limit_in_bytes")) {
-			/*
-			 * lxc.cgroup.memory.memsw.limit_in_bytes is found
-			 * before lxc.cgroup.memory.limit_in_bytes, swap these
-			 * two items.
-			 */
-			list_swap(&memsw_limit->head, &cgroup->head);
-		}
-	}
-}
-
 int lxc_set_environment(const struct lxc_conf *conf)
 {
 	struct environment_entry *env;
