@@ -3374,7 +3374,7 @@ struct lxc_conf *lxc_conf_init(void)
 	INIT_LIST_HEAD(&new->procs);
 	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
-		lxc_list_init(&new->hooks[i]);
+		INIT_LIST_HEAD(&new->hooks[i]);
 	lxc_list_init(&new->groups);
 	INIT_LIST_HEAD(&new->state_clients);
 	new->lsm_aa_profile = NULL;
@@ -3922,11 +3922,11 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 static bool verify_start_hooks(struct lxc_conf *conf)
 {
 	char path[PATH_MAX];
-	struct lxc_list *it;
+	struct string_entry *hook;
 
-	lxc_list_for_each (it, &conf->hooks[LXCHOOK_START]) {
+	list_for_each_entry(hook, &conf->hooks[LXCHOOK_START], head) {
 		int ret;
-		char *hookname = it->elem;
+		char *hookname = hook->val;
 
 		ret = strnprintf(path, sizeof(path), "%s%s",
 			       conf->rootfs.path ? conf->rootfs.mount : "",
@@ -4422,8 +4422,8 @@ int lxc_setup(struct lxc_handler *handler)
 int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 		  char *argv[])
 {
-	struct lxc_list *it;
 	int which;
+	struct string_entry *entry;
 
 	for (which = 0; which < NUM_LXC_HOOKS; which ++) {
 		if (strequal(hookname, lxchook_names[which]))
@@ -4433,9 +4433,9 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 	if (which >= NUM_LXC_HOOKS)
 		return -1;
 
-	lxc_list_for_each (it, &conf->hooks[which]) {
+	list_for_each_entry(entry, &conf->hooks[which], head) {
 		int ret;
-		char *hook = it->elem;
+		char *hook = entry->val;
 
 		ret = run_script_argv(name, conf->hooks_version, "lxc", hook,
 				      hookname, argv);
@@ -4684,9 +4684,9 @@ int lxc_clear_automounts(struct lxc_conf *c)
 
 int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 {
-	struct lxc_list *it, *next;
 	const char *k = NULL;
 	bool all = false, done = false;
+	struct string_entry *entry, *nentry;
 
 	if (strequal(key, "lxc.hook"))
 		all = true;
@@ -4697,13 +4697,12 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 
 	for (int i = 0; i < NUM_LXC_HOOKS; i++) {
 		if (all || strequal(k, lxchook_names[i])) {
-			lxc_list_for_each_safe (it, &c->hooks[i], next) {
-				lxc_list_del(it);
-				free(it->elem);
-				free(it);
+			list_for_each_entry_safe(entry, nentry, &c->hooks[i], head) {
+				list_del(&entry->head);
+				free(entry->val);
+				free(entry);
 			}
-			lxc_list_init(&c->hooks[i]);
-
+			INIT_LIST_HEAD(&c->hooks[i]);
 			done = true;
 		}
 	}

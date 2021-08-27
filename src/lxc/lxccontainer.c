@@ -2961,7 +2961,7 @@ static bool container_destroy(struct lxc_container *c,
 		goto out;
 	}
 
-	if (conf && !lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
+	if (conf && !list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
 		/* Start of environment variable setup for hooks */
 		if (setenv("LXC_NAME", c->name, 1))
 			SYSERROR("Failed to set environment variable for container name");
@@ -3400,26 +3400,30 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
 	__do_free char *cpath = NULL;
 	int i, len, ret;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	len = strlen(oldc->config_path) + strlen(oldc->name) + 3;
-	cpath = must_realloc(NULL, len);
+	cpath = malloc(len);
+	if (!cpath)
+		return ret_errno(ENOMEM);
+
 	ret = strnprintf(cpath, len, "%s/%s/", oldc->config_path, oldc->name);
 	if (ret < 0)
 		return -1;
 
-	for (i=0; i<NUM_LXC_HOOKS; i++) {
-		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
-			char *hookname = it->elem;
-			char *fname = strrchr(hookname, '/');
+	for (i = 0; i < NUM_LXC_HOOKS; i++) {
+		list_for_each_entry(entry, &c->lxc_conf->hooks[i], head) {
+			__do_free char *hookname = NULL;
+			char *fname, *new_hook;
 			char tmppath[PATH_MAX];
-			if (!fname) /* relative path - we don't support, but maybe we should */
+
+			fname = strrchr(hookname, '/');
+			if (!fname)
 				return 0;
 
-			if (!strnequal(hookname, cpath, len - 1)) {
-				/* this hook is public - ignore */
+			/* If this hook is public - ignore. */
+			if (!strnequal(hookname, cpath, len - 1))
 				continue;
-			}
 
 			/* copy the script, and change the entry in confile */
 			ret = strnprintf(tmppath, sizeof(tmppath), "%s/%s/%s",
@@ -3427,30 +3431,27 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			if (ret < 0)
 				return -1;
 
-			ret = copy_file(it->elem, tmppath);
+			ret = copy_file(entry->val, tmppath);
 			if (ret < 0)
 				return -1;
 
-			free(it->elem);
+			new_hook = strdup(tmppath);
+			if (!new_hook)
+				return syserror("out of memory copying hook path");
 
-			it->elem = strdup(tmppath);
-			if (!it->elem) {
-				ERROR("out of memory copying hook path");
-				return -1;
-			}
+			hookname = move_ptr(entry->val);
+			entry->val = move_ptr(new_hook);
 		}
 	}
 
 	if (!clone_update_unexp_hooks(c->lxc_conf, oldc->config_path,
-			c->config_path, oldc->name, c->name)) {
-		ERROR("Error saving new hooks in clone");
-		return -1;
+				      c->config_path, oldc->name, c->name)) {
+		return syserror_ret(-1, "Error saving new hooks in clone");
 	}
 
 	do_lxcapi_save_config(c, NULL);
 	return 0;
 }
-
 
 static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 {
@@ -3686,7 +3687,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		bdev->dest = strdup(lxc_storage_get_path(bdev->src, bdev->type));
 	}
 
-	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
+	if (!list_empty(&conf->hooks[LXCHOOK_CLONE])) {
 		/* Start of environment variable setup for hooks */
 		if (c0->name && setenv("LXC_SRC_NAME", c0->name, 1))
 			SYSERROR("failed to set environment variable for source container name");
