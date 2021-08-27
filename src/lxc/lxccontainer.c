@@ -2284,13 +2284,12 @@ static bool add_to_array(char ***names, char *cname, int pos)
 static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 			 int pos, bool sort)
 {
-	struct lxc_container **newlist = realloc(*list, (pos + 1) * sizeof(struct lxc_container *));
-	if (!newlist) {
-		ERROR("Out of memory");
-		return false;
-	}
+	struct lxc_container **newlist;
 
-	*list = newlist;
+	newlist = realloc(*list, (pos + 1) * sizeof(struct lxc_container *));
+	if (!newlist)
+		return ret_set_errno(false, ENOMEM);
+
 	newlist[pos] = c;
 
 	/* Sort the array as we will use binary search on it. */
@@ -2298,6 +2297,7 @@ static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 		qsort(newlist, pos + 1, sizeof(struct lxc_container *),
 		      (int (*)(const void *, const void *))container_cmp);
 
+	*list = newlist;
 	return true;
 }
 
