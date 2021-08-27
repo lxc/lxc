@@ -27,11 +27,12 @@ _lxc_names() {
 
 _lxc_append_name() {
     local vms=$(command lxc-ls)
+    local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
     # If `--name` or `-n` are present, do not complete with container names.
     for param in ${words[@]}; do
-        if [[ ${param} =~ ^--name=(.*)$ ]]; then
+        if [[ ${param} =~ ^--name(=(.*))?$ ]]; then
             return
-        elif [[ ${param} =~ ^-n$ ]]; then
+        elif [[ ${param} =~ ${shortoptnamexp} ]]; then
             return
         fi
         for vm in ${vms[@]}; do
