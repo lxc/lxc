@@ -416,7 +416,7 @@ struct lxc_conf {
 
 	struct {
 		unsigned int hooks_version;
-		struct lxc_list hooks[NUM_LXC_HOOKS];
+		struct list_head hooks[NUM_LXC_HOOKS];
 	};
 
 	char *lsm_aa_profile;

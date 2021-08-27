@@ -1026,14 +1026,15 @@ static int set_config_net_script_down(const char *key, const char *value,
 static int add_hook(struct lxc_conf *lxc_conf, int which, __owns char *hook)
 {
 	__do_free char *val = hook;
-	struct lxc_list *hooklist;
+	__do_free struct string_entry *entry;
 
-	hooklist = lxc_list_new();
-	if (!hooklist)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
-	hooklist->elem = move_ptr(val);
-	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
+	entry->val = move_ptr(val);
+	list_add_tail(&entry->head, &lxc_conf->hooks[which]);
+	move_ptr(entry);
 
 	return 0;
 }
@@ -3905,7 +3906,7 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 {
 	char *subkey;
 	int len, fulllen = 0, found = -1;
-	struct lxc_list *it;
+	struct string_entry *entry;
 	int i;
 
 	subkey = strchr(key, '.');
@@ -3934,8 +3935,8 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->hooks[found]) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->hooks[found], head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
