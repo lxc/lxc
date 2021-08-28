@@ -635,6 +635,7 @@ _lxc_ls() {
             # Only flags.
             ;;
         --fancy-format | -F )
+            __lxc_piped_args "${cur}" ',' NAME STATE PID RAM SWAP AUTOSTART GROUPS INTERFACE IPV4 IPV6 UNPRIVILEGED
             return
             ;;
         --groups | -g )
