@@ -961,15 +961,15 @@ static inline void hlist_move_list(struct hlist_head *old,
 	     pos && ({ n = pos->member.next; 1; });			\
 	     pos = hlist_entry_safe(n, typeof(*pos), member))
 
-static inline size_t list_len(struct list_head *list)
-{
-	size_t i = 0;
-
-	list_for_each(list, list) {
-		i++;
-	}
-
-	return i;
-}
+#define list_len(pos, head, member)                      \
+	({                                               \
+		size_t __list_len__ = 0;                 \
+                                                         \
+		list_for_each_entry(pos, head, member) { \
+			(__list_len__)++;                \
+		}                                        \
+                                                         \
+		__list_len__;                            \
+	})
 
 #endif /* __LXC_HLIST_H */

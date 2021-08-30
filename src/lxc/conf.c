@@ -3569,7 +3569,7 @@ int lxc_map_ids(struct list_head *idmap, pid_t pid)
 	/* Check if we really need to use newuidmap and newgidmap.
 	* If the user is only remapping their own {g,u}id, we don't need it.
 	*/
-	if (use_shadow && list_len(idmap) == 2) {
+	if (use_shadow && list_len(map, idmap, head) == 2) {
 		use_shadow = false;
 		list_for_each_entry(map, idmap, head) {
 			if (map->idtype == ID_TYPE_UID && map->range == 1 &&
