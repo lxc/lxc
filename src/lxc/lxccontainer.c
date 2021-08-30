@@ -2318,29 +2318,6 @@ static bool array_contains(char ***names, char *cname, int size)
 	return false;
 }
 
-static bool remove_from_array(char ***names, char *cname, int size)
-{
-	char **result;
-
-	result = get_from_array(names, cname, size);
-	if (result) {
-		size_t i = result - *names;
-		char **newnames;
-
-		free(*result);
-		memmove(*names + i, *names + i + 1, (size - i - 1) * sizeof(char *));
-
-		newnames = realloc(*names, (size - 1) * sizeof(char *));
-		if (!newnames)
-			return ret_set_errno(true, ENOMEM);
-
-		*names = newnames;
-		return true;
-	}
-
-	return false;
-}
-
 static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 {
 	pid_t pid;
@@ -5602,14 +5579,11 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		c = lxc_container_new(p, lxcpath);
 		if (!c) {
-			INFO("Container %s:%s is running but could not be loaded",
-				lxcpath, p);
-
-			remove_from_array(&ct_name, p, ct_name_cnt--);
+			INFO("Container %s:%s is running but could not be loaded", lxcpath, p);
 			if (is_hashed)
 				free(p);
 
-			continue;
+			goto free_cret_list;
 		}
 
 		if (is_hashed)
@@ -5664,9 +5638,8 @@ out:
 int list_all_containers(const char *lxcpath, char ***nret,
 			struct lxc_container ***cret)
 {
-	int i, ret, active_cnt, ct_cnt, ct_list_cnt;
-	char **active_name;
-	char **ct_name = NULL;
+	int active_cnt, ct_cnt, ct_list_cnt, ret;
+	char **active_name = NULL, **ct_name = NULL;
 	struct lxc_container **ct_list = NULL;
 
 	ct_cnt = list_defined_containers(lxcpath, &ct_name, NULL);
@@ -5679,67 +5652,67 @@ int list_all_containers(const char *lxcpath, char ***nret,
 		goto free_ct_name;
 	}
 
-	for (i = 0; i < active_cnt; i++) {
-		if (!array_contains(&ct_name, active_name[i], ct_cnt)) {
-			if (!add_to_array(&ct_name, active_name[i], ct_cnt)) {
-				ret = -1;
-				goto free_active_name;
+	ret = -EINVAL;
+	for (int i = 0; i < active_cnt; i++) {
+		if (array_contains(&ct_name, active_name[i], ct_cnt))
+			continue;
+
+		if (!add_to_array(&ct_name, active_name[i], ct_cnt))
+			goto free_active_name;
+
+		ct_cnt++;
+	}
+
+	if (cret) {
+		ct_list_cnt = 0;
+		for (int i = 0; i < ct_cnt; i++) {
+			__put_lxc_container struct lxc_container *c = NULL;
+
+			c = lxc_container_new(ct_name[i], lxcpath);
+			if (!c) {
+				WARN("Container %s:%s could not be loaded", lxcpath, ct_name[i]);
+				goto free_ct_list;
 			}
 
-			ct_cnt++;
+			if (!add_to_clist(&ct_list, c, ct_list_cnt, false))
+				goto free_ct_list;
+
+			ct_list_cnt++;
+			move_ptr(c);
 		}
 
-		free_disarm(active_name[i]);
-	}
-
-	free_disarm(active_name);
-	active_cnt = 0;
-
-	for (i = 0, ct_list_cnt = 0; i < ct_cnt && cret; i++) {
-		struct lxc_container *c;
-
-		c = lxc_container_new(ct_name[i], lxcpath);
-		if (!c) {
-			WARN("Container %s:%s could not be loaded", lxcpath, ct_name[i]);
-			remove_from_array(&ct_name, ct_name[i], ct_cnt--);
-			continue;
-		}
-
-		if (!add_to_clist(&ct_list, c, ct_list_cnt, false)) {
-			lxc_container_put(c);
-			ret = -1;
-			goto free_ct_list;
-		}
-
-		ct_list_cnt++;
-	}
-
-	if (cret)
 		*cret = ct_list;
+	}
+
+	for (int i = 0; i < active_cnt; i++)
+		free(active_name[i]);
+	free(active_name);
 
 	if (nret) {
 		*nret = ct_name;
 	} else {
-		ret = ct_cnt;
-		goto free_ct_name;
+		for (int i = 0; i < ct_cnt; i++)
+			free(ct_name[i]);
+		free(ct_name);
 	}
 
 	return ct_cnt;
 
 free_ct_list:
-	for (i = 0; i < ct_list_cnt; i++)
+	for (int i = 0; i < ct_list_cnt; i++)
 		lxc_container_put(ct_list[i]);
 	free(ct_list);
 
 free_active_name:
-	for (i = 0; i < active_cnt; i++)
+	for (int i = 0; i < active_cnt; i++)
 		free(active_name[i]);
 	free(active_name);
 
 free_ct_name:
-	for (i = 0; i < ct_cnt; i++)
+	for (int i = 0; i < ct_cnt; i++)
 		free(ct_name[i]);
 	free(ct_name);
+
 	return ret;
 }
 
