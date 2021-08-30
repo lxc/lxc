@@ -3401,12 +3401,12 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			char *fname, *new_hook;
 			char tmppath[PATH_MAX];
 
-			fname = strrchr(hookname, '/');
+			fname = strrchr(entry->val, '/');
 			if (!fname)
 				return 0;
 
 			/* If this hook is public - ignore. */
-			if (!strnequal(hookname, cpath, len - 1))
+			if (!strnequal(entry->val, cpath, len - 1))
 				continue;
 
 			/* copy the script, and change the entry in confile */
