@@ -416,7 +416,7 @@ struct lxc_conf {
 
 	struct {
 		unsigned int hooks_version;
-		struct lxc_list hooks[NUM_LXC_HOOKS];
+		struct list_head hooks[NUM_LXC_HOOKS];
 	};
 
 	char *lsm_aa_profile;
@@ -424,7 +424,7 @@ struct lxc_conf {
 	bool lsm_aa_profile_created;
 	unsigned int lsm_aa_allow_nesting;
 	unsigned int lsm_aa_allow_incomplete;
-	struct lxc_list lsm_aa_raw;
+	struct list_head lsm_aa_raw;
 	char *lsm_se_context;
 	char *lsm_se_keyring_context;
 	bool keyring_disable_session;
@@ -450,7 +450,7 @@ struct lxc_conf {
 	unsigned int start_auto;
 	unsigned int start_delay;
 	int start_order;
-	struct lxc_list groups;
+	struct list_head groups;
 	int nbd_idx;
 
 	/* unshare the mount namespace in the monitor */

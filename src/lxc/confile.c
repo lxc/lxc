@@ -1113,14 +1113,15 @@ static int set_config_net_script_down(const char *key, const char *value,
 static int add_hook(struct lxc_conf *lxc_conf, int which, __owns char *hook)
 {
 	__do_free char *val = hook;
-	struct lxc_list *hooklist;
+	__do_free struct string_entry *entry;
 
-	hooklist = lxc_list_new();
-	if (!hooklist)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
-	hooklist->elem = move_ptr(val);
-	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
+	entry->val = move_ptr(val);
+	list_add_tail(&entry->head, &lxc_conf->hooks[which]);
+	move_ptr(entry);
 
 	return 0;
 }
@@ -1487,21 +1488,25 @@ static int set_config_group(const char *key, const char *value,
 	if (!groups)
 		return ret_errno(ENOMEM);
 
-	/* In case several groups are specified in a single line split these
+	/*
+	 * In case several groups are specified in a single line split these
 	 * groups in a single element for the list.
 	 */
 	lxc_iterate_parts(token, groups, " \t") {
-		__do_free struct lxc_list *grouplist = NULL;
+		__do_free char *val = NULL;
+		__do_free struct string_entry *entry = NULL;
 
-		grouplist = lxc_list_new();
-		if (!grouplist)
+		entry = zalloc(sizeof(struct string_entry));
+		if (!entry)
 			return ret_errno(ENOMEM);
 
-		grouplist->elem = strdup(token);
-		if (!grouplist->elem)
+		val = strdup(token);
+		if (!val)
 			return ret_errno(ENOMEM);
 
-		lxc_list_add_tail(&lxc_conf->groups, move_ptr(grouplist));
+		entry->val = move_ptr(val);
+		list_add_tail(&entry->head, &lxc_conf->groups);
+		move_ptr(entry);
 	}
 
 	return 0;
@@ -1642,21 +1647,22 @@ static int set_config_apparmor_raw(const char *key,
 {
 #if HAVE_APPARMOR
 	__do_free char *elem = NULL;
-	__do_free struct lxc_list *list = NULL;
+	__do_free struct string_entry *entry = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_apparmor_raw(lxc_conf);
 
-	list = lxc_list_new();
-	if (!list)
+	entry = zalloc(sizeof(struct string_entry));
+	if (!entry)
 		return ret_errno(ENOMEM);
 
 	elem = strdup(value);
 	if (!elem)
 		return ret_errno(ENOMEM);
 
-	list->elem = move_ptr(elem);
-	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, move_ptr(list));
+	entry->val = move_ptr(elem);
+	list_add_tail(&entry->head, &lxc_conf->lsm_aa_raw);
+	move_ptr(entry);
 
 	return 0;
 #else
@@ -3774,7 +3780,7 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 {
 #if HAVE_APPARMOR
 	int len;
-	struct lxc_list *it;
+	struct string_entry *entry;
 	int fulllen = 0;
 
 	if (!retv)
@@ -3782,8 +3788,8 @@ static int get_config_apparmor_raw(const char *key, char *retv,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->lsm_aa_raw) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->lsm_aa_raw, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
@@ -4023,7 +4029,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&c->id_map);
+	listlen = list_len(map, &c->id_map, head);
 	list_for_each_entry(map, &c->id_map, head) {
 		ret = strnprintf(buf, sizeof(buf), "%c %lu %lu %lu",
 				 (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
@@ -4188,7 +4194,7 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 {
 	char *subkey;
 	int len, fulllen = 0, found = -1;
-	struct lxc_list *it;
+	struct string_entry *entry;
 	int i;
 
 	subkey = strchr(key, '.');
@@ -4217,8 +4223,8 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->hooks[found]) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->hooks[found], head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
@@ -4427,15 +4433,15 @@ static int get_config_group(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	lxc_list_for_each(it, &c->groups) {
-		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	list_for_each_entry(entry, &c->groups, head) {
+		strprint(retv, inlen, "%s\n", entry->val);
 	}
 
 	return fulllen;
@@ -6287,7 +6293,7 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv4_addresses);
+	listlen = list_len(inetdev, &netdev->ipv4_addresses, head);
 
 	list_for_each_entry(inetdev, &netdev->ipv4_addresses, head) {
 		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
@@ -6320,7 +6326,7 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->priv.veth_attr.ipv4_routes);
+	listlen = list_len(inetdev, &netdev->priv.veth_attr.ipv4_routes, head);
 	list_for_each_entry(inetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
 		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
 			return -errno;
@@ -6378,7 +6384,7 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv6_addresses);
+	listlen = list_len(inet6dev, &netdev->ipv6_addresses, head);
 	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;
@@ -6410,7 +6416,7 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->priv.veth_attr.ipv6_routes);
+	listlen = list_len(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head);
 	list_for_each_entry(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;

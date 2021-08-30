@@ -755,7 +755,7 @@ static char *get_apparmor_profile_content(struct lsm_ops *ops, struct lxc_conf *
 {
 	char *profile, *profile_name_full;
 	size_t size;
-	struct lxc_list *it;
+	struct string_entry *rule;
 
 	profile_name_full = apparmor_profile_full(conf->name, lxcpath);
 
@@ -815,8 +815,8 @@ static char *get_apparmor_profile_content(struct lsm_ops *ops, struct lxc_conf *
 		must_append_sized(&profile, &size, AA_PROFILE_UNPRIVILEGED,
 		                  STRARRAYLEN(AA_PROFILE_UNPRIVILEGED));
 
-	lxc_list_for_each(it, &conf->lsm_aa_raw) {
-		const char *line = it->elem;
+	list_for_each_entry(rule, &conf->lsm_aa_raw, head) {
+		const char *line = rule->val;
 
 		must_append_sized_full(&profile, &size, line, strlen(line), true);
 	}

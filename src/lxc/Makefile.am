@@ -1847,6 +1847,7 @@ lxc_usernsexec_SOURCES += af_unix.c af_unix.h \
 			  confile_utils.c confile_utils.h \
 			  error.c error.h \
 			  file_utils.c file_utils.h \
+			  hlist.h \
 			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			  initutils.c initutils.h \
 			  list.h \

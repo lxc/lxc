@@ -2260,34 +2260,36 @@ static inline int container_cmp(struct lxc_container **first,
 
 static bool add_to_array(char ***names, char *cname, int pos)
 {
-	char **newnames = (char**)realloc(*names, (pos+1) * sizeof(char *));
-	if (!newnames) {
-		ERROR("Out of memory");
-		return false;
-	}
+	__do_free char *dup_cname = NULL;
+	char **newnames;
 
-	*names = newnames;
-	newnames[pos] = strdup(cname);
-	if (!newnames[pos])
+	dup_cname = strdup(cname);
+	if (!dup_cname)
 		return false;
+
+	newnames = realloc(*names, (pos + 1) * sizeof(char *));
+	if (!newnames)
+		return ret_set_errno(false, ENOMEM);
+
+	newnames[pos] = move_ptr(dup_cname);
 
 	/* Sort the array as we will use binary search on it. */
 	qsort(newnames, pos + 1, sizeof(char *),
 	      (int (*)(const void *, const void *))string_cmp);
 
+	*names = newnames;
 	return true;
 }
 
 static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 			 int pos, bool sort)
 {
-	struct lxc_container **newlist = realloc(*list, (pos + 1) * sizeof(struct lxc_container *));
-	if (!newlist) {
-		ERROR("Out of memory");
-		return false;
-	}
+	struct lxc_container **newlist;
 
-	*list = newlist;
+	newlist = realloc(*list, (pos + 1) * sizeof(struct lxc_container *));
+	if (!newlist)
+		return ret_set_errno(false, ENOMEM);
+
 	newlist[pos] = c;
 
 	/* Sort the array as we will use binary search on it. */
@@ -2295,41 +2297,23 @@ static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 		qsort(newlist, pos + 1, sizeof(struct lxc_container *),
 		      (int (*)(const void *, const void *))container_cmp);
 
+	*list = newlist;
 	return true;
 }
 
-static char** get_from_array(char ***names, char *cname, int size)
+static char **get_from_array(char ***names, char *cname, int size)
 {
 	if (!*names)
 		return NULL;
 
-	return (char **)bsearch(&cname, *names, size, sizeof(char *), (int (*)(const void *, const void *))string_cmp);
+	return bsearch(&cname, *names, size, sizeof(char *),
+		       (int (*)(const void *, const void *))string_cmp);
 }
 
 static bool array_contains(char ***names, char *cname, int size)
 {
-	if(get_from_array(names, cname, size) != NULL)
+	if (get_from_array(names, cname, size))
 		return true;
-
-	return false;
-}
-
-static bool remove_from_array(char ***names, char *cname, int size)
-{
-	char **result = get_from_array(names, cname, size);
-	if (result != NULL) {
-		size_t i = result - *names;
-		free(*result);
-		memmove(*names+i, *names+i+1, (size-i-1) * sizeof(char*));
-		char **newnames = (char**)realloc(*names, (size-1) * sizeof(char *));
-		if (!newnames) {
-			ERROR("Out of memory");
-			return true;
-		}
-
-		*names = newnames;
-		return true;
-	}
 
 	return false;
 }
@@ -2961,7 +2945,7 @@ static bool container_destroy(struct lxc_container *c,
 		goto out;
 	}
 
-	if (conf && !lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
+	if (conf && !list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
 		/* Start of environment variable setup for hooks */
 		if (setenv("LXC_NAME", c->name, 1))
 			SYSERROR("Failed to set environment variable for container name");
@@ -3400,26 +3384,30 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
 	__do_free char *cpath = NULL;
 	int i, len, ret;
-	struct lxc_list *it;
+	struct string_entry *entry;
 
 	len = strlen(oldc->config_path) + strlen(oldc->name) + 3;
-	cpath = must_realloc(NULL, len);
+	cpath = malloc(len);
+	if (!cpath)
+		return ret_errno(ENOMEM);
+
 	ret = strnprintf(cpath, len, "%s/%s/", oldc->config_path, oldc->name);
 	if (ret < 0)
 		return -1;
 
-	for (i=0; i<NUM_LXC_HOOKS; i++) {
-		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
-			char *hookname = it->elem;
-			char *fname = strrchr(hookname, '/');
+	for (i = 0; i < NUM_LXC_HOOKS; i++) {
+		list_for_each_entry(entry, &c->lxc_conf->hooks[i], head) {
+			__do_free char *hookname = NULL;
+			char *fname, *new_hook;
 			char tmppath[PATH_MAX];
-			if (!fname) /* relative path - we don't support, but maybe we should */
+
+			fname = strrchr(entry->val, '/');
+			if (!fname)
 				return 0;
 
-			if (!strnequal(hookname, cpath, len - 1)) {
-				/* this hook is public - ignore */
+			/* If this hook is public - ignore. */
+			if (!strnequal(entry->val, cpath, len - 1))
 				continue;
-			}
 
 			/* copy the script, and change the entry in confile */
 			ret = strnprintf(tmppath, sizeof(tmppath), "%s/%s/%s",
@@ -3427,30 +3415,27 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			if (ret < 0)
 				return -1;
 
-			ret = copy_file(it->elem, tmppath);
+			ret = copy_file(entry->val, tmppath);
 			if (ret < 0)
 				return -1;
 
-			free(it->elem);
+			new_hook = strdup(tmppath);
+			if (!new_hook)
+				return syserror("out of memory copying hook path");
 
-			it->elem = strdup(tmppath);
-			if (!it->elem) {
-				ERROR("out of memory copying hook path");
-				return -1;
-			}
+			hookname = move_ptr(entry->val);
+			entry->val = move_ptr(new_hook);
 		}
 	}
 
 	if (!clone_update_unexp_hooks(c->lxc_conf, oldc->config_path,
-			c->config_path, oldc->name, c->name)) {
-		ERROR("Error saving new hooks in clone");
-		return -1;
+				      c->config_path, oldc->name, c->name)) {
+		return syserror_ret(-1, "Error saving new hooks in clone");
 	}
 
 	do_lxcapi_save_config(c, NULL);
 	return 0;
 }
-
 
 static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 {
@@ -3686,7 +3671,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		bdev->dest = strdup(lxc_storage_get_path(bdev->src, bdev->type));
 	}
 
-	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
+	if (!list_empty(&conf->hooks[LXCHOOK_CLONE])) {
 		/* Start of environment variable setup for hooks */
 		if (c0->name && setenv("LXC_SRC_NAME", c0->name, 1))
 			SYSERROR("failed to set environment variable for source container name");
@@ -5417,10 +5402,11 @@ int lxc_get_wait_states(const char **states)
  * These next two could probably be done smarter with reusing a common function
  * with different iterators and tests...
  */
-int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
+int list_defined_containers(const char *lxcpath, char ***names,
+			    struct lxc_container ***cret)
 {
 	__do_closedir DIR *dir = NULL;
-	int i, cfound = 0, nfound = 0;
+	size_t array_len = 0, name_array_len = 0, ct_array_len = 0;
 	struct dirent *direntp;
 	struct lxc_container *c;
 
@@ -5447,60 +5433,51 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		if (!config_file_exists(lxcpath, direntp->d_name))
 			continue;
 
-		if (names)
-			if (!add_to_array(names, direntp->d_name, cfound))
+		if (cret) {
+			c = lxc_container_new(direntp->d_name, lxcpath);
+			if (!c) {
+				INFO("Container %s:%s has a config but could not be loaded",
+				     lxcpath, direntp->d_name);
+				continue;
+			}
+
+			if (!do_lxcapi_is_defined(c)) {
+				INFO("Container %s:%s has a config but is not defined",
+				     lxcpath, direntp->d_name);
+
+				lxc_container_put(c);
+				continue;
+			}
+		}
+
+		if (names) {
+			if (!add_to_array(names, direntp->d_name, array_len))
 				goto free_bad;
-
-		cfound++;
-
-		if (!cret) {
-			nfound++;
-			continue;
+			name_array_len++;
 		}
 
-		c = lxc_container_new(direntp->d_name, lxcpath);
-		if (!c) {
-			INFO("Container %s:%s has a config but could not be loaded",
-				lxcpath, direntp->d_name);
-
-			if (names)
-				if(!remove_from_array(names, direntp->d_name, cfound--))
-					goto free_bad;
-
-			continue;
+		if (cret) {
+			if (!add_to_clist(cret, c, array_len, true)) {
+				lxc_container_put(c);
+				goto free_bad;
+			}
+			ct_array_len++;
 		}
 
-		if (!do_lxcapi_is_defined(c)) {
-			INFO("Container %s:%s has a config but is not defined",
-				lxcpath, direntp->d_name);
-
-			if (names)
-				if(!remove_from_array(names, direntp->d_name, cfound--))
-					goto free_bad;
-
-			lxc_container_put(c);
-			continue;
-		}
-
-		if (!add_to_clist(cret, c, nfound, true)) {
-			lxc_container_put(c);
-			goto free_bad;
-		}
-
-		nfound++;
+		array_len++;
 	}
 
-	return nfound;
+	return array_len;
 
 free_bad:
 	if (names && *names) {
-		for (i = 0; i < cfound; i++)
+		for (int i = 0; i < name_array_len; i++)
 			free((*names)[i]);
 		free(*names);
 	}
 
 	if (cret && *cret) {
-		for (i = 0; i < nfound; i++)
+		for (int i = 0; i < ct_array_len; i++)
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
@@ -5602,14 +5579,11 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		c = lxc_container_new(p, lxcpath);
 		if (!c) {
-			INFO("Container %s:%s is running but could not be loaded",
-				lxcpath, p);
-
-			remove_from_array(&ct_name, p, ct_name_cnt--);
+			INFO("Container %s:%s is running but could not be loaded", lxcpath, p);
 			if (is_hashed)
 				free(p);
 
-			continue;
+			goto free_cret_list;
 		}
 
 		if (is_hashed)
@@ -5664,9 +5638,8 @@ out:
 int list_all_containers(const char *lxcpath, char ***nret,
 			struct lxc_container ***cret)
 {
-	int i, ret, active_cnt, ct_cnt, ct_list_cnt;
-	char **active_name;
-	char **ct_name = NULL;
+	int active_cnt, ct_cnt, ct_list_cnt, ret;
+	char **active_name = NULL, **ct_name = NULL;
 	struct lxc_container **ct_list = NULL;
 
 	ct_cnt = list_defined_containers(lxcpath, &ct_name, NULL);
@@ -5679,72 +5652,67 @@ int list_all_containers(const char *lxcpath, char ***nret,
 		goto free_ct_name;
 	}
 
-	for (i = 0; i < active_cnt; i++) {
-		if (!array_contains(&ct_name, active_name[i], ct_cnt)) {
-			if (!add_to_array(&ct_name, active_name[i], ct_cnt)) {
-				ret = -1;
-				goto free_active_name;
+	ret = -EINVAL;
+	for (int i = 0; i < active_cnt; i++) {
+		if (array_contains(&ct_name, active_name[i], ct_cnt))
+			continue;
+
+		if (!add_to_array(&ct_name, active_name[i], ct_cnt))
+			goto free_active_name;
+
+		ct_cnt++;
+	}
+
+	if (cret) {
+		ct_list_cnt = 0;
+		for (int i = 0; i < ct_cnt; i++) {
+			__put_lxc_container struct lxc_container *c = NULL;
+
+			c = lxc_container_new(ct_name[i], lxcpath);
+			if (!c) {
+				WARN("Container %s:%s could not be loaded", lxcpath, ct_name[i]);
+				goto free_ct_list;
 			}
 
-			ct_cnt++;
+			if (!add_to_clist(&ct_list, c, ct_list_cnt, false))
+				goto free_ct_list;
+
+			ct_list_cnt++;
+			move_ptr(c);
 		}
 
-		free(active_name[i]);
-		active_name[i] = NULL;
-	}
-
-	free(active_name);
-	active_name = NULL;
-	active_cnt = 0;
-
-	for (i = 0, ct_list_cnt = 0; i < ct_cnt && cret; i++) {
-		struct lxc_container *c;
-
-		c = lxc_container_new(ct_name[i], lxcpath);
-		if (!c) {
-			WARN("Container %s:%s could not be loaded", lxcpath, ct_name[i]);
-			remove_from_array(&ct_name, ct_name[i], ct_cnt--);
-			continue;
-		}
-
-		if (!add_to_clist(&ct_list, c, ct_list_cnt, false)) {
-			lxc_container_put(c);
-			ret = -1;
-			goto free_ct_list;
-		}
-
-		ct_list_cnt++;
-	}
-
-	if (cret)
 		*cret = ct_list;
+	}
+
+	for (int i = 0; i < active_cnt; i++)
+		free(active_name[i]);
+	free(active_name);
 
 	if (nret) {
 		*nret = ct_name;
 	} else {
-		ret = ct_cnt;
-		goto free_ct_name;
+		for (int i = 0; i < ct_cnt; i++)
+			free(ct_name[i]);
+		free(ct_name);
 	}
 
 	return ct_cnt;
 
 free_ct_list:
-	for (i = 0; i < ct_list_cnt; i++) {
+	for (int i = 0; i < ct_list_cnt; i++)
 		lxc_container_put(ct_list[i]);
-	}
 	free(ct_list);
 
 free_active_name:
-	for (i = 0; i < active_cnt; i++) {
+	for (int i = 0; i < active_cnt; i++)
 		free(active_name[i]);
-	}
 	free(active_name);
 
 free_ct_name:
-	for (i = 0; i < ct_cnt; i++) {
+	for (int i = 0; i < ct_cnt; i++)
 		free(ct_name[i]);
-	}
 	free(ct_name);
+
 	return ret;
 }
 
