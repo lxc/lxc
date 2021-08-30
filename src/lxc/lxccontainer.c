@@ -5689,12 +5689,10 @@ int list_all_containers(const char *lxcpath, char ***nret,
 			ct_cnt++;
 		}
 
-		free(active_name[i]);
-		active_name[i] = NULL;
+		free_disarm(active_name[i]);
 	}
 
-	free(active_name);
-	active_name = NULL;
+	free_disarm(active_name);
 	active_cnt = 0;
 
 	for (i = 0, ct_list_cnt = 0; i < ct_cnt && cret; i++) {
