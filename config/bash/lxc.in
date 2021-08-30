@@ -29,7 +29,7 @@ _lxc_names() {
     for i in "${!names[@]}"; do
         # For composed names with spaces escaped by '\'.
         names[${i}]=$(command printf "%q" "${names[${i}]}")
-        if [[ -n $(compgen -W "${names[${i}]}" -- "$cur") ]]; then
+        if [[ -n $(compgen -W "${names[${i}]}" -- "${cur}") ]]; then
             COMPREPLY+=("${names[${i}]}")
         fi
     done
@@ -49,7 +49,7 @@ _lxc_append_name() {
             return
         fi
         for name in "${names[@]}"; do
-            [[ "${parsed}" = "${name}" ]] && return
+            [[ "${parsed}" == "${name}" ]] && return
         done
     done
     _lxc_names
@@ -57,11 +57,11 @@ _lxc_append_name() {
 
 _lxc_common_opt() {
     # End of options.
-    if [[ "${words[@]}" =~ ' -- ' ]]; then
+    if [[ "${words[*]}" =~ ' -- ' ]]; then
         return 1
     fi
 
-    case $prev in
+    case ${prev} in
         --help | -h | -\? | --usage | --version )
             return 1
             ;;
@@ -74,7 +74,7 @@ _lxc_common_opt() {
             return 1
             ;;
         --logpriority | -l )
-            COMPREPLY=( $(compgen -W 'FATAL CRIT WARN ERROR NOTICE INFO DEBUG' -- "$cur") )
+            COMPREPLY=( $(compgen -W 'FATAL CRIT WARN ERROR NOTICE INFO DEBUG' -- "${cur}") )
             return 1
             ;;
         --quiet | -q )
@@ -138,7 +138,7 @@ _lxc_attach() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -153,15 +153,15 @@ _lxc_attach() {
             ;;
         --arch | -a )
             # https://github.com/lxc/lxc/blob/stable-4.0/src/tests/arch_parse.c#L37
-            COMPREPLY=( $( compgen -W 'arm armel armhf armv7l athlon i386 i486 i586 i686 linux32 mips mipsel ppc powerpc x86 aarch64 amd64 arm64 linux64 mips64 mips64el ppc64 ppc64el ppc64le powerpc64 s390x x86_64' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W 'arm armel armhf armv7l athlon i386 i486 i586 i686 linux32 mips mipsel ppc powerpc x86 aarch64 amd64 arm64 linux64 mips64 mips64el ppc64 ppc64el ppc64le powerpc64 s390x x86_64' -- "${cur}" ) )
             return
             ;;
         --elevated-privileges | -e )
-            __lxc_piped_args "$cur" '|' CGROUP CAP LSM
+            __lxc_piped_args "${cur}" '|' CGROUP CAP LSM
             return
             ;;
         --namespaces | -s )
-            __lxc_piped_args "$cur" '|' MOUNT PID UTSNAME IPC USER NETWORK
+            __lxc_piped_args "${cur}" '|' MOUNT PID UTSNAME IPC USER NETWORK
             return
             ;;
         --remount-sys-proc | -R | --keep-env | --clear-env )
@@ -172,7 +172,7 @@ _lxc_attach() {
             return
             ;;
         --keep-var )
-            COMPREPLY=( $( compgen -A variable -- "$cur" ) )
+            COMPREPLY=( $( compgen -A variable -- "${cur}" ) )
             return
             ;;
         --uid | -u )
@@ -191,8 +191,8 @@ _lxc_attach() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -217,26 +217,26 @@ _lxc_autostart() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --reboot | -r | --shutdown | -s | --kill | -k | --list | -L | --all | -a | --ignore-auto | -A )
             # Only flags.
             ;;
         --timeout | -t )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
         --groups | -g )
             # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
-            __lxc_piped_args "$cur" ',' $( __lxc_groups )
+            __lxc_piped_args "${cur}" ',' $( __lxc_groups )
             return
             ;;
     esac
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -250,7 +250,7 @@ _lxc_cgroup() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -263,8 +263,8 @@ _lxc_cgroup() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -279,7 +279,7 @@ _lxc_checkpoint() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -303,8 +303,8 @@ _lxc_checkpoint() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -318,12 +318,12 @@ _lxc_config() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=($(compgen -W '-l' -- "$cur"))
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W '-l' -- "${cur}"))
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    COMPREPLY=( $( compgen -W "$( command lxc-config -l )" -- "$cur" ) )
+    COMPREPLY=( $( compgen -W "$( command lxc-config -l )" -- "${cur}" ) )
 }
 complete -F _lxc_config lxc-config
 
@@ -334,7 +334,7 @@ _lxc_console() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -344,11 +344,11 @@ _lxc_console() {
             return
             ;;
         --escape | -e )
-            COMPREPLY+=( $( compgen -P "'" -S "'" -W "^{a..z} {a..z}" -- "$cur" ) )
+            COMPREPLY+=( $( compgen -P "'" -S "'" -W "^{a..z} {a..z}" -- "${cur}" ) )
             return
             ;;
         --tty | -t )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
@@ -356,8 +356,8 @@ _lxc_console() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -366,7 +366,7 @@ _lxc_console() {
 complete -F _lxc_console lxc-console
 
 __lxc_backing_stores() {
-    COMPREPLY=( $( compgen -W 'best btrfs dir loop lvm nbd overlay overlayfs rbd zfs' -- "$cur" ) )
+    COMPREPLY=( $( compgen -W 'best btrfs dir loop lvm nbd overlay overlayfs rbd zfs' -- "${cur}" ) )
 }
 
 _lxc_copy() {
@@ -376,7 +376,7 @@ _lxc_copy() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -407,8 +407,8 @@ _lxc_copy() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -417,7 +417,7 @@ _lxc_copy() {
 complete -F _lxc_copy lxc-copy
 
 __lxc_templates() {
-    COMPREPLY=( $( compgen -W "$(command ls @LXCTEMPLATEDIR@/ | command sed -e 's|^lxc-||' )" -- "$cur" ) )
+    COMPREPLY=( $( compgen -W "$(command ls @LXCTEMPLATEDIR@/ | command sed -e 's|^lxc-||' )" -- "${cur}" ) )
 }
 
 _lxc_create() {
@@ -427,7 +427,7 @@ _lxc_create() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -452,8 +452,8 @@ _lxc_create() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -468,7 +468,7 @@ _lxc_destroy() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -484,8 +484,8 @@ _lxc_destroy() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -498,7 +498,7 @@ _lxc_device() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    case $prev in
+    case ${prev} in
         -h )
             return
             ;;
@@ -515,8 +515,8 @@ _lxc_device() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -531,7 +531,7 @@ _lxc_execute() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -561,8 +561,8 @@ _lxc_execute() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -577,7 +577,7 @@ _lxc_freeze() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -590,8 +590,8 @@ _lxc_freeze() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -606,7 +606,7 @@ _lxc_info() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -628,8 +628,8 @@ _lxc_info() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -643,7 +643,7 @@ _lxc_ls() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --line | -1 | --fancy | -f | --active | --frozen | --running | --stopped | --defined )
             # Only flags.
             ;;
@@ -653,11 +653,11 @@ _lxc_ls() {
             ;;
         --groups | -g )
             # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
-            __lxc_piped_args "$cur" ',' $( __lxc_groups )
+            __lxc_piped_args "${cur}" ',' $( __lxc_groups )
             return
             ;;
         --nesting )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
@@ -669,8 +669,8 @@ _lxc_ls() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -683,7 +683,7 @@ _lxc_monitor() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -695,8 +695,8 @@ _lxc_monitor() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -710,7 +710,7 @@ _lxc_snapshot() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -724,14 +724,14 @@ _lxc_snapshot() {
             return
             ;;
         --destroy | -d )
-            COMPREPLY=( $( compgen -W 'ALL $( lxc-snapshot --list )' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W 'ALL $( lxc-snapshot --list )' -- "${cur}" ) )
             return
             ;;
         --list | -L | --showcomments | -C )
             # Only flags.
             ;;
         --restore | -r )
-            COMPREPLY=( $( compgen -W '$( lxc-snapshot --list )' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W '$( lxc-snapshot --list )' -- "${cur}" ) )
             return
             ;;
         --newname | -N )
@@ -741,8 +741,8 @@ _lxc_snapshot() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -757,7 +757,7 @@ _lxc_start() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -790,18 +790,18 @@ _lxc_start() {
             ;;
         --share-net | --share-ipc | --share-uts )
             _pids
-            COMPREPLY+=( $( compgen -W "$( command lxc-ls --active )" -- "$cur" ) )
+            COMPREPLY+=( $( compgen -W "$( command lxc-ls --active )" -- "${cur}" ) )
             return
             ;;
     esac
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
 
         # Needed due to weird `_parse_help` output for the `--share-*` options.
-	COMPREPLY=( $( compgen -W '${COMPREPLY[@]/--share-} --share-net --share-ipc --share-uts' -- "$cur" ) )
+	COMPREPLY=( $( compgen -W '${COMPREPLY[@]/--share-} --share-net --share-ipc --share-uts' -- "${cur}" ) )
 
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
@@ -817,7 +817,7 @@ _lxc_stop() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -830,7 +830,7 @@ _lxc_stop() {
             # Only flags.
             ;;
         --timeout | -t )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
@@ -838,8 +838,8 @@ _lxc_stop() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -854,25 +854,25 @@ _lxc_top() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --batch | -b | --reverse | -r )
             # Only flags.
             ;;
         --delay | -d )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
         --sort | -s )
-            COMPREPLY=( $( compgen -W 'n c b m k' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W 'n c b m k' -- "${cur}" ) )
             return
             ;;
     esac
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -886,7 +886,7 @@ _lxc_unfreeze() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -899,8 +899,8 @@ _lxc_unfreeze() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -915,9 +915,9 @@ _lxc_unshare() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --namespaces | -s )
-            __lxc_piped_args "$cur" '|' MOUNT PID UTSNAME IPC USER NETWORK
+            __lxc_piped_args "${cur}" '|' MOUNT PID UTSNAME IPC USER NETWORK
             return
             ;;
         --user | -u )
@@ -938,8 +938,8 @@ _lxc_unshare() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -951,7 +951,7 @@ _lxc_update_config() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    case $prev in
+    case ${prev} in
         --help | -h )
             return
             ;;
@@ -963,8 +963,8 @@ _lxc_update_config() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -978,11 +978,11 @@ _lxc_usernsexec() {
     _init_completion -s -n : || return
 
     # End of options.
-    if [[ "${words[@]}" =~ ' -- ' ]]; then
+    if [[ "${words[*]}" =~ ' -- ' ]]; then
         return
     fi
 
-    case $prev in
+    case ${prev} in
         -h )
             return
             ;;
@@ -997,8 +997,8 @@ _lxc_usernsexec() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '-h -m -s' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '-h -m -s' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
@@ -1011,7 +1011,7 @@ _lxc_wait() {
 
     _lxc_common_opt || return
 
-    case $prev in
+    case ${prev} in
         --name | -n )
             _lxc_names
             return
@@ -1021,11 +1021,11 @@ _lxc_wait() {
             return
             ;;
         --state | -s )
-            __lxc_piped_args "$cur" '|' STOPPED STARTING RUNNING STOPPING ABORTING FREEZING FROZEN THAWED
+            __lxc_piped_args "${cur}" '|' STOPPED STARTING RUNNING STOPPING ABORTING FREEZING FROZEN THAWED
             return
             ;;
         --timeout | -t )
-            COMPREPLY=( $( compgen -P "$cur" -W "{0..9}" ) )
+            COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
             compopt -o nospace
             return
             ;;
@@ -1033,8 +1033,8 @@ _lxc_wait() {
 
     $split && return
 
-    if [[ $cur == -* ]]; then
-        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "$cur" ) )
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $( compgen -W '$( _parse_help "$1" )' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
