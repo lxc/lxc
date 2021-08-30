@@ -3745,7 +3745,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&c->id_map);
+	listlen = list_len(map, &c->id_map, head);
 	list_for_each_entry(map, &c->id_map, head) {
 		ret = strnprintf(buf, sizeof(buf), "%c %lu %lu %lu",
 				 (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
@@ -5837,7 +5837,7 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv4_addresses);
+	listlen = list_len(inetdev, &netdev->ipv4_addresses, head);
 
 	list_for_each_entry(inetdev, &netdev->ipv4_addresses, head) {
 		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
@@ -5870,7 +5870,7 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->priv.veth_attr.ipv4_routes);
+	listlen = list_len(inetdev, &netdev->priv.veth_attr.ipv4_routes, head);
 	list_for_each_entry(inetdev, &netdev->priv.veth_attr.ipv4_routes, head) {
 		if (!inet_ntop(AF_INET, &inetdev->addr, buf, sizeof(buf)))
 			return -errno;
@@ -5928,7 +5928,7 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->ipv6_addresses);
+	listlen = list_len(inet6dev, &netdev->ipv6_addresses, head);
 	list_for_each_entry(inet6dev, &netdev->ipv6_addresses, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;
@@ -5960,7 +5960,7 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 	else
 		memset(retv, 0, inlen);
 
-	listlen = list_len(&netdev->priv.veth_attr.ipv6_routes);
+	listlen = list_len(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head);
 	list_for_each_entry(inet6dev, &netdev->priv.veth_attr.ipv6_routes, head) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, buf, sizeof(buf)))
 			return -errno;

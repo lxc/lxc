@@ -169,6 +169,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	int static_args = 23, ret;
 	int netnr = 0;
 	struct mntent mntent;
+	struct lxc_netdev *netdev;
+	struct string_entry *strentry;
 
 	char buf[4096], ttys[32];
 
@@ -232,7 +234,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (ttys[0])
 			static_args += 2;
 
-		static_args += list_len(&opts->c->lxc_conf->netdevs) * 2;
+		static_args += list_len(netdev, &opts->c->lxc_conf->netdevs, head) * 2;
 	} else {
 		return log_error_errno(-EINVAL, EINVAL, "Invalid criu operation specified");
 	}
@@ -246,7 +248,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	if (opts->user->action_script)
 		static_args += 2;
 
-	static_args += 2 * list_len(&opts->c->lxc_conf->mount_entries);
+	static_args += 2 * list_len(strentry, &opts->c->lxc_conf->mount_entries, head);
 
 	ret = strnprintf(log, sizeof(log), "%s/%s.log", opts->user->directory, opts->action);
 	if (ret < 0)
@@ -453,7 +455,6 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			DECLARE_ARG("--leave-running");
 	} else if (strequal(opts->action, "restore")) {
 		struct lxc_conf *lxc_conf = opts->c->lxc_conf;
-		struct lxc_netdev *netdev;
 
 		DECLARE_ARG("--root");
 		DECLARE_ARG(opts->c->lxc_conf->rootfs.mount);
