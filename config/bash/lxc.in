@@ -122,51 +122,115 @@ _lxc_common_opt() {
     esac
 }
 
+__lxc_concat_array_sep() {
+    local -r sep="${1}"
+    local concat
+    for word in "${@:2}"; do
+	if [[ "${word}" == "${sep}" ]]; then
+	    concat+="${word}"
+	else
+	    concat+="${word}${sep}"
+	fi
+    done
+    printf "%s" "${concat}"
+}
+
+__lxc_check_completion_avail() {
+    local -r word="${1}"
+    local -r pattern="^${word}"
+    for w in "${@:2}"; do
+        if [[ "${w}" =~ ${pattern} ]] && [[ "${w}" != "${word}" ]]; then
+           return 0
+        fi
+    done
+    return 1
+}
+
+__lxc_array_has_duplicates() {
+    declare -A unique
+    for word in "${@}"; do
+	if [[ -z "${unique[${word}]}" ]]; then
+	    unique[${word}]="${word}"
+	else
+	    return 0
+	fi
+    done
+    return 1
+}
+
+__lxc_check_word_in_array() {
+    local -r word="${1}"
+    for w in "${@:2}"; do
+        if [[ "${w}" == "${word}" ]]; then
+           return 0
+        fi
+    done
+    return 1
+}
+
 __lxc_piped_args() {
-    read -e -a current <<< "${1//\\}"
-    local sep="${2}"
-    read -e -a completion <<< ${@:3}
+    local -r sep="${2}"
+    # Remove double/single quote and backslash from current completion parameter.
+    IFS=$"${sep}" read -r -e -a current <<< "${1//[\\\"\']}"
 
-    IFS=$"${sep}" read -e -a current <<< "${current[@]//\"}"
+    # Add separator back to current in case it is part of completion list.
+    for i in "${!current[@]}"; do
+        if [[ -z "${current[${i}]}" ]]; then
+	    current["${i}"]="${sep}"
+        fi
+    done
 
-    for index in "${!completion[@]}"; do
-        for value in ${current[@]}; do
-            if [[ "${completion[$index]}" == "$value" ]]; then
-                command unset -v 'completion[$index]'
-            fi
-        done
+    # Remove words from completion already added to argument.
+    declare -a minuslast=("${current[@]::${#current[@]}-1}")
+    declare -a completion=("${@:3}")
+    for i in "${!completion[@]}"; do
+        if __lxc_check_word_in_array "${completion[${i}]}" "${minuslast[@]}"; then
+            command unset -v 'completion[${i}]'
+        fi
     done
     completion=("${completion[@]}")
 
-    declare -a extended=("${completion[@]}")
-    local nparts="${#current[@]}"
-    if [[ $nparts -gt 1 ]]; then
-        prefix=$(command printf "%s${sep}" "${current[@]::$nparts-1}")
-        extended=()
-        for comp in ${completion[@]}; do
-            extended+=("\"${prefix}${comp}\"")
-        done
+    # Check if words from argument are uniquely part of completion.
+    if __lxc_array_has_duplicates "${minuslast[@]}"; then
+        return
     fi
+    declare -a allcomps=("${@:3}")
+    for i in "${!minuslast[@]}"; do
+        if ! __lxc_check_word_in_array "${minuslast[${i}]}" "${allcomps[@]}"; then
+            return
+        fi
+    done
 
-    # TAB after quotes to complete for next value.
-    if [[ $nparts -gt 0 ]]; then
-        local allcomps=("${@:3}")
-        for index in "${!allcomps[@]}"; do
-            if [[ "${allcomps[$index]}" == "${current[$nparts-1]}" ]]; then
-                prefix=$(command printf "%s${sep}" "${current[@]}")
+    # Actual completion array.
+    declare -a extcompletion
+    local -r nparts="${#current[@]}"
+
+    if [[ "${nparts}" -gt 0 ]]; then
+        local prefix=$(__lxc_concat_array_sep "${sep}" "${current[@]::${nparts}-1}")
+        local -r lastword="${current[${nparts}-1]}"
+        if __lxc_check_completion_avail "${lastword}" "${completion[@]}"; then
+            for comp in "${completion[@]}"; do
+                extcompletion+=("\"${prefix}${comp}\"")
+            done
+        fi
+        # TAB after quotes to complete for next value.
+        if ! __lxc_array_has_duplicates "${current[@]}" && __lxc_check_word_in_array "${lastword}" "${allcomps[@]}"; then
+            if ! __lxc_check_completion_avail "${lastword}" "${completion[@]}" || [[ "${#1}" -lt "${#sep}" ]] || [[ "${1: -${#sep}}" == "${sep}" ]]; then
+                prefix=$(__lxc_concat_array_sep "${sep}" "${current[@]}")
                 for comp in "${completion[@]}"; do
-                    extended+=("\"${prefix}${comp}\"")
+                    [[ "${comp}" == "${lastword}" ]] && continue
+                    extcompletion+=("\"${prefix}${comp}\"")
                 done
-                break
             fi
+        fi
+    else # [[ "${nparts}" -eq 0 ]]
+        for word in "${allcomps[@]}"; do
+            extcompletion+=("${word}")
         done
     fi
 
-    COMPREPLY=( $( compgen -P '"' -S '"' -W "$(command echo -e ${extended[@]})" -- "${cur}" ) )
-    # If no more words availables for completion, add space after last match.
-    if [[ "${#completion[@]}" -gt 1 ]]; then
-        compopt -o nospace
-    fi
+    COMPREPLY=( $( compgen -P '"' -S '"' -W "$(command echo -e ${extcompletion[@]})" -- "${cur}" ) )
+    [[ "${#extcompletion[@]}" -gt 1 ]] && compopt -o nospace
 }
 
 _lxc_attach() {
