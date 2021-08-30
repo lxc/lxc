@@ -379,7 +379,10 @@ int main(int argc, char *argv[])
 		attach_options.gid = my_args.gid;
 
 	// selinux_context will be NULL if not set
-	attach_options.lsm_label = selinux_context;
+	if (selinux_context) {
+		attach_options.attach_flags |= LXC_ATTACH_LSM_LABEL;
+		attach_options.lsm_label = selinux_context;
+	}
 
 	if (command.program) {
 		ret = c->attach_run_wait(c, &attach_options, command.program,
