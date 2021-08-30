@@ -42,7 +42,7 @@ _lxc_append_name() {
     # If `--name` or `-n` are present, do not complete with container names.
     for param in "${words[@]}"; do
         # Parse names from command line when space is escaped by backslash.
-        parsed="${param//[\\]}"
+        parsed="${param//[\\\"\']}"
         if [[ ${parsed} =~ ^--name(=(.*))?$ ]]; then
             return
         elif [[ ${parsed} =~ ${shortoptnamexp} ]]; then
@@ -53,6 +53,44 @@ _lxc_append_name() {
         done
     done
     _lxc_names
+}
+
+_lxc_get_snapshots() {
+    mapfile -t names < <(command lxc-ls -1)
+    local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
+    local container
+    local param
+    for i in "${!words[@]}"; do
+        param="${words[${i}]}"
+        parsed="${param//[\\\"\']}"
+        if [[ ${param} =~ ^--name(=(.*))?$ ]]; then
+            if [[ -n "${BASH_REMATCH[2]}" ]]; then
+                container="${BASH_REMATCH[2]}"
+            else
+                container="${words[${i}+1]}"
+            fi
+            break
+        elif [[ ${param} =~ ${shortoptnamexp} ]]; then
+            container="${words[${i}+1]}"
+            break
+        fi
+        for name in "${names[@]}"; do
+            if [[ "${parsed}" == "${name}" ]]; then
+                container="${name}"
+                break
+            fi
+        done
+        [[ -n "${container}" ]] && break
+    done
+    container="${container//[\\\"\']}"
+    mapfile -t snaps < <(command lxc-snapshot --name="${container}" --list)
+    local -r nosnapxp="^No snapshots$"
+    if [[ ! "${snaps[*]}" =~ ${nosnapxp} ]]; then
+        for i in "${!snaps[@]}"; do
+            read -r -e -a line <<< "${snaps[${i}]}"
+            printf "%s " "${line[0]}"
+        done
+    fi
 }
 
 _lxc_common_opt() {
@@ -724,14 +762,14 @@ _lxc_snapshot() {
             return
             ;;
         --destroy | -d )
-            COMPREPLY=( $( compgen -W 'ALL $( lxc-snapshot --list )' -- "${cur}" ) )
+            COMPREPLY=( $( compgen -W 'ALL $( _lxc_get_snapshots )' -- "${cur}" ) )
             return
             ;;
         --list | -L | --showcomments | -C )
             # Only flags.
             ;;
         --restore | -r )
-            COMPREPLY=( $( compgen -W '$( lxc-snapshot --list )' -- "${cur}" ) )
+            COMPREPLY=( $( compgen -W '$( _lxc_get_snapshots )' -- "${cur}" ) )
             return
             ;;
         --newname | -N )
