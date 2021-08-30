@@ -5727,21 +5727,18 @@ int list_all_containers(const char *lxcpath, char ***nret,
 	return ct_cnt;
 
 free_ct_list:
-	for (i = 0; i < ct_list_cnt; i++) {
+	for (i = 0; i < ct_list_cnt; i++)
 		lxc_container_put(ct_list[i]);
-	}
 	free(ct_list);
 
 free_active_name:
-	for (i = 0; i < active_cnt; i++) {
+	for (i = 0; i < active_cnt; i++)
 		free(active_name[i]);
-	}
 	free(active_name);
 
 free_ct_name:
-	for (i = 0; i < ct_cnt; i++) {
+	for (i = 0; i < ct_cnt; i++)
 		free(ct_name[i]);
-	}
 	free(ct_name);
 	return ret;
 }
