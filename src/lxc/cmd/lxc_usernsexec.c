@@ -23,6 +23,7 @@
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
+#include "hlist.h"
 #include "list.h"
 #include "log.h"
 #include "macro.h"
@@ -120,7 +121,7 @@ static int add_map_entry(long host_id, long ns_id, long range, int which)
 {
 	struct id_map *newmap;
 
-	newmap = malloc(sizeof(*newmap));
+	newmap = zalloc(sizeof(*newmap));
 	if (!newmap)
 		return -1;
 
