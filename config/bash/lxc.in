@@ -1,42 +1,55 @@
 # lxc-* commands completion
 
 _lxc_names() {
+    declare -a names
     case ${words[0]} in
         lxc-attach | lxc-cgroup | lxc-checkpoint | lxc-console | lxc-device | lxc-freeze | lxc-stop )
-            COMPREPLY=( $( compgen -W "$( command lxc-ls --running )" -- "$cur" ) )
+            mapfile -t names < <(command lxc-ls --running -1)
             ;;
         lxc-destroy | lxc-execute | lxc-snapshot | lxc-start )
-            COMPREPLY=( $( compgen -W "$( command lxc-ls --stopped )" -- "$cur" ) )
+            mapfile -t names < <(command lxc-ls --stopped -1)
             ;;
         lxc-copy | lxc-info | lxc-monitor | lxc-wait )
-            COMPREPLY=( $( compgen -W "$( command lxc-ls --defined )" -- "$cur" ) )
+            mapfile -t names < <(command lxc-ls --defined -1)
             ;;
         lxc-autostart | lxc-create | lxc-checkconfig | lxc-config | lxc-ls | \
         lxc-top | lxc-unshare | lxc-update-config | lxc-usernsexec )
             ;;
         lxc-unfreeze )
-            COMPREPLY=( $( compgen -W "$( command lxc-ls --frozen )" -- "$cur" ) )
+            mapfile -t names < <(command lxc-ls --frozen -1)
             ;;
         *)
             # If we are running as an alias or symlink with different name,
             # fallback to old behaviour.
-            COMPREPLY=( $( compgen -W "$( command lxc-ls )" -- "$cur" ) )
+            mapfile -t names < <(command lxc-ls -1)
             ;;
     esac
+
+    COMPREPLY=()
+    for i in "${!names[@]}"; do
+        # For composed names with spaces escaped by '\'.
+        names[${i}]=$(command printf "%q" "${names[${i}]}")
+        if [[ -n $(compgen -W "${names[${i}]}" -- "$cur") ]]; then
+            COMPREPLY+=("${names[${i}]}")
+        fi
+    done
 }
 
 _lxc_append_name() {
-    local vms=$(command lxc-ls)
+    mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
+    local parsed
     # If `--name` or `-n` are present, do not complete with container names.
-    for param in ${words[@]}; do
-        if [[ ${param} =~ ^--name(=(.*))?$ ]]; then
+    for param in "${words[@]}"; do
+        # Parse names from command line when space is escaped by backslash.
+        parsed="${param//[\\]}"
+        if [[ ${parsed} =~ ^--name(=(.*))?$ ]]; then
             return
-        elif [[ ${param} =~ ${shortoptnamexp} ]]; then
+        elif [[ ${parsed} =~ ${shortoptnamexp} ]]; then
             return
         fi
-        for vm in ${vms[@]}; do
-            [[ "${param}" = "${vm}" ]] && return
+        for name in "${names[@]}"; do
+            [[ "${parsed}" = "${name}" ]] && return
         done
     done
     _lxc_names
