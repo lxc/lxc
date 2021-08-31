@@ -1,6 +1,6 @@
 # lxc-* commands completion
 
-_lxc_names() {
+__lxc_names() {
     declare -a names
     case ${words[0]} in
         lxc-attach | lxc-cgroup | lxc-checkpoint | lxc-console | lxc-device | lxc-freeze | lxc-stop )
@@ -35,7 +35,7 @@ _lxc_names() {
     done
 }
 
-_lxc_append_name() {
+__lxc_append_name() {
     mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
     local parsed
@@ -52,10 +52,10 @@ _lxc_append_name() {
             [[ "${parsed}" == "${name}" ]] && return
         done
     done
-    _lxc_names
+    __lxc_names
 }
 
-_lxc_get_snapshots() {
+__lxc_get_snapshots() {
     mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
     local container
@@ -93,7 +93,7 @@ _lxc_get_snapshots() {
     fi
 }
 
-_lxc_common_opt() {
+__lxc_common_opt() {
     # End of options.
     if [[ "${words[*]}" =~ ' -- ' ]]; then
         return 1
@@ -112,7 +112,7 @@ _lxc_common_opt() {
             return 1
             ;;
         --logpriority | -l )
-            COMPREPLY=( $(compgen -W 'FATAL CRIT WARN ERROR NOTICE INFO DEBUG' -- "${cur}") )
+            COMPREPLY=( $( compgen -W 'FATAL CRIT WARN ERROR NOTICE INFO DEBUG' -- "${cur}" ) )
             return 1
             ;;
         --quiet | -q )
@@ -150,7 +150,7 @@ __lxc_array_has_duplicates() {
     declare -A unique
     for word in "${@}"; do
 	if [[ -z "${unique[${word}]}" ]]; then
-	    unique[${word}]="${word}"
+	    unique["${word}"]="${word}"
 	else
 	    return 0
 	fi
@@ -244,11 +244,11 @@ _lxc_attach() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile | -f )
@@ -304,9 +304,9 @@ _lxc_attach() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_attach lxc-attach
+    __lxc_append_name
+} &&
+    complete -F _lxc_attach lxc-attach
 
 __lxc_groups() {
     declare -A groups
@@ -323,7 +323,7 @@ _lxc_autostart() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --reboot | -r | --shutdown | -s | --kill | -k | --list | -L | --all | -a | --ignore-auto | -A )
@@ -347,19 +347,19 @@ _lxc_autostart() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_autostart lxc-autostart
+} &&
+    complete -F _lxc_autostart lxc-autostart
 
 _lxc_cgroup() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -375,20 +375,20 @@ _lxc_cgroup() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_cgroup lxc-cgroup
+    __lxc_append_name
+} &&
+    complete -F _lxc_cgroup lxc-cgroup
 
 _lxc_checkpoint() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -415,9 +415,9 @@ _lxc_checkpoint() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_checkpoint lxc-checkpoint
+    __lxc_append_name
+} &&
+    complete -F _lxc_checkpoint lxc-checkpoint
 
 _lxc_config() {
     local cur prev words cword split
@@ -426,24 +426,24 @@ _lxc_config() {
     $split && return
 
     if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W '-l' -- "${cur}"))
+        COMPREPLY=( $( compgen -W '-l' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
     COMPREPLY=( $( compgen -W "$( command lxc-config -l )" -- "${cur}" ) )
-}
-complete -F _lxc_config lxc-config
+} &&
+    complete -F _lxc_config lxc-config
 
 _lxc_console() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -468,9 +468,9 @@ _lxc_console() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_console lxc-console
+    __lxc_append_name
+} &&
+    complete -F _lxc_console lxc-console
 
 __lxc_backing_stores() {
     COMPREPLY=( $( compgen -W 'best btrfs dir loop lvm nbd overlay overlayfs rbd zfs' -- "${cur}" ) )
@@ -481,11 +481,11 @@ _lxc_copy() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -519,9 +519,9 @@ _lxc_copy() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_copy lxc-copy
+    __lxc_append_name
+} &&
+    complete -F _lxc_copy lxc-copy
 
 __lxc_templates() {
     COMPREPLY=( $( compgen -W "$(command ls @LXCTEMPLATEDIR@/ | command sed -e 's|^lxc-||' )" -- "${cur}" ) )
@@ -532,11 +532,11 @@ _lxc_create() {
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -564,19 +564,19 @@ _lxc_create() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_create lxc-create
+} &&
+    complete -F _lxc_create lxc-create
 
 _lxc_destroy() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -595,9 +595,9 @@ _lxc_destroy() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_destroy lxc-destroy
+    __lxc_append_name
+} &&
+    complete -F _lxc_destroy lxc-destroy
 
 _lxc_device() {
     local cur prev words cword split
@@ -609,12 +609,12 @@ _lxc_device() {
             return
             ;;
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         add )
             _available_interfaces
-            COMPREPLY+=( $(compgen -f -d -X "!*/?*" -- "${cur:-/dev/}") )
+            COMPREPLY+=( $( compgen -f -d -X "!*/?*" -- "${cur:-/dev/}" ) )
             return
             ;;
     esac
@@ -626,20 +626,20 @@ _lxc_device() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_device lxc-device
+    __lxc_append_name
+} &&
+    complete -F _lxc_device lxc-device
 
 _lxc_execute() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile | -f )
@@ -672,20 +672,20 @@ _lxc_execute() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_execute lxc-execute
+    __lxc_append_name
+} &&
+    complete -F _lxc_execute lxc-execute
 
 _lxc_freeze() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile | -f )
@@ -701,20 +701,20 @@ _lxc_freeze() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_freeze lxc-freeze
+    __lxc_append_name
+} &&
+    complete -F _lxc_freeze lxc-freeze
 
 _lxc_info() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -739,15 +739,15 @@ _lxc_info() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_info lxc-info
+    __lxc_append_name
+} &&
+    complete -F _lxc_info lxc-info
 
 _lxc_ls() {
     local cur prev words cword split
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --line | -1 | --fancy | -f | --active | --frozen | --running | --stopped | --defined )
@@ -779,18 +779,18 @@ _lxc_ls() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_ls lxc-ls
+} &&
+    complete -F _lxc_ls lxc-ls
 
 _lxc_monitor() {
     local cur prev words cword split
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --quit | -Q )
@@ -805,19 +805,19 @@ _lxc_monitor() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_monitor lxc-monitor
+    __lxc_append_name
+} &&
+    complete -F _lxc_monitor lxc-monitor
 
 _lxc_snapshot() {
     local cur prev words cword split
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -829,14 +829,14 @@ _lxc_snapshot() {
             return
             ;;
         --destroy | -d )
-            COMPREPLY=( $( compgen -W 'ALL $( _lxc_get_snapshots )' -- "${cur}" ) )
+            COMPREPLY=( $( compgen -W 'ALL $( __lxc_get_snapshots )' -- "${cur}" ) )
             return
             ;;
         --list | -L | --showcomments | -C )
             # Only flags.
             ;;
         --restore | -r )
-            COMPREPLY=( $( compgen -W '$( _lxc_get_snapshots )' -- "${cur}" ) )
+            COMPREPLY=( $( compgen -W '$( __lxc_get_snapshots )' -- "${cur}" ) )
             return
             ;;
         --newname | -N )
@@ -851,20 +851,20 @@ _lxc_snapshot() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_snapshot lxc-snapshot
+    __lxc_append_name
+} &&
+    complete -F _lxc_snapshot lxc-snapshot
 
 _lxc_start() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --daemon | -d | --foreground | -F | --close-all-fds | -C )
@@ -911,20 +911,20 @@ _lxc_start() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_start lxc-start
+    __lxc_append_name
+} &&
+    complete -F _lxc_start lxc-start
 
 _lxc_stop() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -948,16 +948,16 @@ _lxc_stop() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_stop lxc-stop
+    __lxc_append_name
+} &&
+    complete -F _lxc_stop lxc-stop
 
 _lxc_top() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --batch | -b | --reverse | -r )
@@ -981,19 +981,19 @@ _lxc_top() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_top lxc-top
+} &&
+    complete -F _lxc_top lxc-top
 
 _lxc_unfreeze() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -1009,16 +1009,16 @@ _lxc_unfreeze() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_unfreeze lxc-unfreeze
+    __lxc_append_name
+} &&
+    complete -F _lxc_unfreeze lxc-unfreeze
 
 _lxc_unshare() {
     local cur prev words cword split
     COMPREPLY=()
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --namespaces | -s )
@@ -1048,8 +1048,8 @@ _lxc_unshare() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_unshare lxc-unshare
+} &&
+    complete -F _lxc_unshare lxc-unshare
 
 _lxc_update_config() {
     local cur prev words cword split
@@ -1073,9 +1073,8 @@ _lxc_update_config() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-
-}
-complete -F _lxc_update_config lxc-update-config
+} &&
+    complete -F _lxc_update_config lxc-update-config
 
 _lxc_usernsexec() {
     local cur prev words cword split
@@ -1107,18 +1106,18 @@ _lxc_usernsexec() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-}
-complete -F _lxc_usernsexec lxc-usernsexec
+} &&
+    complete -F _lxc_usernsexec lxc-usernsexec
 
 _lxc_wait() {
     local cur prev words cword split
     _init_completion -s -n : || return
 
-    _lxc_common_opt || return
+    __lxc_common_opt || return
 
     case ${prev} in
         --name | -n )
-            _lxc_names
+            __lxc_names
             return
             ;;
         --rcfile )
@@ -1143,8 +1142,8 @@ _lxc_wait() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
-}
-complete -F _lxc_wait lxc-wait
+    __lxc_append_name
+} &&
+    complete -F _lxc_wait lxc-wait
 
 # ex: filetype=sh
