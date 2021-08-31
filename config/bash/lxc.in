@@ -509,6 +509,21 @@ __lxc_backing_stores() {
     COMPREPLY=( $( compgen -W 'best btrfs dir loop lvm nbd overlay overlayfs rbd zfs' -- "${cur}" ) )
 }
 
+__lxc_size_unit() {
+    if [[ -n "${cur}" ]] && [[ ! "${cur}" =~ ^[0-9]+$ ]]; then
+        return
+    fi
+    # Size.
+    if [[ -z "${cur}" ]]; then
+        COMPREPLY=( $( compgen -P "${cur}" -W "{1..9}" ) )
+    else
+        COMPREPLY=( $( compgen -P "${cur}" -W "{0..9}" ) )
+        # Unit
+        COMPREPLY+=( $( compgen -P "${cur}" -W "$( command echo ${@})" ) )
+    fi
+    compopt -o nospace
+}
+
 _lxc_copy() {
     local cur prev words cword split
     COMPREPLY=()
@@ -540,7 +555,7 @@ _lxc_copy() {
             return
             ;;
         --fssize | -L )
-            # @TODO: return a size suffixed by K,M,G,T
+            __lxc_size_unit K M G T
             return
             ;;
     esac
