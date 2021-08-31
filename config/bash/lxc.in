@@ -88,7 +88,7 @@ __lxc_get_snapshots() {
     if [[ ! "${snaps[*]}" =~ ${nosnapxp} ]]; then
         for i in "${!snaps[@]}"; do
             read -r -e -a line <<< "${snaps[${i}]}"
-            printf "%s " "${line[0]}"
+            command printf "%s " "${line[0]}"
         done
     fi
 }
@@ -132,7 +132,7 @@ __lxc_concat_array_sep() {
 	    concat+="${word}${sep}"
 	fi
     done
-    printf "%s" "${concat}"
+    command printf "%s" "${concat}"
 }
 
 __lxc_check_completion_avail() {
@@ -308,14 +308,22 @@ _lxc_attach() {
 } &&
     complete -F _lxc_attach lxc-attach
 
-__lxc_groups() {
+__lxc_get_groups() {
     declare -A groups
-    for line in "$(command lxc-ls -f --fancy-format GROUPS | command sed -e '/^-/d' -e '1d' -e 's/,/ /g')"; do
-	for grp in $line; do
-            groups+=([${grp}]=1)
+    local key
+    declare -a linegroups
+    # Discard "GROUPS" header and lines without any groups (with only '-').
+    mapfile -s 1 -t lines < <(command lxc-ls -f --fancy-format GROUPS | command sed -e '/^-/d')
+    for line in "${lines[@]}"; do
+        line=$(command echo -e "${line}" | command sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        IFS=$',' read -r -e -a linegroups <<< "${line}"
+        for entry in "${linegroups[@]}"; do
+            key=$(printf "%q" "${entry}")
+            groups+=(["${key}"]=1)
         done
     done
-    printf "%s " "${!groups[@]}"
+    declare -a output=("${!groups[@]}")
+    command printf "%s" "${output[*]}"
 }
 
 _lxc_autostart() {
@@ -335,7 +343,7 @@ _lxc_autostart() {
             return
             ;;
         --groups | -g )
-            __lxc_piped_args "${cur}" ',' $( __lxc_groups ) ','
+            __lxc_piped_args "${cur}" ',' $( __lxc_get_groups ) ','
             return
             ;;
     esac
@@ -758,7 +766,7 @@ _lxc_ls() {
             return
             ;;
         --groups | -g )
-            __lxc_piped_args "${cur}" ',' $( __lxc_groups ) ','
+            __lxc_piped_args "${cur}" ',' $( __lxc_get_groups ) ','
             return
             ;;
         --nesting )
