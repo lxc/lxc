@@ -219,7 +219,13 @@ __lxc_piped_args() {
                 prefix=$(__lxc_concat_array_sep "${sep}" "${current[@]}")
                 for comp in "${completion[@]}"; do
                     [[ "${comp}" == "${lastword}" ]] && continue
-                    extcompletion+=("\"${prefix}${comp}\"")
+                    if [[ "${comp}" != "${sep}" ]]; then
+                        extcompletion+=("\"${prefix}${comp}\"")
+                    else
+                        # Trailing sep.
+                        extcompletion+=("\"${prefix}\"")
+                        [[ "${#completion[@]}" -gt 2 ]] && extcompletion+=("\"${prefix}${comp}\"")
+                    fi
                 done
             fi
         fi
@@ -329,8 +335,7 @@ _lxc_autostart() {
             return
             ;;
         --groups | -g )
-            # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
-            __lxc_piped_args "${cur}" ',' $( __lxc_groups )
+            __lxc_piped_args "${cur}" ',' $( __lxc_groups ) ','
             return
             ;;
     esac
@@ -754,8 +759,7 @@ _lxc_ls() {
             return
             ;;
         --groups | -g )
-            # @TODO: add NULL group as a leading comma, trailing comma, embedded double comma.
-            __lxc_piped_args "${cur}" ',' $( __lxc_groups )
+            __lxc_piped_args "${cur}" ',' $( __lxc_groups ) ','
             return
             ;;
         --nesting )
