@@ -564,7 +564,6 @@ _lxc_create() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    _lxc_append_name
 }
 complete -F _lxc_create lxc-create
 
