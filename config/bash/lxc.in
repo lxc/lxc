@@ -239,6 +239,31 @@ __lxc_piped_args() {
     [[ "${#extcompletion[@]}" -gt 1 ]] && compopt -o nospace
 }
 
+__lxc_get_selinux_contexts() {
+    declare -a sepolicies=()
+    local sepolicy
+    # Check for SElinux tool.
+    if ! command -v semanage > /dev/null 2>&1; then
+        return
+    fi
+    # Skip header + following empty line.
+    mapfile -s 2 -t output < <(command semanage fcontext -l 2>/dev/null)
+    local -r none="<<None>>"
+    for line in "${output[@]}"; do
+        if [[ "${line}" =~ "SELinux Distribution fcontext Equivalence" ]]; then
+            break
+        fi
+        read -r -e -a current <<< "${line}"
+        if [[ "${#current[@]}" -gt 0 ]]; then
+            sepolicy="${current[${#current[@]}-1]}"
+            [[ ! "${sepolicy}" =~ ${none} ]] && sepolicies+=("${sepolicy}")
+        fi
+    done
+    # Default context.
+    sepolicies+=("unconfined_u:object_r:default_t:s0")
+    COMPREPLY=( $( compgen -P'"' -S'"' -W "${sepolicies[*]}" -- "${cur}" ) )
+}
+
 _lxc_attach() {
     local cur prev words cword split
     COMPREPLY=()
@@ -292,7 +317,7 @@ _lxc_attach() {
             return
             ;;
         --context | -c )
-            # @TODO: list all SElinux contexts available.
+            __lxc_get_selinux_contexts
             return
             ;;
     esac
