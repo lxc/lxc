@@ -21,7 +21,9 @@
 #ifndef _LXC_FEXECVE_H
 #define _LXC_FEXECVE_H
 
+#include "../lxc/compiler.h"
 #include <stdio.h>
-extern int fexecve(int fd, char *const argv[], char *const envp[]);
+
+__hidden extern int fexecve(int fd, char *const argv[], char *const envp[]);
 
 #endif /* _LXC_FEXECVE_H */

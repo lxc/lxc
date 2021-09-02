@@ -22,8 +22,9 @@
 #ifndef _STRLCPY_H
 #define _STRLCPY_H
 
+#include "../lxc/compiler.h"
 #include <stdio.h>
 
-extern size_t strlcpy(char *, const char *, size_t);
+__hidden extern size_t strlcpy(char *, const char *, size_t);
 
 #endif

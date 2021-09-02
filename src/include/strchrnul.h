@@ -20,6 +20,6 @@
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
-#include "compiler.h"
+#include "../lxc/compiler.h"
 
 __hidden extern char *strchrnul(const char *s, int c_in);
