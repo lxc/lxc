@@ -26,7 +26,9 @@
 #include <sys/types.h>
 #include <grp.h>
 
-extern int getgrgid_r(gid_t gid, struct group *gr, char *buf, size_t size,
+#include "../lxc/compiler.h"
+
+__hidden extern int getgrgid_r(gid_t gid, struct group *gr, char *buf, size_t size,
 		      struct group **res);
 
 #endif /* _GETGRGID_R_H */

@@ -32,10 +32,12 @@
 #include <linux/resource.h>
 #include <sys/types.h>
 
+#include "../lxc/memory_utils.h"
+
 #define RLIM_SAVED_CUR RLIM_INFINITY
 #define RLIM_SAVED_MAX RLIM_INFINITY
 
-int prlimit(pid_t, int, const struct rlimit*, struct rlimit*);
-int prlimit64(pid_t, int, const struct rlimit64*, struct rlimit64*);
+__hidden int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
+__hidden int prlimit64(pid_t, int, const struct rlimit64 *, struct rlimit64 *);
 
 #endif

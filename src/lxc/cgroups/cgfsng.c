@@ -12,9 +12,12 @@
  * a comma-separated list of controllers.
  */
 
+#include "config.h"
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -39,7 +42,6 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
-#include "config.h"
 #include "error_utils.h"
 #include "log.h"
 #include "macro.h"
