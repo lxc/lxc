@@ -22,8 +22,9 @@
 #ifndef _STRLCAT_H
 #define _STRLCAT_H
 
+#include "../lxc/compiler.h"
 #include <stdio.h>
 
-extern size_t strlcat(char *src, const char *append, size_t len);
+__hidden extern size_t strlcat(char *src, const char *append, size_t len);
 
 #endif

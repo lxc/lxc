@@ -32,6 +32,8 @@
 
 #include <stdio.h>
 
-extern ssize_t getline(char **outbuf, size_t *outsize, FILE *fp);
+#include "../lxc/compiler.h"
+
+__hidden extern ssize_t getline(char **outbuf, size_t *outsize, FILE *fp);
 
 #endif

@@ -21,6 +21,8 @@
 #ifndef _LXCMNTENT_H
 #define _LXCMNTENT_H
 
+#include "../lxc/compiler.h"
+
 #if IS_BIONIC
 struct mntent
 {
@@ -32,20 +34,21 @@ struct mntent
     int mnt_passno;
 };
 
-extern struct mntent *getmntent (FILE *stream);
-extern struct mntent *getmntent_r (FILE *stream, struct mntent *mp, char *buffer, int bufsiz);
+__hidden extern struct mntent *getmntent(FILE *stream);
+__hidden extern struct mntent *getmntent_r(FILE *stream, struct mntent *mp,
+					   char *buffer, int bufsiz);
 #endif
 
 #if !defined(HAVE_SETMNTENT) || IS_BIONIC
-FILE *setmntent (const char *file, const char *mode);
+__hidden FILE *setmntent(const char *file, const char *mode);
 #endif
 
 #if !defined(HAVE_ENDMNTENT) || IS_BIONIC
-int endmntent (FILE *stream);
+__hidden int endmntent(FILE *stream);
 #endif
 
 #if !defined(HAVE_HASMNTOPT) || IS_BIONIC
-extern char *hasmntopt (const struct mntent *mnt, const char *opt);
+__hidden extern char *hasmntopt(const struct mntent *mnt, const char *opt);
 #endif
 
 #endif
