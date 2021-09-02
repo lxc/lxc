@@ -14,6 +14,10 @@
 #include "include/strlcat.h"
 #endif
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #ifndef HAVE_STRCHRNUL
 #include "include/strchrnul.h"
 #endif

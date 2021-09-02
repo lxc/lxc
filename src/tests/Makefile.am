@@ -79,6 +79,33 @@ if !HAVE_STRCHRNUL
 lxc_test_api_reboot_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_api_reboot_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_api_reboot_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_api_reboot_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_api_reboot_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_api_reboot_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_api_reboot_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/af_unix.c ../lxc/af_unix.h \
 			    ../lxc/caps.c ../lxc/caps.h \
@@ -133,6 +160,33 @@ if !HAVE_STRCHRNUL
 lxc_test_apparmor_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_apparmor_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_apparmor_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_apparmor_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_apparmor_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_apparmor_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_apparmor_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/caps.c ../lxc/caps.h \
@@ -185,6 +239,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_attach_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_attach_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_attach_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_attach_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_attach_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_attach_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_attach_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 lxc_test_basic_SOURCES = basic.c
@@ -242,6 +323,33 @@ if !HAVE_STRCHRNUL
 lxc_test_cgpath_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_cgpath_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_cgpath_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_cgpath_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_cgpath_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_cgpath_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_cgpath_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_config_jump_table_SOURCES = config_jump_table.c \
@@ -297,6 +405,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_config_jump_table_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_config_jump_table_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_config_jump_table_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_config_jump_table_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_config_jump_table_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_config_jump_table_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_config_jump_table_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 lxc_test_console_SOURCES = console.c
@@ -360,6 +495,33 @@ if !HAVE_STRCHRNUL
 lxc_test_device_add_remove_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_device_add_remove_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_device_add_remove_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_device_add_remove_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_device_add_remove_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_device_add_remove_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_device_add_remove_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_getkeys_SOURCES = getkeys.c
 lxc_test_get_item_SOURCES = get_item.c \
 			    ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -415,6 +577,33 @@ if !HAVE_STRCHRNUL
 lxc_test_get_item_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_get_item_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_get_item_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_get_item_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_get_item_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_get_item_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_get_item_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_list_SOURCES = list.c
 lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -468,6 +657,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_locktests_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_locktests_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_locktests_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_locktests_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_locktests_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_locktests_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_locktests_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 lxc_test_lxcpath_SOURCES = lxcpath.c
@@ -527,6 +743,33 @@ if !HAVE_STRCHRNUL
 lxc_test_mount_injection_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_mount_injection_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_mount_injection_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_mount_injection_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_mount_injection_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_mount_injection_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_mount_injection_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -580,6 +823,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_parse_config_file_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_parse_config_file_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_parse_config_file_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_parse_config_file_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_parse_config_file_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_parse_config_file_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_parse_config_file_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
@@ -637,20 +907,131 @@ if !HAVE_STRCHRNUL
 lxc_test_raw_clone_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_raw_clone_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_raw_clone_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_raw_clone_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_raw_clone_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_raw_clone_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_raw_clone_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_saveconfig_SOURCES = saveconfig.c
 lxc_test_share_ns_SOURCES = share_ns.c \
 			    lxctest.h \
 			    ../lxc/compiler.h
+
+if !HAVE_STRLCPY
+lxc_test_share_ns_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_share_ns_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_share_ns_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_share_ns_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_share_ns_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_share_ns_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_shortlived_SOURCES = shortlived.c \
 			      ../lxc/file_utils.c ../lxc/file_utils.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
+
+if !HAVE_STRLCPY
+lxc_test_shortlived_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_shortlived_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_shortlived_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_shortlived_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_shortlived_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_shortlived_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_shutdowntest_SOURCES = shutdowntest.c
 lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_startone_SOURCES = startone.c
 lxc_test_state_server_SOURCES = state_server.c \
 				lxctest.h \
 				../lxc/compiler.h
+
+if !HAVE_STRLCPY
+lxc_test_state_server_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_state_server_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_state_server_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_state_server_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_state_server_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_state_server_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_utils_SOURCES = lxc-test-utils.c \
 			 lxctest.h \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -704,6 +1085,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_utils_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_utils_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_utils_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_utils_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_utils_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_utils_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_utils_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 lxc_test_sys_mixed_SOURCES = sys_mixed.c \
@@ -760,6 +1168,33 @@ if !HAVE_STRCHRNUL
 lxc_test_sys_mixed_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
+if !HAVE_STRLCPY
+lxc_test_sys_mixed_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_sys_mixed_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_sys_mixed_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_sys_mixed_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_sys_mixed_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_sys_mixed_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 lxc_test_rootfs_options_SOURCES = rootfs_options.c \
 				  ../lxc/af_unix.c ../lxc/af_unix.h \
 				  ../lxc/caps.c ../lxc/caps.h \
@@ -812,6 +1247,33 @@ endif
 
 if !HAVE_STRCHRNUL
 lxc_test_rootfs_options_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_rootfs_options_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_rootfs_options_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_rootfs_options_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_rootfs_options_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_rootfs_options_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_rootfs_options_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
 endif
 
 AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
