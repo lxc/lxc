@@ -2803,7 +2803,7 @@ FILE *make_anonymous_mount_file(const struct list_head *mount_entries,
 		len = strlen(entry->val);
 
 		ret = lxc_write_nointr(fd, entry->val, len);
-		if (ret != len)
+		if (ret < 0 || (size_t)ret != len)
 			return NULL;
 
 		ret = lxc_write_nointr(fd, "\n", 1);
@@ -3438,7 +3438,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		return log_error_errno(-1, errno, "Failed to open \"%s\"", path);
 
 	ret = lxc_write_nointr(fd, buf, buf_size);
-	if (ret != buf_size)
+	if (ret < 0 || (size_t)ret != buf_size)
 		return log_error_errno(-1, errno, "Failed to write %cid mapping to \"%s\"",
 				       idtype == ID_TYPE_UID ? 'u' : 'g', path);
 
@@ -3509,7 +3509,9 @@ static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 
 int lxc_map_ids(struct list_head *idmap, pid_t pid)
 {
-	int hostuid, hostgid, fill, left;
+	int fill, left;
+	uid_t hostuid;
+	gid_t hostgid;
 	char u_or_g;
 	char *pos;
 	char cmd_output[PATH_MAX];
@@ -3718,7 +3720,7 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->dfd_mnt);
 
 		goto domount;
-	} else if (link_len >= sizeof(link)) {
+	} else if ((size_t)link_len >= sizeof(link)) {
 		return log_error_errno(-EIO, EIO, "Truncated link target");
 	}
 	link[link_len] = '\0';
@@ -4116,14 +4118,14 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	if (!info_new->tty)
 		return ret_errno(ENOMEM);
 
-	for (int i = 0; i < ttys_max; i++) {
+	for (size_t i = 0; i < ttys_max; i++) {
 		terminal_info = &info_new->tty[i];
 		terminal_info->busy = -1;
 		terminal_info->ptx = -EBADF;
 		terminal_info->pty = -EBADF;
 	}
 
-	for (int i = 0; i < ttys_max; i++) {
+	for (size_t i = 0; i < ttys_max; i++) {
 		int ptx = -EBADF, pty = -EBADF;
 
 		ret = lxc_abstract_unix_recv_two_fds(sock, &ptx, &pty);
@@ -5521,11 +5523,11 @@ static char *getuname(void)
 	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = zalloc(bufsize);
@@ -5549,11 +5551,11 @@ static char *getgname(void)
 	__do_free char *buf = NULL;
 	struct group grent;
 	struct group *grentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = zalloc(bufsize);
