@@ -67,7 +67,7 @@ extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 #ifndef HAVE_PIVOT_ROOT
-static int pivot_root(const char *new_root, const char *put_old)
+static inline int pivot_root(const char *new_root, const char *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
 }
