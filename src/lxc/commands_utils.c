@@ -13,6 +13,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "attach_options.h"
 #include "af_unix.h"
 #include "commands.h"
 #include "commands_utils.h"

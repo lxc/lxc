@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <lxc/attach_options.h>
+#include "attach_options.h"
 
 #include "cgroup.h"
 #include "commands.h"

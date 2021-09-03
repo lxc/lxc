@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <lxc/attach_options.h>
-#include <lxc/lxccontainer.h>
+#include "lxccontainer.h"
+#include "attach_options.h"
 
 #include "compiler.h"
 
