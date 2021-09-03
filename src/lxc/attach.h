@@ -4,9 +4,10 @@
 #define __LXC_ATTACH_H
 
 #include <stdbool.h>
-#include <lxc/attach_options.h>
 #include <sys/types.h>
 
+#include "lxccontainer.h"
+#include "attach_options.h"
 #include "compiler.h"
 #include "namespace.h"
 

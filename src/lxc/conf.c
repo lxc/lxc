@@ -34,11 +34,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "conf.h"
 #include "af_unix.h"
 #include "caps.h"
 #include "cgroups/cgroup.h"
 #include "compiler.h"
-#include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "confile_utils.h"

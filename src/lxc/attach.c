@@ -22,8 +22,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
-#include <lxc/attach_options.h>
+#include "attach.h"
 
 #include "af_unix.h"
 #include "attach.h"

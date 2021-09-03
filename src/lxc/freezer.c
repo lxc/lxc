@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "attach_options.h"
 #include "cgroups/cgroup.h"
 #include "cgroups/cgroup_utils.h"
 #include "commands.h"
