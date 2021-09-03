@@ -3,6 +3,8 @@
 #ifndef __LXC_RTNL_H
 #define __LXC_RTNL_H
 
+#include "config.h"
+
 #include <compiler.h>
 
 /*

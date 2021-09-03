@@ -3,6 +3,8 @@
 #ifndef __LXC_BTRFS_H
 #define __LXC_BTRFS_H
 
+#include "config.h"
+
 #include <byteswap.h>
 #include <linux/types.h> /* __le64, __l32 ... */
 #include <stdbool.h>

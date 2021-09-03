@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <inttypes.h>
 #include <linux/limits.h>
 #include <sched.h>
@@ -19,7 +18,6 @@
 #include "cgroup.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "criu.h"
 #include "log.h"
 #include "lxc.h"

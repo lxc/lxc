@@ -3,6 +3,8 @@
 #ifndef __LXC_LXC_H
 #define __LXC_LXC_H
 
+#include "config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

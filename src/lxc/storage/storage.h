@@ -3,6 +3,8 @@
 #ifndef __LXC_STORAGE_H
 #define __LXC_STORAGE_H
 
+#include "config.h"
+
 #include <stdint.h>
 #include <sys/mount.h>
 

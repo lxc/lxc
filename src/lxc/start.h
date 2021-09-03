@@ -3,6 +3,8 @@
 #ifndef __LXC_START_H
 #define __LXC_START_H
 
+#include "config.h"
+
 #include <linux/sched.h>
 #include <sched.h>
 #include <signal.h>

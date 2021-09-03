@@ -3,6 +3,8 @@
 #ifndef __LXC_NL_H
 #define __LXC_NL_H
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include "compiler.h"

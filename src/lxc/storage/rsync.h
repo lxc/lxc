@@ -3,6 +3,8 @@
 #ifndef __LXC_RSYNC_H
 #define __LXC_RSYNC_H
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include "compiler.h"

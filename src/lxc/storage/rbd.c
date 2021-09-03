@@ -1,16 +1,13 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#include "config.h"
+
 #include <inttypes.h>	/* Required for PRIu64 to work. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
 #include "log.h"
 #include "memory_utils.h"
 #include "storage.h"

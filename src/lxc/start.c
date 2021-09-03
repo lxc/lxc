@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -36,7 +35,6 @@
 #include "commands_utils.h"
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "file_utils.h"

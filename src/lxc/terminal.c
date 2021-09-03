@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -20,7 +19,6 @@
 #include "caps.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"

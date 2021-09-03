@@ -3,6 +3,8 @@
 #ifndef __LXC_STORAGE_UTILS_H
 #define __LXC_STORAGE_UTILS_H
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>

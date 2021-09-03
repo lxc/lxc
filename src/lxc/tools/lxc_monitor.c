@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,7 +25,6 @@
 
 #include "af_unix.h"
 #include "arguments.h"
-#include "config.h"
 #include "log.h"
 #include "macro.h"
 #include "monitor.h"

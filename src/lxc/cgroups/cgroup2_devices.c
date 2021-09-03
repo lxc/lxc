@@ -2,9 +2,8 @@
 
 /* Parts of this taken from systemd's implementation. */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -16,7 +15,6 @@
 #include <unistd.h>
 
 #include "cgroup2_devices.h"
-#include "config.h"
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"

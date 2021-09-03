@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <stdlib.h>
 
-#include "config.h"
 #include "lsm/lsm.h"
 
 static char *nop_process_label_get(struct lsm_ops *ops, pid_t pid)

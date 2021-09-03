@@ -3,6 +3,8 @@
 #ifndef __LXC_CRIU_H
 #define __LXC_CRIU_H
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include "lxc.h"

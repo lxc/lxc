@@ -3,9 +3,9 @@
 #ifndef __LXC_STRING_UTILS_H
 #define __LXC_STRING_UTILS_H
 
-#include <stdarg.h>
-
 #include "config.h"
+
+#include <stdarg.h>
 
 #include "initutils.h"
 #include "macro.h"

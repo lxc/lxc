@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <grp.h>
 #include <sched.h>
 #include <stdint.h>
@@ -13,7 +12,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "log.h"
 #include "rsync.h"
 #include "storage.h"

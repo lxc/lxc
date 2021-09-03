@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/magic.h>
@@ -13,7 +12,6 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "config.h"
 #include "file_utils.h"
 #include "macro.h"
 #include "memory_utils.h"

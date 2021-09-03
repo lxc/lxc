@@ -3,6 +3,8 @@
 #ifndef __LXC_CONFILE_H
 #define __LXC_CONFILE_H
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 

@@ -3,6 +3,8 @@
 #ifndef __LXC_MOUNT_UTILS_H
 #define __LXC_MOUNT_UTILS_H
 
+#include "config.h"
+
 #include <linux/types.h>
 #include <stdio.h>
 #include <stdlib.h>

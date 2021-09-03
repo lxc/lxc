@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -15,7 +14,6 @@
 #include "lxc.h"
 
 #include "arguments.h"
-#include "config.h"
 #include "log.h"
 
 lxc_log_define(lxc_snapshot, lxc);

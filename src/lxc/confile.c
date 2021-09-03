@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -26,7 +24,6 @@
 
 #include "af_unix.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "netns_ifaddrs.h"
@@ -35,7 +32,6 @@
 #include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
-#include "storage/storage.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
