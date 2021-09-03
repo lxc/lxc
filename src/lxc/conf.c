@@ -185,7 +185,7 @@ static struct mount_opt propagation_opt[] = {
 	{ "rshared",     0, true,  MS_SHARED,     MS_SHARED | MS_REC     },
 	{ "rslave",      0, true,  MS_SLAVE,      MS_SLAVE | MS_REC      },
 	{ "runbindable", 0, true,  MS_UNBINDABLE, MS_UNBINDABLE | MS_REC },
-	{ NULL,          0, 0                                            },
+	{ NULL,          0, false, 0,             0                     },
 };
 
 static struct caps_opt caps_opt[] = {
