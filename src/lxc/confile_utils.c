@@ -799,7 +799,7 @@ int lxc_get_conf_str(char *retv, int inlen, const char *value)
 		return 0;
 
 	value_len = strlen(value);
-	if (retv && inlen >= value_len + 1)
+	if (retv && (size_t)inlen >= value_len + 1)
 		memcpy(retv, value, value_len + 1);
 
 	return value_len;
