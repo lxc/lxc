@@ -3,6 +3,8 @@
 #ifndef __LXC_OVERLAY_H
 #define __LXC_OVERLAY_H
 
+#include "config.h"
+
 #include <grp.h>
 #include <stdio.h>
 #include <stdbool.h>

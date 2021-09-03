@@ -3,6 +3,8 @@
 #ifndef __LXC_SYNC_H
 #define __LXC_SYNC_H
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include "compiler.h"

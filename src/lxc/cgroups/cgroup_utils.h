@@ -3,6 +3,8 @@
 #ifndef __LXC_CGROUP_UTILS_H
 #define __LXC_CGROUP_UTILS_H
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 

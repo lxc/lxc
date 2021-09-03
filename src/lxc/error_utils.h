@@ -3,6 +3,8 @@
 #ifndef __LXC_ERROR_UTILS_H
 #define __LXC_ERROR_UTILS_H
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include "macro.h"

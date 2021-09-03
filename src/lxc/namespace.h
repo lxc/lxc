@@ -3,6 +3,8 @@
 #ifndef __LXC_NAMESPACE_H
 #define __LXC_NAMESPACE_H
 
+#include "config.h"
+
 #include <sched.h>
 #include <unistd.h>
 #include <sys/syscall.h>

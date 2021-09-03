@@ -3,10 +3,8 @@
 #ifndef __LXC_MACRO_H
 #define __LXC_MACRO_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS
+#include "config.h"
+
 #include <asm/types.h>
 #include <limits.h>
 #include <linux/if_link.h>
@@ -22,7 +20,6 @@
 #include <unistd.h>
 
 #include "compiler.h"
-#include "config.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

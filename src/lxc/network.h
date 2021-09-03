@@ -3,6 +3,8 @@
 #ifndef __LXC_NETWORK_H
 #define __LXC_NETWORK_H
 
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <linux/types.h>
 #include <stdbool.h>

@@ -3,6 +3,8 @@
 #ifndef __LXC_LXCLOCK_H
 #define __LXC_LXCLOCK_H
 
+#include "config.h"
+
 #include <fcntl.h>
 #include <semaphore.h>
 #include <string.h>

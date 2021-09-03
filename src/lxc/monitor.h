@@ -3,6 +3,8 @@
 #ifndef __LXC_MONITOR_H
 #define __LXC_MONITOR_H
 
+#include "config.h"
+
 #include <limits.h>
 #include <poll.h>
 #include <sys/param.h>

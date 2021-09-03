@@ -3,6 +3,8 @@
 #ifndef __LXC_LSM_H
 #define __LXC_LSM_H
 
+#include "config.h"
+
 struct lxc_conf;
 
 #include <sys/types.h>

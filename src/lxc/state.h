@@ -3,6 +3,8 @@
 #ifndef __LXC_STATE_H
 #define __LXC_STATE_H
 
+#include "config.h"
+
 #include "compiler.h"
 
 #define MAX_STATE_LENGTH (8 + 1)

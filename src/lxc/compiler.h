@@ -3,14 +3,10 @@
 #ifndef __LXC_COMPILER_H
 #define __LXC_COMPILER_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
 
 #include <stdbool.h>
 #include <linux/types.h>
-
-#include "config.h"
 
 #ifndef thread_local
 #if __STDC_VERSION__ >= 201112L &&    \

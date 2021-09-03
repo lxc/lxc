@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <pthread.h>
 #include <signal.h>
 #include <sys/prctl.h>
@@ -11,7 +10,6 @@
 #include <unistd.h>
 
 #include "compiler.h"
-#include "config.h"
 #include "error.h"
 #include "file_utils.h"
 #include "initutils.h"

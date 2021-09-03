@@ -3,6 +3,8 @@
 #ifndef __LXC_ATTACH_H
 #define __LXC_ATTACH_H
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <sys/types.h>
 

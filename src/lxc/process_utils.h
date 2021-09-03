@@ -3,9 +3,8 @@
 #ifndef __LXC_PROCESS_UTILS_H
 #define __LXC_PROCESS_UTILS_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <linux/sched.h>
 #include <sched.h>
 #include <signal.h>
@@ -16,7 +15,6 @@
 #include <unistd.h>
 
 #include "compiler.h"
-#include "config.h"
 #include "syscall_numbers.h"
 
 #ifndef CSIGNAL
