@@ -20,7 +20,7 @@
 #include "process_utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 static char *copy_global_config_value(char *p)

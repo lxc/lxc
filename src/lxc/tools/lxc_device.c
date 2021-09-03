@@ -12,7 +12,7 @@
 
 #include <lxc/lxccontainer.h>
 
-#include "../../include/netns_ifaddrs.h"
+#include "netns_ifaddrs.h"
 #include "arguments.h"
 #include "config.h"
 #include "log.h"

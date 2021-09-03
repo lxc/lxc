@@ -32,7 +32,7 @@
 #if HAVE_OPENPTY
 #include <pty.h>
 #else
-#include <../include/openpty.h>
+#include "openpty.h"
 #endif
 
 #define LXC_TERMINAL_BUFFER_SIZE 1024

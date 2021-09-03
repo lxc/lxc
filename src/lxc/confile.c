@@ -29,7 +29,7 @@
 #include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
-#include "../include/netns_ifaddrs.h"
+#include "netns_ifaddrs.h"
 #include "log.h"
 #include "lxcseccomp.h"
 #include "memory_utils.h"
@@ -39,11 +39,11 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 lxc_log_define(confile, lxc);

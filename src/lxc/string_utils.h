@@ -11,15 +11,15 @@
 #include "macro.h"
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRCHRNUL
-#include "include/strchrnul.h"
+#include "strchrnul.h"
 #endif
 
 /* convert variadic argument lists to arrays (for execl type argument lists) */

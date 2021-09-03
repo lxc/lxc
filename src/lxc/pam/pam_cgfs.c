@@ -34,11 +34,11 @@
 #include <security/pam_modules.h>
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 #define pam_cgfs_debug_stream(stream, format, ...)                                \

@@ -29,6 +29,11 @@
 
 #include "lxc/state.h"
 #include "lxctest.h"
+#include "utils.h"
+
+#ifndef HAVE_STRLCPY
+#include "strlcpy.h"
+#endif
 
 #define MYNAME "lxctest1"
 

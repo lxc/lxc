@@ -24,8 +24,8 @@
 #include "memory_utils.h"
 #include "syscall_numbers.h"
 
-#include "include/bpf.h"
-#include "include/bpf_common.h"
+#include "bpf.h"
+#include "bpf_common.h"
 
 #ifndef HAVE_BPF
 static inline int bpf_lxc(int cmd, union bpf_attr *attr, size_t size)

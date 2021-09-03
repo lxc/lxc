@@ -75,7 +75,7 @@
 #if HAVE_OPENPTY
 #include <pty.h>
 #else
-#include <../include/openpty.h>
+#include "openpty.h"
 #endif
 
 #if HAVE_LIBCAP
@@ -83,25 +83,25 @@
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 #if IS_BIONIC
-#include <../include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif
 
 #if !defined(HAVE_PRLIMIT) && defined(HAVE_PRLIMIT64)
-#include <../include/prlimit.h>
+#include "prlimit.h"
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRCHRNUL
-#include "include/strchrnul.h"
+#include "strchrnul.h"
 #endif
 
 lxc_log_define(conf, lxc);

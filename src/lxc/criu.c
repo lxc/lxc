@@ -29,13 +29,13 @@
 #include "utils.h"
 
 #if IS_BIONIC
-#include <../include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #define CRIU_VERSION		"2.0"

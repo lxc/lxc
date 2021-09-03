@@ -25,7 +25,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "../include/netns_ifaddrs.h"
+#include "netns_ifaddrs.h"
 #include "af_unix.h"
 #include "api_extensions.h"
 #include "attach.h"

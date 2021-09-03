@@ -26,7 +26,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../include/netns_ifaddrs.h"
+#include "netns_ifaddrs.h"
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
@@ -42,7 +42,7 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 lxc_log_define(network, lxc);

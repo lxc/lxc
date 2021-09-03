@@ -9,7 +9,7 @@
 #include <lxc/lxccontainer.h>
 
 #if IS_BIONIC
-#include <../include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif
