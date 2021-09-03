@@ -42,7 +42,7 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	size_t rtalen = RTA_LENGTH(len);
 	size_t tlen = NLMSG_ALIGN(nlmsg->nlmsghdr->nlmsg_len) + RTA_ALIGN(rtalen);
 
-	if (tlen > nlmsg->cap)
+	if (tlen > (size_t)nlmsg->cap)
 		return ret_errno(ENOMEM);
 
 	rta = NLMSG_TAIL(nlmsg->nlmsghdr);
@@ -122,7 +122,7 @@ void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len)
 	size_t nlmsg_len = nlmsg->nlmsghdr->nlmsg_len;
 	size_t tlen = NLMSG_ALIGN(len);
 
-	if (nlmsg_len + tlen > nlmsg->cap)
+	if (nlmsg_len + tlen > (size_t)nlmsg->cap)
 		return ret_set_errno(NULL, ENOMEM);
 
 	buf = ((char *)(nlmsg->nlmsghdr)) + nlmsg_len;
@@ -188,7 +188,7 @@ again:
 	if (!ret)
 		return 0;
 
-	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len))
+	if (msg.msg_flags & MSG_TRUNC && ((__u32)ret == nlmsghdr->nlmsg_len))
 		return ret_errno(EMSGSIZE);
 
 	return ret;
