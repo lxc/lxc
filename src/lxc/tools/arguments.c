@@ -12,8 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "lxccontainer.h"
-#include "version.h"
+#include "lxc.h"
 
 #include "arguments.h"
 #include "initutils.h"

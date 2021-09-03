@@ -5,7 +5,6 @@
 #endif
 #include <errno.h>
 #include <fcntl.h>
-#include <lxc/lxccontainer.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -14,6 +13,8 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+
+#include "lxc.h"
 
 #include "af_unix.h"
 #include "caps.h"

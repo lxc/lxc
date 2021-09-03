@@ -19,8 +19,7 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
-#include "lxccontainer.h"
-#include "attach_options.h"
+#include "lxc.h"
 
 #include "arguments.h"
 #include "caps.h"

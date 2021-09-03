@@ -12,6 +12,10 @@ extern "C" {
 #include <sys/select.h>
 #include <sys/types.h>
 
+#include "attach_options.h"
+#include "lxccontainer.h"
+#include "version.h"
+
 #include "compiler.h"
 #include "memory_utils.h"
 #include "state.h"

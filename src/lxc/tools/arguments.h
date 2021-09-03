@@ -11,7 +11,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#include "lxccontainer.h"
+#include "lxc.h"
 #include "compiler.h"
 
 struct lxc_arguments;

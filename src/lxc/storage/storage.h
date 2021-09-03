@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <sys/mount.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #if IS_BIONIC
 #include "lxcmntent.h"

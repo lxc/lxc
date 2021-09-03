@@ -15,7 +15,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "arguments.h"
 #include "attach.h"

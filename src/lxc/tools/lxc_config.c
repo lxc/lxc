@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "config.h"
 

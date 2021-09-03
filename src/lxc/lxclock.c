@@ -12,7 +12,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "config.h"
 #include "log.h"

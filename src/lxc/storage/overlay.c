@@ -8,11 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lxc.h"
+
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "overlay.h"
