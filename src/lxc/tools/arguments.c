@@ -16,7 +16,6 @@
 #include "version.h"
 
 #include "arguments.h"
-#include "config.h"
 #include "initutils.h"
 #include "namespace.h"
 
