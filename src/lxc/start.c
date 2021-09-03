@@ -317,7 +317,7 @@ restart:
 
 #endif
 
-		if (fd <= listen_fds_max) {
+		if ((size_t)fd <= listen_fds_max) {
 			INFO("Inheriting fd %d (using the LISTEN_FDS environment variable)", fd);
 			continue;
 		}
@@ -355,7 +355,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	if (ret < 0)
 		return -EBADF;
 
-	for (int sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
+	for (size_t sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
 		ret = sigdelset(&mask, signals[sig]);
 		if (ret < 0)
 			return -EBADF;
@@ -446,7 +446,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
-	if (siginfo.ssi_pid != hdlr->pid) {
+	if ((__u64)siginfo.ssi_pid != (__u64)hdlr->pid) {
 		NOTICE("Received %d from pid %d instead of container init %d",
 		       siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
