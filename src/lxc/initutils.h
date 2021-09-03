@@ -17,7 +17,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cgroups/cgroup.h"
 #include "compiler.h"
 #include "string_utils.h"
 
