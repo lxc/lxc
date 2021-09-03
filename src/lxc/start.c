@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "af_unix.h"
+#include "attach_options.h"
 #include "caps.h"
 #include "cgroups/cgroup.h"
 #include "cgroups/cgroup_utils.h"

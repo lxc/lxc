@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <lxc/lxccontainer.h>
+#include <lxc/attach_options.h>
 
 #include "af_unix.h"
 #include "attach.h"
