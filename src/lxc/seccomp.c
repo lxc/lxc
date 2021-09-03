@@ -11,11 +11,12 @@
 #include <sys/mount.h>
 #include <sys/utsname.h>
 
+#include "lxc.h"
+
 #include "af_unix.h"
 #include "commands.h"
 #include "config.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "lxcseccomp.h"
 #include "mainloop.h"
 #include "memory_utils.h"

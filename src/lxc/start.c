@@ -25,6 +25,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "af_unix.h"
 #include "attach_options.h"
 #include "caps.h"
@@ -41,7 +43,6 @@
 #include "list.h"
 #include "log.h"
 #include "lsm/lsm.h"
-#include "lxccontainer.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "macro.h"

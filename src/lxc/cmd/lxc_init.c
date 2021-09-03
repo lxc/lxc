@@ -16,8 +16,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
-#include <lxc/version.h>
+#include "lxc.h"
+#include "version.h"
 
 #include "compiler.h"
 #include "config.h"

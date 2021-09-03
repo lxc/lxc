@@ -23,7 +23,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "af_unix.h"
 #include "arguments.h"

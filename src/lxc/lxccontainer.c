@@ -25,6 +25,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "netns_ifaddrs.h"
 #include "af_unix.h"
 #include "api_extensions.h"
@@ -42,7 +44,6 @@
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"
-#include "lxccontainer.h"
 #include "lxclock.h"
 #include "memory_utils.h"
 #include "monitor.h"

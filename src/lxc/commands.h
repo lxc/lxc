@@ -3,14 +3,17 @@
 #ifndef __LXC_COMMANDS_H
 #define __LXC_COMMANDS_H
 
+#include "config.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "compiler.h"
 #include "cgroups/cgroup.h"
-#include "lxccontainer.h"
 #include "macro.h"
 #include "state.h"
 

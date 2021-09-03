@@ -18,11 +18,12 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "caps.h"
 #include "config.h"
 #include "file_utils.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "memory_utils.h"
 #include "utils.h"
 
