@@ -3,9 +3,8 @@
 #ifndef __LXC_CONF_H
 #define __LXC_CONF_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <linux/magic.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -18,7 +17,6 @@
 #include "attach_options.h"
 #include "caps.h"
 #include "compiler.h"
-#include "config.h"
 #include "hlist.h"
 #include "list.h"
 #include "lxcseccomp.h"

@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -39,7 +38,6 @@
 #include "caps.h"
 #include "cgroups/cgroup.h"
 #include "compiler.h"
-#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "error.h"
