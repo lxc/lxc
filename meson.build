@@ -16,6 +16,8 @@ conf = configuration_data()
 conf.set_quoted('PROJECT_URL', 'https://linuxcontainers.org/lxc/introduction/')
 conf.set('PROJECT_VERSION',    meson.project_version(),
          description : 'Numerical project version (used where a simple number is expected)')
+conf.set('_GNU_SOURCE', true)
+conf.set('__STDC_FORMAT_MACROS', true)
 
 version_data = configuration_data()
 version_data.set('LXC_VERSION_MAJOR', '4')
@@ -304,6 +306,7 @@ add_project_arguments('-include', 'config.h', language : 'c')
 
 subdir('src/include')
 subdir('src/lxc')
+subdir('src/lxc/tools')
 
 config_h = configure_file(
         output : 'config.h',
@@ -312,7 +315,7 @@ config_h = configure_file(
 liblxc = shared_library(
         'lxc',
         version : liblxc_version,
-        include_directories : liblxc_includes,
+        include_directories : tools_liblxc_includes,
         link_args : ['-shared', '-fPIC', '-DPIC'],
         link_whole : [liblxc_static],
         dependencies : [threads,
@@ -323,3 +326,299 @@ liblxc = shared_library(
 			libapparmor],
         install : true,
         install_dir : libdir)
+
+public_programs = []
+
+public_programs += executable(
+                'lxc-autostart',
+		tools_lxc_autostart_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-cgroup',
+		tools_lxc_cgroup_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-checkpoint',
+		tools_lxc_checkpoint_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-config',
+		tools_lxc_config_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-console',
+		tools_lxc_console_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-copy',
+		tools_lxc_copy_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-create',
+		tools_lxc_create_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-destroy',
+		tools_lxc_destroy_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-device',
+		tools_lxc_device_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-execute',
+		tools_lxc_execute_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-freeze',
+		tools_lxc_freeze_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-info',
+		tools_lxc_info_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-ls',
+		tools_lxc_ls_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-monitor',
+		tools_lxc_monitor_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-snapshot',
+		tools_lxc_snapshot_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-start',
+		tools_lxc_start_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-stop',
+		tools_lxc_stop_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-top',
+		tools_lxc_top_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-unfreeze',
+		tools_lxc_unfreeze_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-unshare',
+		tools_lxc_unshare_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
+
+public_programs += executable(
+                'lxc-wait',
+		tools_lxc_wait_sources,
+                include_directories : tools_liblxc_includes,
+                link_with : [liblxc],
+		dependencies : [threads,
+				libseccomp,
+				libcap,
+				libopenssl,
+				libselinux,
+				libapparmor],
+                install : true,
+                install_dir : bindir)
