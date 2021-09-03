@@ -3,9 +3,8 @@
 #ifndef __LXC_LOG_H
 #define __LXC_LOG_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -18,7 +17,6 @@
 
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
