@@ -16,7 +16,6 @@ extern "C" {
 
 #include "attach_options.h"
 #include "lxccontainer.h"
-#include "version.h"
 
 #include "compiler.h"
 #include "memory_utils.h"
