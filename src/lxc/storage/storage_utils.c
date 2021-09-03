@@ -184,6 +184,8 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 		_exit(EXIT_FAILURE);
 
 	while (getline(&line, &linelen, f) != -1) {
+		ssize_t nbytes;
+
 		sp1 = strchr(line, ' ');
 		if (!sp1)
 			_exit(EXIT_FAILURE);
@@ -203,7 +205,8 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 		*sp3 = '\0';
 
 		sp2++;
-		if (write(p[1], sp2, strlen(sp2)) != strlen(sp2))
+		nbytes = write(p[1], sp2, strlen(sp2));
+		if (nbytes < 0 || (size_t)nbytes != strlen(sp2))
 			_exit(EXIT_FAILURE);
 
 		_exit(EXIT_SUCCESS);
