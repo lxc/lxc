@@ -130,7 +130,7 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	 * ret >= len. This means lxcpath and name are too long. We need to
 	 * hash both.
 	 */
-	if (ret >= len) {
+	if ((size_t)ret >= len) {
 		tmplen = strlen(name) + strlen(lxcpath) + 2;
 		tmppath = must_realloc(NULL, tmplen);
 		ret = strnprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
