@@ -35,11 +35,11 @@
 #include "string_utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)

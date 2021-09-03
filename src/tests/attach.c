@@ -33,7 +33,7 @@
 #include <lxc/lxccontainer.h>
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #define TSTNAME    "lxc-attach-test"

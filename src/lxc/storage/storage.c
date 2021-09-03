@@ -43,7 +43,7 @@
 #include "zfs.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef BLKGETSIZE64

@@ -19,7 +19,7 @@
 #include "syscall_wrappers.h"
 
 #if IS_BIONIC
-#include "../include/fexecve.h"
+#include "fexecve.h"
 #endif
 
 #define LXC_MEMFD_REXEC_SEALS \

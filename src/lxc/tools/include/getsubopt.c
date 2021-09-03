@@ -7,7 +7,7 @@
 #include "config.h"
 
 #ifndef HAVE_STRCHRNUL
-#include "../../../include/strchrnul.h"
+#include "strchrnul.h"
 #endif
 
 /* Parse comma separated suboption from *OPTIONP and match against

@@ -35,7 +35,7 @@ __hidden extern char *get_rundir(void);
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE
 #ifdef HAVE_FGETLN
-#include <../include/getline.h>
+#include "getline.h"
 #endif
 #endif
 

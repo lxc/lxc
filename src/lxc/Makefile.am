@@ -230,6 +230,7 @@ AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	     -DSBINDIR=\"$(SBINDIR)\" \
 	     -DAPPARMOR_CACHE_DIR=\"$(APPARMOR_CACHE_DIR)\" \
 	     -I $(top_srcdir)/src \
+	     -I $(top_srcdir)/src/include \
 	     -I $(top_srcdir)/src/lxc \
 	     -I $(top_srcdir)/src/lxc/storage \
 	     -I $(top_srcdir)/src/lxc/cgroups
