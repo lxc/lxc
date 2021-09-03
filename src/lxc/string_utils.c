@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#include "config.h"
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -26,13 +24,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "config.h"
-#include "lxclock.h"
+#include "string_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
-#include "namespace.h"
-#include "parse.h"
-#include "string_utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "strlcpy.h"
