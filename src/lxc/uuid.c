@@ -47,7 +47,7 @@ static int get_random_bytes(void *p, size_t n)
 		return -1;
 
 	bytes = read(fd, p, n);
-	if (bytes != n)
+	if ((size_t)bytes != n)
 		return -1;
 
 	return 0;
