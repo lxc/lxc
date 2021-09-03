@@ -136,7 +136,7 @@ static int selinux_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on_
 		ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/exec", pid);
 	else
 		ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+	if (ret < 0 || (size_t)ret >= LXC_LSMATTRLEN)
 		return -1;
 
 	labelfd = open(path, O_RDWR);

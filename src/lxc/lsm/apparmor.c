@@ -406,7 +406,7 @@ static int __apparmor_process_label_open(struct lsm_ops *ops, pid_t pid, int o_f
 
 	/* first try the apparmor subdir */
 	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/apparmor/current", pid);
-	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+	if (ret < 0 || (size_t)ret >= LXC_LSMATTRLEN)
 		return -1;
 
 	labelfd = open(path, o_flags);
@@ -417,7 +417,7 @@ static int __apparmor_process_label_open(struct lsm_ops *ops, pid_t pid, int o_f
 
 	/* fallback to legacy global attr directory */
 	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+	if (ret < 0 || (size_t)ret >= LXC_LSMATTRLEN)
 		return -1;
 
 	labelfd = open(path, o_flags);
@@ -721,13 +721,12 @@ static void append_all_remount_rules(char **profile, size_t *size)
 	const size_t buf_append_pos = strlen(buf);
 
 	const size_t opt_count = ARRAY_SIZE(REMOUNT_OPTIONS);
-	size_t opt_bits;
 
 	must_append_sized(profile, size,
 			  "# allow various ro-bind-*re*mounts\n",
 			  sizeof("# allow various ro-bind-*re*mounts\n")-1);
 
-	for (opt_bits = 0; opt_bits != 1 << opt_count; ++opt_bits) {
+	for (size_t opt_bits = 0; opt_bits != (size_t)1 << opt_count; ++opt_bits) {
 		size_t at = buf_append_pos;
 		unsigned bit = 1;
 		size_t o;
