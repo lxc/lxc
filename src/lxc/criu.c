@@ -337,7 +337,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			WARN("No cgroup controllers configured in container's cgroup %s", cgroup_base_path);
 			ret = sprintf(buf, "%s", cgroup_base_path);
 		}
-		if (ret < 0 || ret >= sizeof(buf))
+		if (ret < 0 || (size_t)ret >= sizeof(buf))
 			return log_error_errno(-EIO, EIO, "sprintf of cgroup root arg failed");
 
 		DECLARE_ARG("--cgroup-root");
@@ -445,7 +445,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			char ghost_limit[32];
 
 			ret = sprintf(ghost_limit, "%"PRIu64, opts->user->ghost_limit);
-			if (ret < 0 || ret >= sizeof(ghost_limit))
+			if (ret < 0 || (size_t)ret >= sizeof(ghost_limit))
 				return log_error_errno(-EIO, EIO, "Failed to print ghost limit %"PRIu64, opts->user->ghost_limit);
 
 			DECLARE_ARG("--ghost-limit");
