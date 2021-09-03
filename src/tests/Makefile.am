@@ -23,6 +23,7 @@ endif
 lxc_test_arch_parse_SOURCES = arch_parse.c \
 			      lxctest.h \
 			      ../lxc/lxc.h \
+			      ../lxc/version.h \
 			      ../lxc/memory_utils.h
 
 lxc_test_api_reboot_SOURCES = api_reboot.c \
