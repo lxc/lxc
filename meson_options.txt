@@ -1,0 +1,29 @@
+# -*- mode: meson -*-
+
+option('tests', type : 'boolean', value: 'false',
+       description : 'enable tests')
+
+option('runtime-path', type : 'string', value : '/run',
+       description : 'the runtime directory')
+
+option('init-script', type : 'combo',
+       choices : ['systemd', 'sysvinit', 'openrc', 'upstart'], value : 'systemd',
+       description : 'init script')
+
+option('apparmor-cache-dir', type : 'string', value : 'cache/lxc/apparmor',
+       description : 'the AppArmor cache directory')
+
+option('rootfs-mount-dir', type : 'string', value : 'lib/x86_64-linux-gnu/lxc',
+       description : 'the rootfs mount directory')
+
+option('cgroup-pattern', type : 'string', value : '',
+       description : 'the rootfs mount directory')
+
+option('log-path', type : 'string', value : 'log/lxc',
+       description : 'the rootfs mount directory')
+
+option('config-path', type : 'string', value : 'lib/lxc',
+       description : 'the rootfs mount directory')
+
+option('global-config', type : 'string', value : 'lxc/lxc.conf',
+       description : 'the rootfs mount directory')
