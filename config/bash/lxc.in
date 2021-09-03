@@ -35,24 +35,31 @@ __lxc_names() {
     done
 }
 
-__lxc_append_name() {
+__lxc_check_name_present() {
     mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
     local parsed
+    mapfile -t names < <(command lxc-ls -1)
     # If `--name` or `-n` are present, do not complete with container names.
     for param in "${words[@]}"; do
         # Parse names from command line when space is escaped by backslash.
         parsed="${param//[\\\"\']}"
         if [[ ${parsed} =~ ^--name(=(.*))?$ ]]; then
-            return
+            return 0
         elif [[ ${parsed} =~ ${shortoptnamexp} ]]; then
-            return
+            return 0
         fi
         for name in "${names[@]}"; do
-            [[ "${parsed}" == "${name}" ]] && return
+            [[ "${parsed}" == "${name}" ]] && return 0
         done
     done
-    __lxc_names
+    return 1
+}
+
+__lxc_append_name() {
+    if ! __lxc_check_name_present; then
+        __lxc_names
+    fi
 }
 
 __lxc_get_snapshots() {
@@ -383,6 +390,53 @@ _lxc_autostart() {
 } &&
     complete -F _lxc_autostart lxc-autostart
 
+__lxc_cgroup_v2() {
+    declare -a stateObjects
+    local -r path="${1}"
+    [[ ! -f "${path}/cgroup.controllers" ]] && return
+    for controller in $(<"${path}/cgroup.controllers"); do
+        for so in ${path}/${controller}.*; do
+            [[ ! -f "${so}" ]] && continue
+            stateObjects+=("${so##*/}")
+        done
+    done
+    command printf "%s" "${stateObjects[*]}"
+}
+
+__lxc_cgroup_v1() {
+    declare -a stateObjects
+    local -r path="${1}"
+    local prefix
+    for controller in "${path}"/*; do
+        [[ ! -d "${controller}" ]] && continue
+        prefix="${controller##*/}"
+        for so in "${controller}/${prefix}".*; do
+            [[ ! -f "${so}" ]] && continue
+            stateObjects+=("${so##*/}")
+        done
+    done
+    command printf "%s" "${stateObjects[*]}"
+}
+
+__lxc_cgroup_state_object() {
+    local -r name="${1}"
+    local -r cgroupPath="/sys/fs/cgroup"
+    # cgroup_v2 + user.slice
+    local -r userSlicePath="${cgroupPath}/user.slice"
+    if [[ -d "${userSlicePath}" ]]; then
+        COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v2 "${userSlicePath}")" -- "${cur}" ) )
+        return
+    fi
+    # cgroup_v2 + lxc.payload
+    local -r lxcCgroup="${cgroupPath}/lxc.payload.${name}"
+    if [[ -d "${lxcCgroup}" ]]; then
+        COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v2 "${lxcCgroup}")" -- "${cur}" ) )
+        return
+    fi
+    # cgroup_v1
+    COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v1 "${cgroupPath}")" -- "${cur}" ) )
+}
+
 _lxc_cgroup() {
     local cur prev words cword split
     COMPREPLY=()
@@ -408,7 +462,12 @@ _lxc_cgroup() {
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
         return
     fi
-    __lxc_append_name
+
+    if __lxc_check_name_present; then
+        __lxc_cgroup_state_object
+    else
+        __lxc_append_name
+    fi
 } &&
     complete -F _lxc_cgroup lxc-cgroup
 
