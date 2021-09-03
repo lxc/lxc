@@ -31,7 +31,7 @@
 #define __NETLINK_ALIGN(len) (((len) + 3) & ~3)
 
 #define __NLMSG_OK(nlh, end) \
-	((char *)(end) - (char *)(nlh) >= sizeof(struct nlmsghdr))
+	((size_t)((char *)(end) - (char *)(nlh)) >= sizeof(struct nlmsghdr))
 
 #define __NLMSG_NEXT(nlh) \
 	(struct nlmsghdr *)((char *)(nlh) + __NETLINK_ALIGN((nlh)->nlmsg_len))
@@ -50,7 +50,7 @@
 	(struct rtattr *)((char *)(rta) + __NETLINK_ALIGN((rta)->rta_len))
 
 #define __RTA_OK(nlh, end) \
-	((char *)(end) - (char *)(rta) >= sizeof(struct rtattr))
+	((size_t)((char *)(end) - (char *)(rta)) >= sizeof(struct rtattr))
 
 #define __NLMSG_RTAOK(rta, nlh) __RTA_OK(rta, __NLMSG_DATAEND(nlh))
 
