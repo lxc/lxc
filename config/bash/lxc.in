@@ -1124,6 +1124,14 @@ _lxc_update_config() {
 } &&
     complete -F _lxc_update_config lxc-update-config
 
+__lxc_id_mapping() {
+    local -r tmp="${cur//[^:]}"
+    if [[ "${#tmp}" -eq 0 ]]; then
+        COMPREPLY=( $( compgen -W "u: g: b:" -- "${cur}" ) )
+    fi
+    compopt -o nospace
+}
+
 _lxc_usernsexec() {
     local cur prev words cword split
     COMPREPLY=()
@@ -1139,7 +1147,8 @@ _lxc_usernsexec() {
             return
             ;;
         -m )
-            # @TODO: ^[ugb]:[0-9]+:[0-9]+(:[0-9]+)?$
+            # ^[ugb]:[0-9]+:[0-9]+(:[0-9]+)?$
+            __lxc_id_mapping
             return
             ;;
         -s )
@@ -1152,7 +1161,6 @@ _lxc_usernsexec() {
     if [[ ${cur} == -* ]]; then
         COMPREPLY=( $( compgen -W '-h -m -s' -- "${cur}" ) )
         [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
-        return
     fi
 } &&
     complete -F _lxc_usernsexec lxc-usernsexec
