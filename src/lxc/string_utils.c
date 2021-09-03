@@ -1000,10 +1000,9 @@ char *lxc_trim_whitespace_in_place(char *buffer)
 
 int lxc_is_line_empty(const char *line)
 {
-	int i;
 	size_t len = strlen(line);
 
-	for (i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 		if (line[i] != ' ' && line[i] != '\t' &&
 		    line[i] != '\n' && line[i] != '\r' &&
 		    line[i] != '\f' && line[i] != '\0')

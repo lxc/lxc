@@ -151,13 +151,13 @@ static inline char *deabs(char *str)
 	return str + strspn(str, "/");
 }
 
-#define strnprintf(buf, buf_size, ...)                                            \
-	({                                                                        \
-		int __ret_strnprintf;                                             \
-		__ret_strnprintf = snprintf(buf, buf_size, ##__VA_ARGS__);        \
-		if (__ret_strnprintf < 0 || (size_t)__ret_strnprintf >= buf_size) \
-			__ret_strnprintf = ret_errno(EIO);                        \
-		__ret_strnprintf;                                                 \
+#define strnprintf(buf, buf_size, ...)                                                    \
+	({                                                                                \
+		int __ret_strnprintf;                                                     \
+		__ret_strnprintf = snprintf(buf, buf_size, ##__VA_ARGS__);                \
+		if (__ret_strnprintf < 0 || (size_t)__ret_strnprintf >= (size_t)buf_size) \
+			__ret_strnprintf = ret_errno(EIO);				  \
+		__ret_strnprintf;                                                         \
 	})
 
 static inline const char *proc_self_fd(int fd)
