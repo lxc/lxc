@@ -687,11 +687,11 @@ static void free_btrfs_tree(struct my_btrfs_tree *tree)
 static bool do_remove_btrfs_children(struct my_btrfs_tree *tree, u64 root_id,
 				     const char *path)
 {
-	int i, ret;
+	int ret;
 	char *newpath;
 	size_t len;
 
-	for (i = 0; i < tree->num; i++) {
+	for (int i = 0; i < tree->num; i++) {
 		if (tree->nodes[i].parentid == root_id) {
 			if (!tree->nodes[i].dirname) {
 				WARN("Odd condition: child objid with no name under %s", path);
@@ -706,7 +706,7 @@ static bool do_remove_btrfs_children(struct my_btrfs_tree *tree, u64 root_id,
 			}
 
 			ret = snprintf(newpath, len, "%s/%s", path, tree->nodes[i].dirname);
-			if (ret < 0 || ret >= len) {
+			if (ret < 0 || (size_t)ret >= len) {
 				free(newpath);
 				return false;
 			}
@@ -739,7 +739,7 @@ static int btrfs_lxc_rm_rf(const char *path)
 	struct btrfs_ioctl_search_header sh;
 	struct btrfs_root_ref *ref;
 	struct my_btrfs_tree *tree;
-	int ret, e, i;
+	int ret, e;
 	unsigned long off = 0;
 	u16 name_len;
 	u64 dir_id;
@@ -802,7 +802,7 @@ static int btrfs_lxc_rm_rf(const char *path)
 			break;
 
 		off = 0;
-		for (i = 0; i < sk->nr_items; i++) {
+		for (size_t i = 0; i < sk->nr_items; i++) {
 			memcpy(&sh, args.buf + off, sizeof(sh));
 			off += sizeof(sh);
 

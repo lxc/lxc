@@ -275,10 +275,10 @@ int lvm_compare_lv_attr(const char *path, int pos, const char expected)
 		return 0;
 
 	len = strlen(output);
-	while (start < len && output[start] == ' ')
+	while ((size_t)start < len && output[start] == ' ')
 		start++;
 
-	if (start + pos < len && output[start + pos] == expected)
+	if ((size_t)(start + pos) < len && output[start + pos] == expected)
 		return 1;
 
 	return 0;
