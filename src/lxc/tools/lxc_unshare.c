@@ -149,14 +149,14 @@ static bool lookup_user(const char *oparg, uid_t *uid)
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	if (!oparg || (oparg[0] == '\0'))
 		return false;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);
