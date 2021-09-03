@@ -21,7 +21,7 @@
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <syslog.h>
-#include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "af_unix.h"
@@ -44,6 +44,10 @@
 
 #ifndef HAVE_STRLCAT
 #include "strlcat.h"
+#endif
+
+#if HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
 #endif
 
 lxc_log_define(confile, lxc);
@@ -2396,7 +2400,7 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 	if (buffer_size == 0)
 		return ret_errno(EINVAL);
 
-	if (buffer_size != size)
+	if (buffer_size != (uint64_t)size)
 		NOTICE("Passed size was not a power of 2. Rounding log size to next power of two: %" PRIu64 " bytes", buffer_size);
 
 	lxc_conf->console.buffer_size = buffer_size;
@@ -2441,7 +2445,7 @@ static int set_config_console_size(const char *key, const char *value,
 	if (log_size == 0)
 		return ret_errno(EINVAL);
 
-	if (log_size != size)
+	if (log_size != (uint64_t)size)
 		NOTICE("Passed size was not a power of 2. Rounding log size to next power of two: %" PRIu64 " bytes", log_size);
 
 	lxc_conf->console.log_size = log_size;
@@ -2994,7 +2998,7 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 		{ "x86_64",    PER_LINUX   },
 	};
 
-	for (int i = 0; i < ARRAY_SIZE(pername); i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(pername); i++) {
 		if (!strequal(pername[i].name, arch))
 			continue;
 
@@ -4224,7 +4228,7 @@ static int get_config_init_groups(const char *key, char *retv, int inlen,
 	if (c->init_groups.size == 0)
 		return 0;
 
-	for (int i = 0; i < c->init_groups.size; i++)
+	for (size_t i = 0; i < c->init_groups.size; i++)
 		strprint(retv, inlen, "%s%d", (i > 0) ? "," : "",
 			 c->init_groups.list[i]);
 
