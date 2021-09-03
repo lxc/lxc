@@ -885,7 +885,7 @@ static const struct dev_symlinks dev_symlinks[] = {
 
 static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
-	for (int i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+	for (size_t i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
 		int ret;
 		struct stat s;
 		const struct dev_symlinks *d = &dev_symlinks[i];
@@ -974,7 +974,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (int i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		__do_close int fd_to = -EBADF;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
@@ -982,7 +982,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			char *tty_name, *tty_path;
 
 			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
-				       "/dev/%s/tty%d", ttydir, i + 1);
+				       "/dev/%s/tty%zu", ttydir, i + 1);
 			if (ret < 0)
 				return ret_errno(-EIO);
 
@@ -1028,7 +1028,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       rootfs->dfd_dev, tty_name,
 						       rootfs->dfd_dev, tty_path);
 		} else {
-			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "tty%zu", i + 1);
 			if (ret < 0)
 				return ret_errno(-EIO);
 
@@ -1107,7 +1107,7 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 	if (!ttys || !ttys->tty)
 		return;
 
-	for (int i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 		close_prot_errno_disarm(tty->ptx);
 		close_prot_errno_disarm(tty->pty);
@@ -1118,7 +1118,6 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 
 static int __lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
-	int i;
 	int ret = -1;
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *ttys = &conf->ttys;
@@ -1127,7 +1126,7 @@ static int __lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	if (ttys->max == 0)
 		return 0;
 
-	for (i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		int ttyfds[2];
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
@@ -1298,7 +1297,7 @@ enum {
 
 static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 {
-	int i, ret;
+	int ret;
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
@@ -1308,7 +1307,7 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 	INFO("Populating \"/dev\"");
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
-	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
+	for (size_t i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -2247,7 +2246,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 			return 0;
 		}
 
-		if (mo->flag == ~0)
+		if (mo->flag == (__u64)~0)
 			return log_info(0, "Ignoring %s mount option", mo->name);
 
 		if (mo->clear) {
@@ -2979,7 +2978,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		/* Set propagation mount options. */
 		if (opts.attr.propagation) {
 			attr = (struct lxc_mount_attr) {
-				attr.propagation = opts.attr.propagation,
+				.propagation = opts.attr.propagation,
 			};
 
 			ret = mount_setattr(fd_from,
