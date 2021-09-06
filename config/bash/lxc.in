@@ -39,6 +39,7 @@ __lxc_check_name_present() {
     mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
     local parsed
+    local -r current="${cur//[\\\"\']}"
     mapfile -t names < <(command lxc-ls -1)
     # If `--name` or `-n` are present, do not complete with container names.
     for param in "${words[@]}"; do
@@ -50,7 +51,9 @@ __lxc_check_name_present() {
             return 0
         fi
         for name in "${names[@]}"; do
-            [[ "${parsed}" == "${name}" ]] && return 0
+            if [[ "${parsed}" == "${name}" ]] && [[ "${current}" != "${parsed}" ]]; then
+                return 0
+            fi
         done
     done
     return 1
