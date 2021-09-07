@@ -38,20 +38,31 @@ __lxc_names() {
 __lxc_check_name_present() {
     mapfile -t names < <(command lxc-ls -1)
     local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
+    local container
+    local param
     local parsed
+    # Current word on command line, minus double/single quote and backslash.
     local -r current="${cur//[\\\"\']}"
-    mapfile -t names < <(command lxc-ls -1)
-    # If `--name` or `-n` are present, do not complete with container names.
-    for param in "${words[@]}"; do
+    # If `--name` or `-n` are present, then a container name should be available.
+    for i in "${!words[@]}"; do
+        param="${words[${i}]}"
         # Parse names from command line when space is escaped by backslash.
         parsed="${param//[\\\"\']}"
         if [[ ${parsed} =~ ^--name(=(.*))?$ ]]; then
+            if [[ -n "${BASH_REMATCH[2]}" ]]; then
+                container="${BASH_REMATCH[2]}"
+            else
+                container="${words[${i}+1]}"
+            fi
+            command printf "%q" "${container}"
             return 0
         elif [[ ${parsed} =~ ${shortoptnamexp} ]]; then
+            command printf "%q" "${words[${i}+1]}"
             return 0
         fi
         for name in "${names[@]}"; do
             if [[ "${parsed}" == "${name}" ]] && [[ "${current}" != "${parsed}" ]]; then
+                command printf "%q" "${name}"
                 return 0
             fi
         done
@@ -60,39 +71,15 @@ __lxc_check_name_present() {
 }
 
 __lxc_append_name() {
-    if ! __lxc_check_name_present; then
+    local -r name=$(__lxc_check_name_present)
+    if [[ -z "${name}" ]]; then
         __lxc_names
     fi
 }
 
 __lxc_get_snapshots() {
-    mapfile -t names < <(command lxc-ls -1)
-    local -r shortoptnamexp="^-[0-9A-Za-mo-z]*n[0-9A-Za-mo-z]*$"
-    local container
-    local param
-    for i in "${!words[@]}"; do
-        param="${words[${i}]}"
-        parsed="${param//[\\\"\']}"
-        if [[ ${param} =~ ^--name(=(.*))?$ ]]; then
-            if [[ -n "${BASH_REMATCH[2]}" ]]; then
-                container="${BASH_REMATCH[2]}"
-            else
-                container="${words[${i}+1]}"
-            fi
-            break
-        elif [[ ${param} =~ ${shortoptnamexp} ]]; then
-            container="${words[${i}+1]}"
-            break
-        fi
-        for name in "${names[@]}"; do
-            if [[ "${parsed}" == "${name}" ]]; then
-                container="${name}"
-                break
-            fi
-        done
-        [[ -n "${container}" ]] && break
-    done
-    container="${container//[\\\"\']}"
+    local -r container=$(__lxc_check_name_present)
+    [[ -z "${container}" ]] && return
     mapfile -t snaps < <(command lxc-snapshot --name="${container}" --list)
     local -r nosnapxp="^No snapshots$"
     if [[ ! "${snaps[*]}" =~ ${nosnapxp} ]]; then
