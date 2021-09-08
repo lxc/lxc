@@ -166,9 +166,11 @@ __lxc_check_word_in_array() {
 }
 
 __lxc_piped_args() {
+    local -r currentWord="${1}"
     local -r sep="${2}"
+    declare -a completionWords=("${@:3}")
     # Remove double/single quote and backslash from current completion parameter.
-    IFS=$"${sep}" read -r -e -a current <<< "${1//[\\\"\']}"
+    IFS=$"${sep}" read -r -e -a current <<< "${currentWord//[\\\"\']}"
 
     # Add separator back to current in case it is part of completion list.
     for i in "${!current[@]}"; do
@@ -179,7 +181,7 @@ __lxc_piped_args() {
 
     # Remove words from completion already added to argument.
     declare -a minuslast=("${current[@]::${#current[@]}-1}")
-    declare -a completion=("${@:3}")
+    declare -a completion=("${completionWords[@]}")
     for i in "${!completion[@]}"; do
         if __lxc_check_word_in_array "${completion[${i}]}" "${minuslast[@]}"; then
             command unset -v 'completion[${i}]'
@@ -191,7 +193,7 @@ __lxc_piped_args() {
     if __lxc_array_has_duplicates "${minuslast[@]}"; then
         return
     fi
-    declare -a allcomps=("${@:3}")
+    declare -a allcomps=("${completionWords[@]}")
     for i in "${!minuslast[@]}"; do
         if ! __lxc_check_word_in_array "${minuslast[${i}]}" "${allcomps[@]}"; then
             return
@@ -212,7 +214,7 @@ __lxc_piped_args() {
         fi
         # TAB after quotes to complete for next value.
         if ! __lxc_array_has_duplicates "${current[@]}" && __lxc_check_word_in_array "${lastword}" "${allcomps[@]}"; then
-            if ! __lxc_check_completion_avail "${lastword}" "${completion[@]}" || [[ "${#1}" -lt "${#sep}" ]] || [[ "${1: -${#sep}}" == "${sep}" ]]; then
+            if ! __lxc_check_completion_avail "${lastword}" "${completion[@]}" || [[ "${#currentWord}" -lt "${#sep}" ]] || [[ "${currentWord: -${#sep}}" == "${sep}" ]]; then
                 prefix=$(__lxc_concat_array_sep "${sep}" "${current[@]}")
                 for comp in "${completion[@]}"; do
                     [[ "${comp}" == "${lastword}" ]] && continue
@@ -340,7 +342,7 @@ __lxc_get_groups() {
         line=$(command echo -e "${line}" | command sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         IFS=$',' read -r -e -a linegroups <<< "${line}"
         for entry in "${linegroups[@]}"; do
-            key=$(printf "%q" "${entry}")
+            key=$(command printf "%q" "${entry}")
             groups+=(["${key}"]=1)
         done
     done
@@ -385,7 +387,7 @@ __lxc_cgroup_v2() {
     local -r path="${1}"
     [[ ! -f "${path}/cgroup.controllers" ]] && return
     for controller in $(<"${path}/cgroup.controllers"); do
-        for so in ${path}/${controller}.*; do
+        for so in "${path}/${controller}".*; do
             [[ ! -f "${so}" ]] && continue
             stateObjects+=("${so##*/}")
         done
@@ -411,20 +413,30 @@ __lxc_cgroup_v1() {
 __lxc_cgroup_state_object() {
     local -r name="${1}"
     local -r cgroupPath="/sys/fs/cgroup"
-    # cgroup_v2 + user.slice
+    local output
     local -r userSlicePath="${cgroupPath}/user.slice"
+    local -r lxcPayloadPath="${cgroupPath}/lxc.payload.${name}"
     if [[ -d "${userSlicePath}" ]]; then
-        COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v2 "${userSlicePath}")" -- "${cur}" ) )
-        return
+        # cgroup_v2 + user.slice
+        read -r -e -a output <<< $(__lxc_cgroup_v2 "${userSlicePath}")
+    elif [[ -d "${lxcPayloadPath}" ]]; then
+        # cgroup_v2 + lxc.payload
+        read -r -e -a output <<< $(__lxc_cgroup_v2 "${lxcPayloadPath}")
+    else
+        # cgroup_v1
+        read -r -e -a output <<< $(__lxc_cgroup_v1 "${cgroupPath}")
     fi
-    # cgroup_v2 + lxc.payload
-    local -r lxcCgroup="${cgroupPath}/lxc.payload.${name}"
-    if [[ -d "${lxcCgroup}" ]]; then
-        COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v2 "${lxcCgroup}")" -- "${cur}" ) )
-        return
-    fi
-    # cgroup_v1
-    COMPREPLY=( $( compgen -W "$(__lxc_cgroup_v1 "${cgroupPath}")" -- "${cur}" ) )
+
+    # Check if state-object is present already.
+    for w in "${words[@]}"; do
+        if [[ "${cur}" != "${w}" ]] && __lxc_check_word_in_array "${w}" "${output[@]}"; then
+            return
+        elif [[ "${cur}" == "${w}" ]] && ! __lxc_check_completion_avail "${w}" "${output[@]}"; then
+            return
+        fi
+    done
+
+    COMPREPLY=( $( compgen -W "${output[*]}" -- "${cur}" ) )
 }
 
 _lxc_cgroup() {
@@ -453,8 +465,9 @@ _lxc_cgroup() {
         return
     fi
 
-    if __lxc_check_name_present; then
-        __lxc_cgroup_state_object
+    local -r custom=$(__lxc_check_name_present)
+    if [[ -n "${custom}" ]]; then
+        __lxc_cgroup_state_object "${custom}"
     else
         __lxc_append_name
     fi
