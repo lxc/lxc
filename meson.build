@@ -4,6 +4,7 @@ project('lxc', 'c',
         version : '4.0.0',
         license : 'LGPLv2+',
         default_options: [
+		'b_asneeded=true',
 		'b_pie=true',
                 'c_std=gnu11',
                 'warning_level=2',
@@ -133,7 +134,6 @@ possible_cc_flags = [
 ]
 
 possible_link_flags = [
-	'-Wl,--as-needed',
 	'-Wl,--gc-sections',
 	'-Wl,-z,relro',
 	'-Wl,-z,now',
