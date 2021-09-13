@@ -135,7 +135,7 @@ tools_lxc_console_sources = files(
 	'lxc_console.c') + tools_common_sources
 
 if cc.has_function('getsubopt', prefix : '#include <stdlib.h>', args : '-D_GNU_SOURCE')
-	conf.set10('HAVE_GETSUBOPT', have)
+	conf.set10('HAVE_GETSUBOPT', true)
 else
 	include_sources += files(
 		'tools/include/getsubopt.c',
