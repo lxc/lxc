@@ -122,12 +122,10 @@ liblxc_sources = files(
 	'uuid.c',
 	'uuid.h')
 
-liblxc_c_args = ['-fvisibility=default']
-
 liblxc_static = static_library(
         'lxc_static',
         liblxc_sources + include_sources,
         install : false,
         include_directories : liblxc_includes,
         dependencies : [threads],
-        c_args : liblxc_c_args)
+        c_args : '-fvisibility=default')
