@@ -325,8 +325,7 @@ liblxc = shared_library(
 			libopenssl,
 			libselinux,
 			libapparmor],
-        install : true,
-        install_dir : libdir)
+        install : true)
 
 public_programs = []
 
@@ -341,8 +340,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-cgroup',
@@ -355,8 +353,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-checkpoint',
@@ -369,8 +366,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-config',
@@ -383,8 +379,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-console',
@@ -397,8 +392,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-copy',
@@ -411,8 +405,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-create',
@@ -425,8 +418,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-destroy',
@@ -439,8 +431,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-device',
@@ -453,8 +444,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-execute',
@@ -467,8 +457,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-freeze',
@@ -481,8 +470,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-info',
@@ -495,8 +483,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-ls',
@@ -509,8 +496,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-monitor',
@@ -523,8 +509,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-snapshot',
@@ -537,8 +522,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-start',
@@ -551,8 +535,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-stop',
@@ -565,8 +548,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-top',
@@ -579,8 +561,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-unfreeze',
@@ -593,8 +574,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-unshare',
@@ -607,8 +587,7 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
 
 public_programs += executable(
                 'lxc-wait',
@@ -621,5 +600,4 @@ public_programs += executable(
 				libopenssl,
 				libselinux,
 				libapparmor],
-                install : true,
-                install_dir : bindir)
+                install : true)
