@@ -402,6 +402,7 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.proc returned %d %s\n", ret, v3);
 
+#if HAVE_APPARMOR
 	if (!c->set_config_item(c, "lxc.apparmor.profile", "unconfined")) {
 		fprintf(stderr, "%d: failed to set aa_profile\n", __LINE__);
 		goto out;
@@ -413,6 +414,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	printf("lxc.aa_profile returned %d %s\n", ret, v2);
+#endif
 
 	lxc_container_put(c);
 
