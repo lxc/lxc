@@ -710,32 +710,6 @@ AC_CHECK_MEMBERS([struct clone_args.cgroup],[],[],[[#include <linux/sched.h>]])
 # - STRERROR_R_CHAR_P if it returns char *
 AC_FUNC_STRERROR_R
 
-# Check if "%m" is supported by printf and Co
-AC_MSG_CHECKING([%m format])
-AC_RUN_IFELSE([AC_LANG_SOURCE([[
-#include <stdio.h>
-int main(void)
-{
-  char msg[256];
-  int rc;
-
-  rc = snprintf(msg, sizeof(msg), "%m\n");
-  if ((rc > 1) && (msg[0] != '%'))
-  {
-    return 0;
-  }
-  else
-  {
-    return 1;
-  }
-}]])],[fmt_m=yes],[fmt_m=no],[fmt_m=no])
-if test "x$fmt_m" = "xyes"; then
-	AC_DEFINE([HAVE_M_FORMAT], 1, [Have %m format])
-	AC_MSG_RESULT([yes])
-else
-	AC_MSG_RESULT([no])
-fi
-
 # Check for some functions
 AC_CHECK_LIB(pthread, main)
 AC_CHECK_LIB(util, openpty)
