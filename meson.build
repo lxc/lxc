@@ -235,22 +235,23 @@ foreach ident : [
 endforeach
 
 threads = dependency('threads')
-libseccomp = cc.find_library('seccomp', required : false)
+libseccomp = dependency('libseccomp')
 if libseccomp.found()
 	conf.set10('HAVE_SECCOMP', libseccomp.found())
+
+	if libseccomp.version().version_compare('>=2.5.0')
+		# https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
+		conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
+	endif
+
+	if libseccomp.version().version_compare('>=2.0.0')
+		# https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
+		conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+	endif
 
 	seccomp_headers = '''
 	#include <seccomp.h>
 	'''
-
-	if cc.has_function('seccomp_notify_fd', prefix : seccomp_headers, args : '-D_GNU_SOURCE', dependencies: libseccomp)
-	        conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
-	endif
-
-	if cc.has_function('seccomp_syscall_resolve_name_arch', prefix : seccomp_headers, args : '-D_GNU_SOURCE', dependencies: libseccomp)
-	        conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
-	endif
-
 	foreach decl : [
 	                'scmp_filter_ctx',
 	                'struct seccomp_notif_sizes',
@@ -266,12 +267,12 @@ if libseccomp.found()
 	endforeach
 endif
 
-libselinux = cc.find_library('selinux', required : false)
+libselinux = dependency('libselinux', required : false)
 if libselinux.found()
 	conf.set10('HAVE_SELINUX', libselinux.found())
 endif
 
-libapparmor = cc.find_library('apparmor', required : false)
+libapparmor = dependency('libapparmor', required : false)
 if libapparmor.found()
 	conf.set10('HAVE_APPARMOR', libapparmor.found())
 endif
