@@ -40,45 +40,68 @@ prefixdir = get_option('prefix')
 if not prefixdir.startswith('/')
         error('Prefix is not absolute: "@0@"'.format(prefixdir))
 endif
-docdir = join_paths(prefixdir, get_option('docdir'))
-datadir = join_paths(prefixdir, get_option('datadir'))
 bindir = join_paths(prefixdir, get_option('bindir'))
-sbindir = join_paths(prefixdir, get_option('sbindir'))
+datadir = join_paths(prefixdir, get_option('datadir'))
+docdir = join_paths(prefixdir, get_option('docdir'))
 includedir = join_paths(prefixdir, get_option('includedir'))
 libdir = join_paths(prefixdir, get_option('libdir'))
 libexecdir = join_paths(prefixdir, get_option('libexecdir'))
-sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
-runtimepath = join_paths(prefixdir, get_option('runtime-path'))
 localstatedir = join_paths('/', get_option('localstatedir'))
+sbindir = join_paths(prefixdir, get_option('sbindir'))
+sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
+
 apparmorcachedir = get_option('apparmor-cache-dir')
-rootfsmount = get_option('rootfs-mount-dir')
 cgrouppattern = get_option('cgroup-pattern')
-logpath = get_option('log-path')
-lxcpath = get_option('config-path')
 globalconfig = get_option('global-config')
 
+logpath = get_option('log-path')
+lxcpathprefix = get_option('config-path')
+rootfsmount = get_option('rootfs-mount-dir')
+runtimepath = join_paths(prefixdir, get_option('runtime-path'))
+
 conf.set_quoted('BINDIR',			bindir)
+conf.set_quoted('DATADIR',			datadir)
 conf.set_quoted('DOCDIR',			docdir)
-conf.set_quoted('SBINDIR',			sbindir)
 conf.set_quoted('INCLUDEDIR',			includedir)
 conf.set_quoted('LOCALSTATEDIR',		localstatedir)
 conf.set_quoted('LIBDIR',			libdir)
 conf.set_quoted('LIBEXECDIR',			libexecdir)
+conf.set_quoted('SBINDIR',			sbindir)
 conf.set_quoted('SYSCONFDIR',			sysconfdir)
-conf.set_quoted('LXC_DEFAULT_CONFIG',		join_paths(sysconfdir, 'lxc/default.conf'))
-conf.set_quoted('APPARMOR_CACHE_DIR',		join_paths(localstatedir, apparmorcachedir))
-conf.set_quoted('LXCROOTFSMOUNT',		join_paths(prefixdir, rootfsmount))
+
+conf.set_quoted('LXCINITDIR',			libexecdir)
 conf.set_quoted('DEFAULT_CGROUP_PATTERN',	cgrouppattern)
 conf.set_quoted('RUNTIME_PATH',			runtimepath)
-conf.set_quoted('LOGPATH',			join_paths(localstatedir, logpath))
-conf.set_quoted('LXCPATH',			join_paths(localstatedir, lxcpath))
-conf.set_quoted('LXC_GLOBAL_CONF',		join_paths(sysconfdir, globalconfig))
-conf.set_quoted('DATADIR',			datadir)
-conf.set_quoted('LXCTEMPLATECONFIG',		join_paths(datadir, 'lxc/config'))
-conf.set_quoted('LXCTEMPLATEDIR',		join_paths(datadir, 'lxc/templates'))
-conf.set_quoted('LXCINITDIR',			libexecdir)
-conf.set_quoted('LXCHOOKDIR',			join_paths(datadir, 'lxc/hooks'))
-conf.set_quoted('LXCBINHOOKDIR',		join_paths(libexecdir, 'lxc/hooks'))
+
+lxcdefaultconfig = join_paths(sysconfdir, 'lxc/default.conf')
+conf.set_quoted('LXC_DEFAULT_CONFIG',		lxcdefaultconfig)
+
+lxcapparmorcachedir = join_paths(localstatedir, apparmorcachedir)
+conf.set_quoted('APPARMOR_CACHE_DIR',		lxcapparmorcachedir)
+
+lxcrootfsmount = join_paths(prefixdir, rootfsmount)
+conf.set_quoted('LXCROOTFSMOUNT',		lxcrootfsmount)
+
+lxcglobalconfig = join_paths(sysconfdir, globalconfig)
+conf.set_quoted('LXC_GLOBAL_CONF',		lxcglobalconfig)
+
+lxclogpath = join_paths(localstatedir, logpath)
+conf.set_quoted('LOGPATH',			lxclogpath)
+
+lxcpath = join_paths(localstatedir, lxcpathprefix)
+conf.set_quoted('LXCPATH',			lxcpath)
+
+lxctemplateconfig = join_paths(datadir, 'lxc/config')
+conf.set_quoted('LXCTEMPLATECONFIG',		lxctemplateconfig)
+
+lxctemplatedir = join_paths(datadir, 'lxc/templates')
+conf.set_quoted('LXCTEMPLATEDIR',		lxctemplatedir)
+
+lxchookdir = join_paths(datadir, 'lxc/hooks')
+conf.set_quoted('LXCHOOKDIR',			lxchookdir)
+
+lxchookbindir = join_paths(libexecdir, 'lxc/hooks')
+conf.set_quoted('LXCBINHOOKDIR',		lxchookbindir)
 
 # AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date --utc --date=@${SOURCE_DATE_EPOCH:-$(date +%s)} '+%Y-%m-%d')")
 # AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
@@ -473,3 +496,33 @@ public_programs += executable(
                 include_directories : tools_liblxc_includes,
 		dependencies : liblxc_dep,
                 install : true)
+
+status = [
+        '@0@ @1@'.format(meson.project_name(), meson.project_version()),
+
+        'prefix directory:		@0@'.format(prefixdir),
+        'bin directory:			@0@'.format(bindir),
+        'data directory:		@0@'.format(datadir),
+        'doc directory:			@0@'.format(docdir),
+        'include directory:		@0@'.format(includedir),
+        'lib directory:			@0@'.format(libdir),
+        'libexec directory:		@0@'.format(libexecdir),
+        'local state directory:		@0@'.format(localstatedir),
+        'sbin directory:		@0@'.format(sbindir),
+        'sysconf directory:		@0@'.format(sysconfdir),
+
+        'lxc cgroup pattern:		@0@'.format(cgrouppattern),
+        'lxc init directory:		@0@'.format(libexecdir),
+        'runtime path:			@0@'.format(runtimepath),
+
+        'lxc default config:		@0@'.format(lxcdefaultconfig),
+        'lxc global config:		@0@'.format(lxcglobalconfig),
+        'lxc hook directory:		@0@'.format(lxchookdir),
+        'lxc hook bin directory:	@0@'.format(lxchookbindir),
+        'lxc rootfs mount directory:	@0@'.format(lxcrootfsmount),
+        'log path:			@0@'.format(lxclogpath),
+        'lxc path:			@0@'.format(lxcpath),
+        'lxc template config:		@0@'.format(lxctemplateconfig),
+        'lxc template directory:	@0@'.format(lxctemplatedir)]
+
+message('\n         '.join(status))
