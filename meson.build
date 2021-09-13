@@ -4,6 +4,7 @@ project('lxc', 'c',
         version : '4.0.0',
         license : 'LGPLv2+',
         default_options: [
+		'b_pie=true',
                 'c_std=gnu11',
                 'warning_level=2',
         ],
@@ -92,7 +93,6 @@ cc = meson.get_compiler('c')
 pkgconfig = import('pkgconfig')
 
 possible_cc_flags = [
-	'-fPIE',
 	'-Wvla',
 	'-fdiagnostics-color',
 	'-Wimplicit-fallthrough=5',
@@ -137,7 +137,6 @@ possible_link_flags = [
 	'-Wl,--gc-sections',
 	'-Wl,-z,relro',
 	'-Wl,-z,now',
-	'-pie',
 	'-Wl,-fuse-ld=gold',
 ]
 
