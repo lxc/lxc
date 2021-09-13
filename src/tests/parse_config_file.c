@@ -368,6 +368,7 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+#if HAVE_APPARMOR
 	if (set_get_compare_clear_save_load(c, "lxc.apparmor.profile", "unconfined", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.apparmor.profile");
 		goto non_test_error;
@@ -377,11 +378,14 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "lxc.apparmor.allow_incomplete");
 		goto non_test_error;
 	}
+#endif
 
+#if HAVE_SELINUX
 	if (set_get_compare_clear_save_load(c, "lxc.selinux.context", "system_u:system_r:lxc_t:s0:c22", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.selinux.context");
 		goto non_test_error;
 	}
+#endif
 
 	if (set_get_compare_clear_save_load(c, "lxc.cgroup.cpuset.cpus",
 					    "1-100", tmpf, false) < 0) {
