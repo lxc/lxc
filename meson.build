@@ -285,7 +285,7 @@ endif
 libcap = dependency('libcap', required : false)
 if not libcap.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
-        libcap = cc.find_library('cap')
+        libcap = cc.find_library('cap', required : false)
 endif
 
 if libcap.found()
