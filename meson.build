@@ -179,10 +179,8 @@ foreach decl : [
                ]
 
         # We get -1 if the size cannot be determined
-        have = cc.sizeof(decl, prefix : decl_headers, args : '-D_GNU_SOURCE') > 0
-
-	if have == true
-		conf.set10('HAVE_' + decl.underscorify().to_upper(), have)
+        if cc.sizeof(decl, prefix : decl_headers, args : '-D_GNU_SOURCE') > 0
+		conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
 	endif
 endforeach
 
@@ -228,9 +226,8 @@ foreach ident : [
                                #include <sys/resource.h>'''],
 ]
 
-        have = cc.has_function(ident[0], prefix : ident[1], args : '-D_GNU_SOURCE')
-	if have == true
-		conf.set10('HAVE_' + ident[0].to_upper(), have)
+        if cc.has_function(ident[0], prefix : ident[1], args : '-D_GNU_SOURCE')
+		conf.set10('HAVE_' + ident[0].to_upper(), true)
 	endif
 endforeach
 
@@ -259,10 +256,8 @@ if libseccomp.found()
 	               ]
 
 	        # We get -1 if the size cannot be determined
-	        have = cc.sizeof(decl, prefix : seccomp_headers, args : '-D_GNU_SOURCE') > 0
-
-		if have == true
-			conf.set10('HAVE_' + decl.underscorify().to_upper(), have)
+	        if cc.sizeof(decl, prefix : seccomp_headers, args : '-D_GNU_SOURCE') > 0
+			conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
 		endif
 	endforeach
 endif
