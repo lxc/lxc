@@ -4,6 +4,7 @@ project('lxc', 'c',
         version : '4.0.0',
         license : 'LGPLv2+',
         default_options: [
+		'b_colorout=always',
 		'b_asneeded=true',
 		'b_pie=true',
                 'c_std=gnu11',
@@ -95,7 +96,6 @@ pkgconfig = import('pkgconfig')
 
 possible_cc_flags = [
 	'-Wvla',
-	'-fdiagnostics-color',
 	'-Wimplicit-fallthrough=5',
 	'-Wcast-align',
 	'-Wstrict-prototypes',
