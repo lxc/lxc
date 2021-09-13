@@ -27,3 +27,6 @@ option('config-path', type : 'string', value : 'lib/lxc',
 
 option('global-config', type : 'string', value : 'lxc/lxc.conf',
        description : 'the rootfs mount directory')
+
+option('docdir', type : 'string',
+       description : 'documentation directory')
