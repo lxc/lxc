@@ -10,7 +10,7 @@ project('lxc', 'c',
                 'c_std=gnu11',
                 'warning_level=2',
         ],
-        meson_version : '>= 0.45',
+        meson_version : '>= 0.46',
        )
 
 liblxc_version = '4.0.0'
