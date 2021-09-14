@@ -245,6 +245,17 @@ foreach ident : [
 	endif
 endforeach
 
+sh = find_program('sh')
+git = find_program('git', required : false)
+time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"').stdout().strip()
+if time_epoch == '' and git.found() and run_command('test', '-e', '.git').returncode() == 0
+        # If we're in a git repository, use the creation time of the latest git tag.
+        latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags').stdout().strip()
+        time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag).stdout()
+endif
+time_epoch = time_epoch.to_int()
+conf.set('TIME_EPOCH', time_epoch)
+
 threads = dependency('threads')
 libseccomp = dependency('libseccomp')
 if libseccomp.found()
@@ -494,6 +505,128 @@ public_programs += executable(
 		dependencies : liblxc_dep,
                 install : true)
 
+found_syscalls = []
+missing_syscalls = []
+
+foreach tuple : [
+        ['fexecve'],
+        ['memfd_create'],
+        ['gettid'],
+        ['pivot_root'],
+        ['setns'],
+        ['renameat2'],
+        ['kcmp'],
+        ['keyctl'],
+        ['bpf'],
+        ['statx'],
+        ['pidfd_send_signal'],
+        ['pidfd_open'],
+        ['execveat'],
+        ['close_range'],
+        ['mount_setattr'],
+        ['move_mount'],
+        ['open_tree'],
+        ['strlcpy'],
+        ['strlcat'],
+        ['sethostname'],
+        ['faccessat'],
+        ['unshare'],
+        ['prlimit'],
+        ['prlimit64'],
+]
+
+        if tuple.length() >= 2
+                cond = tuple[1]
+        else
+                ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
+                ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
+                cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        endif
+        if cond
+                found_syscalls += tuple[0]
+        else
+                missing_syscalls += tuple[0]
+        endif
+endforeach
+
+found_types = []
+missing_types = []
+
+foreach tuple : [
+        ['scmp_filter_ctx'],
+        ['struct seccomp_notif_sizes'],
+        ['struct clone_args'],
+	['__aligned_u64'],
+        ['struct mount_attr'],
+        ['struct open_how'],
+]
+
+        if tuple.length() >= 2
+                cond = tuple[1]
+        else
+                ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
+                ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
+                cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        endif
+        if cond
+                found_types += tuple[0]
+        else
+                missing_types += tuple[0]
+        endif
+endforeach
+
+found_headers = []
+missing_headers = []
+
+foreach tuple : [
+	['sys/resource.h'],
+        ['sys/memfd.h'],
+        ['sys/personality.h'],
+        ['sys/signalfd.h'],
+        ['sys/timerfd.h'],
+        ['pty.h'],
+        ['utmpx.h' ],
+]
+
+        if tuple.length() >= 2
+                cond = tuple[1]
+        else
+                ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
+                ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
+                cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        endif
+        if cond
+                found_headers += tuple[0]
+        else
+                missing_headers += tuple[0]
+        endif
+endforeach
+
+found_deps = []
+missing_deps = []
+
+foreach tuple : [
+        ['AppArmor'],
+        ['SECCOMP'],
+        ['SELinux'],
+        ['libcap'],
+        ['openssl'],
+]
+
+        if tuple.length() >= 2
+                cond = tuple[1]
+        else
+                ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
+                ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
+                cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        endif
+        if cond
+                found_deps += tuple[0]
+        else
+                missing_deps += tuple[0]
+        endif
+endforeach
+
 status = [
         '@0@ @1@'.format(meson.project_name(), meson.project_version()),
 
@@ -523,5 +656,38 @@ status = [
         'lxc path:			@0@'.format(lxcpath),
         'lxc template config:		@0@'.format(lxctemplateconfig),
         'lxc template directory:	@0@'.format(lxctemplatedir)]
+
+alt_time_epoch = run_command('date', '-Is', '-u', '-d',
+                             '@@0@'.format(time_epoch)).stdout().strip()
+status += [
+        'time epoch:			@0@ (@1@)'.format(time_epoch, alt_time_epoch)]
+
+status += [
+        '',
+        'supported dependencies:	@0@'.format(', '.join(found_deps)),
+        '',
+        'unsupported dependencies:	@0@'.format(', '.join(missing_deps)),
+        '']
+
+status += [
+        '',
+        'supported headers:	@0@'.format(', '.join(found_headers)),
+        '',
+        'unsupported headers:	@0@'.format(', '.join(missing_headers)),
+        '']
+
+status += [
+        '',
+        'supported calls:	@0@'.format(', '.join(found_syscalls)),
+        '',
+        'unsupported calls:	@0@'.format(', '.join(missing_syscalls)),
+        '']
+
+status += [
+        '',
+        'supported types:	@0@'.format(', '.join(found_types)),
+        '',
+        'unsupported types:	@0@'.format(', '.join(missing_types)),
+        '']
 
 message('\n         '.join(status))
