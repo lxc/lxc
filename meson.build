@@ -497,6 +497,8 @@ public_programs += executable(
 status = [
         '@0@ @1@'.format(meson.project_name(), meson.project_version()),
 
+        'Meson version:			@0@'.format(meson.version()),
+
         'prefix directory:		@0@'.format(prefixdir),
         'bin directory:			@0@'.format(bindir),
         'data directory:		@0@'.format(datadir),
