@@ -30,9 +30,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "cgroup.h"
 #include "af_unix.h"
 #include "caps.h"
-#include "cgroup.h"
 #include "cgroup2_devices.h"
 #include "cgroup_utils.h"
 #include "commands.h"
