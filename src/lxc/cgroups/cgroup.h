@@ -313,7 +313,7 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 			       __first, __VA_ARGS__);                  \
 	})
 
-static void put_cgroup_ctx(struct cgroup_ctx *ctx)
+static inline void put_cgroup_ctx(struct cgroup_ctx *ctx)
 {
 	if (!IS_ERR_OR_NULL(ctx)) {
 		for (__u32 idx = 0; idx < ctx->fd_len; idx++)
