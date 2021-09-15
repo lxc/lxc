@@ -1911,7 +1911,8 @@ int netdev_get_mtu(int ifindex)
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
-	int readmore = 0, recv_len = 0;
+	int readmore = 0;
+	__u32 recv_len = 0;
 	int answer_len, err, res;
 	struct ifinfomsg *ifi;
 	struct nlmsghdr *msg;
@@ -2547,7 +2548,8 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	int answer_len, err;
 	struct ifaddrmsg *ifa;
 	struct nlmsghdr *msg;
-	int readmore = 0, recv_len = 0;
+	int readmore = 0;
+	__u32 recv_len = 0;
 
 	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
