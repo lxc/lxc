@@ -199,45 +199,55 @@ foreach decl : [
 endforeach
 
 foreach ident : [
-        ['memfd_create',      '''#include <sys/mman.h>'''],
-        ['gettid',            '''#include <sys/types.h>
-                                 #include <unistd.h>'''],
-        ['pivot_root',        '''#include <stdlib.h>
-                                 #include <unistd.h>'''],     # no known header declares pivot_root
-        ['setns',             '''#include <sched.h>'''],
-        ['renameat2',         '''#include <stdio.h>
-                                 #include <fcntl.h>'''],
-        ['kcmp',              '''#include <linux/kcmp.h>'''],
-        ['keyctl',            '''#include <sys/types.h>
-                                 #include <keyutils.h>'''],
-        ['bpf',               '''#include <sys/syscall.h>
-                                 #include <unistd.h>'''],
-        ['statx',             '''#include <sys/types.h>
-                                 #include <sys/stat.h>
-                                 #include <unistd.h>'''],
-        ['pidfd_send_signal', '''#include <stdlib.h>
-                                 #include <unistd.h>
-                                 #include <signal.h>
-                                 #include <sys/wait.h>'''],
-        ['pidfd_open',        '''#include <stdlib.h>
-                                 #include <unistd.h>
-                                 #include <signal.h>
-                                 #include <sys/wait.h>'''],
-        ['execveat',          '''#include <unistd.h>'''],
-        ['close_range',       '''#include <unistd.h>'''],
-        ['mount_setattr',     '''#include <sys/mount.h>'''],
-        ['move_mount',        '''#include <sys/mount.h>'''],
-        ['open_tree',         '''#include <sys/mount.h>'''],
-        ['strlcpy',	      '''#include <string.h>'''],
-        ['strlcat',	      '''#include <string.h>'''],
-        ['sethostname',	      '''#include <unistd.h>'''],
-        ['faccessat',         '''#include <fcntl.h>
-                                 #include <unistd.h>'''],
-        ['unshare',	      '''#include <sched.h>'''],
-        ['prlimit',	      '''#include <sys/time.h>
-                               #include <sys/resource.h>'''],
-        ['prlimit64',	      '''#include <sys/time.h>
-                               #include <sys/resource.h>'''],
+        ['bpf',               	'''#include <sys/syscall.h>
+				   #include <unistd.h>'''],
+        ['close_range',       	'''#include <unistd.h>'''],
+        ['execveat',          	'''#include <unistd.h>'''],
+        ['faccessat',         	'''#include <fcntl.h>
+				   #include <unistd.h>'''],
+        ['fexecve',          	'''#include <unistd.h>'''],
+        ['fsconfig',		'''#include <sys/mount.h>'''],
+        ['fsmount',		'''#include <sys/mount.h>'''],
+        ['fsopen',		'''#include <sys/mount.h>'''],
+        ['fspick',		'''#include <sys/mount.h>'''],
+        ['gettid',            	'''#include <sys/types.h>
+				   #include <unistd.h>'''],
+        ['kcmp',              	'''#include <linux/kcmp.h>'''],
+        ['keyctl',            	'''#include <sys/types.h>
+				   #include <keyutils.h>'''],
+        ['memfd_create',	'''#include <sys/mman.h>'''],
+        ['mount_setattr',	'''#include <sys/mount.h>'''],
+        ['move_mount',        	'''#include <sys/mount.h>'''],
+        ['openat2',         	'''#include <sys/types.h>
+				   #include <sys/stat.h>
+				   #include <fctnl.h>'''],
+        ['open_tree',         	'''#include <sys/mount.h>'''],
+        ['personality',	      	'''#include <sys/personality.h>'''],
+        ['pidfd_open',        	'''#include <stdlib.h>
+				   #include <unistd.h>
+				   #include <signal.h>
+				   #include <sys/wait.h>'''],
+        ['pidfd_send_signal', 	'''#include <stdlib.h>
+				   #include <unistd.h>
+				   #include <signal.h>
+				   #include <sys/wait.h>'''],
+        ['pivot_root',        	'''#include <stdlib.h>
+				   #include <unistd.h>'''],     # no known header declares pivot_root
+        ['prlimit',	      	'''#include <sys/time.h>
+				   #include <sys/resource.h>'''],
+        ['prlimit64',	      	'''#include <sys/time.h>
+				   #include <sys/resource.h>'''],
+        ['renameat2',         	'''#include <stdio.h>
+				   #include <fcntl.h>'''],
+        ['sethostname',	      	'''#include <unistd.h>'''],
+        ['setns',             	'''#include <sched.h>'''],
+        ['signalfd',	      	'''#include <sys/signalfd.h>'''],
+        ['statx',             	'''#include <sys/types.h>
+				   #include <sys/stat.h>
+				   #include <unistd.h>'''],
+        ['strlcat',	      	'''#include <string.h>'''],
+        ['strlcpy',	      	'''#include <string.h>'''],
+        ['unshare',	      	'''#include <sched.h>'''],
 ]
 
         if cc.has_function(ident[0], prefix : ident[1], args : '-D_GNU_SOURCE')
@@ -509,30 +519,37 @@ found_syscalls = []
 missing_syscalls = []
 
 foreach tuple : [
+        ['bpf'],
+        ['close_range'],
+        ['execveat'],
+        ['faccessat'],
         ['fexecve'],
-        ['memfd_create'],
+        ['fsconfig'],
+        ['fsmount'],
+        ['fsopen'],
+        ['fspick'],
         ['gettid'],
-        ['pivot_root'],
-        ['setns'],
-        ['renameat2'],
         ['kcmp'],
         ['keyctl'],
-        ['bpf'],
-        ['statx'],
-        ['pidfd_send_signal'],
-        ['pidfd_open'],
-        ['execveat'],
-        ['close_range'],
+        ['memfd_create'],
         ['mount_setattr'],
         ['move_mount'],
+        ['openat2'],
         ['open_tree'],
-        ['strlcpy'],
-        ['strlcat'],
-        ['sethostname'],
-        ['faccessat'],
-        ['unshare'],
+        ['personality'],
+        ['pidfd_open'],
+        ['pidfd_send_signal'],
+        ['pivot_root'],
         ['prlimit'],
         ['prlimit64'],
+        ['renameat2'],
+        ['sethostname'],
+        ['setns'],
+        ['signalfd'],
+        ['statx'],
+        ['strlcat'],
+        ['strlcpy'],
+        ['unshare'],
 ]
 
         if tuple.length() >= 2
