@@ -5400,6 +5400,17 @@ int lxc_get_wait_states(const char **states)
 	return MAX_STATE;
 }
 
+static char *get_socket_entry(char *line)
+{
+    char *p = line, *entry = NULL;
+    const char start[3] = {' ', 0x40};
+    while ((p = strstr(p, start))) {
+        p += 2;
+        entry = p;
+    }
+    return entry;
+}
+
 /*
  * These next two could probably be done smarter with reusing a common function
  * with different iterators and tests...
@@ -5514,14 +5525,9 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		return -1;
 
 	while (getline(&line, &len, f) != -1) {
-		char *p = strrchr(line, ' '), *p2;
+		char *p = get_socket_entry(line), *p2;
 		if (!p)
 			continue;
-		p++;
-
-		if (*p != 0x40)
-			continue;
-		p++;
 
 		is_hashed = false;
 
