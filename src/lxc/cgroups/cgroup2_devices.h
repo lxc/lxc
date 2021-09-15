@@ -5,6 +5,8 @@
 #ifndef __LXC_CGROUP2_DEVICES_H
 #define __LXC_CGROUP2_DEVICES_H
 
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -18,14 +20,13 @@
 #include "cgroup.h"
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 #include "list.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "syscall_numbers.h"
 
-#include "include/bpf.h"
-#include "include/bpf_common.h"
+#include "bpf.h"
+#include "bpf_common.h"
 
 #ifndef HAVE_BPF
 static inline int bpf_lxc(int cmd, union bpf_attr *attr, size_t size)

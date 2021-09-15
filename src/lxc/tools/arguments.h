@@ -3,14 +3,15 @@
 #ifndef __LXC_ARGUMENTS_H
 #define __LXC_ARGUMENTS_H
 
+#include "config.h"
+
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/param.h>
 #include <sys/types.h>
 
-#include <lxc/lxccontainer.h>
-
+#include "lxc.h"
 #include "compiler.h"
 
 struct lxc_arguments;

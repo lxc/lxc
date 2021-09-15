@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
-#include <lxc/lxccontainer.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -15,11 +13,12 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "af_unix.h"
 #include "caps.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
@@ -32,7 +31,7 @@
 #if HAVE_OPENPTY
 #include <pty.h>
 #else
-#include <../include/openpty.h>
+#include "openpty.h"
 #endif
 
 #define LXC_TERMINAL_BUFFER_SIZE 1024
@@ -270,7 +269,7 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 		if (ret < 0)
 			return ret;
 
-		if (bytes_read <= terminal->log_size)
+		if ((uint64_t)bytes_read <= terminal->log_size)
 			return lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 
 		/* Write as much as we can into the buffer and loose the rest. */
@@ -301,7 +300,7 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 	if (ret < 0)
 		return ret;
 
-	if (terminal->log_size < bytes_read) {
+	if (terminal->log_size < (uint64_t)bytes_read) {
 		/* Well, this is unfortunate because it means that there is more
 		 * to write than the user has granted us space. There are
 		 * multiple ways to handle this but let's use the simplest one:
@@ -615,7 +614,7 @@ on_error:
 
 int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
-	int ttynum;
+	size_t ttynum;
 	int ptxfd = -1;
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
@@ -632,7 +631,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	if (*ttyreq > 0) {
-		if (*ttyreq > ttys->max)
+		if ((size_t)*ttyreq > ttys->max)
 			goto out;
 
 		if (ttys->tty[*ttyreq - 1].busy >= 0)
@@ -652,7 +651,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	if (ttynum > ttys->max)
 		goto out;
 
-	*ttyreq = ttynum;
+	*ttyreq = (int)ttynum;
 
 out_tty:
 	ttys->tty[ttynum - 1].busy = sockfd;
@@ -664,11 +663,10 @@ out:
 
 void lxc_terminal_free(struct lxc_conf *conf, int fd)
 {
-	int i;
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
-	for (i = 0; i < ttys->max; i++)
+	for (size_t i = 0; i < ttys->max; i++)
 		if (ttys->tty[i].busy == fd)
 			ttys->tty[i].busy = -1;
 

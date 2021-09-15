@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,7 +21,6 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lxc.h"
@@ -253,14 +251,14 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	case LXC_CMD_GET_CGROUP_FD:		/* data */
 		__fallthrough;
 	case LXC_CMD_GET_LIMIT_CGROUP_FD:	/* data */
-		if (rsp->datalen > sizeof(struct cgroup_fd))
+		if ((size_t)rsp->datalen > sizeof(struct cgroup_fd))
 			return syserror_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
 
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
 		break;
 	case LXC_CMD_GET_CGROUP_CTX:		/* data */
-		if (rsp->datalen > sizeof(struct cgroup_ctx))
+		if ((size_t)rsp->datalen > sizeof(struct cgroup_ctx))
 			return syserror_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
 
 		/* Don't pointlessly allocate. */
@@ -1489,7 +1487,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	if (log->read)
 		rsp.data = lxc_ringbuf_get_read_addr(buf);
 
-	if (log->read_max > 0 && (log->read_max <= rsp.datalen))
+	if (log->read_max > 0 && (log->read_max <= (uint64_t)rsp.datalen))
 		rsp.datalen = log->read_max;
 
 	/* there's nothing to read */

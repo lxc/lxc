@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/magic.h>
@@ -13,7 +12,6 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "config.h"
 #include "file_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
@@ -259,14 +257,19 @@ bool file_exists(const char *f)
 int print_to_file(const char *file, const char *content)
 {
 	__do_fclose FILE *f = NULL;
-	int ret = 0;
+	int ret;
+	size_t len;
 
 	f = fopen(file, "we");
 	if (!f)
 		return -1;
 
-	if (fprintf(f, "%s", content) != strlen(content))
+	len = strlen(content);
+	ret = fprintf(f, "%s", content);
+	if (ret < 0 || (size_t)ret != len)
 		ret = -1;
+	else
+		ret = 0;
 
 	return ret;
 }
@@ -593,8 +596,7 @@ FILE *fdopen_at(int dfd, const char *path, const char *mode,
 int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 {
 	__do_close int fd = -EBADF;
-	int ret;
-	ssize_t len;
+	ssize_t len, ret;
 	char buf[INTTYPE_TO_STRLEN(int) +
 		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) +
 		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) + 1];
@@ -611,7 +613,7 @@ int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 		return ret_errno(EFBIG);
 
 	ret = lxc_write_nointr(fd, buf, len);
-	if (ret < 0 || (size_t)ret != len)
+	if (ret < 0 || ret != len)
 		return -EIO;
 
 	return 0;

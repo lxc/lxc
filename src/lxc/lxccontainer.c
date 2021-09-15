@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -25,7 +24,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "../include/netns_ifaddrs.h"
+#include "lxc.h"
+
+#include "netns_ifaddrs.h"
 #include "af_unix.h"
 #include "api_extensions.h"
 #include "attach.h"
@@ -34,7 +35,6 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "criu.h"
@@ -42,7 +42,6 @@
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"
-#include "lxccontainer.h"
 #include "lxclock.h"
 #include "memory_utils.h"
 #include "monitor.h"
@@ -1625,13 +1624,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 
 static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
-	long flen;
-	size_t len;
+	ssize_t len, flen;
 	char *contents;
 	FILE *f;
 	int ret = -1;
+	ssize_t nbytes;
 #if HAVE_OPENSSL
-	int i;
 	unsigned int md_len = 0;
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 	char *tpath;
@@ -1709,7 +1707,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 
 #if HAVE_OPENSSL
 	fprintf(f, "# Template script checksum (SHA-1): ");
-	for (i=0; i<md_len; i++)
+	for (size_t i = 0; i < md_len; i++)
 		fprintf(f, "%02x", md_value[i]);
 	fprintf(f, "\n");
 #endif
@@ -1717,7 +1715,8 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	fprintf(f, "\n# Uncomment the following line to support nesting containers:\n");
 	fprintf(f, "#lxc.include = " LXCTEMPLATECONFIG "/nesting.conf\n");
 	fprintf(f, "# (Be aware this has security implications)\n\n");
-	if (fwrite(contents, 1, flen, f) != flen) {
+	nbytes = fwrite(contents, 1, flen, f);
+	if (nbytes < 0 || nbytes != flen) {
 		SYSERROR("Writing original contents");
 		free(contents);
 		fclose(f);
@@ -2469,7 +2468,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 				if (family && !strequal(family, "inet6"))
 					continue;
 
-				if (((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_scope_id != scope)
+				if (((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_scope_id != (uint32_t)scope)
 					continue;
 
 				address_ptr_tmp = &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
@@ -4268,8 +4267,11 @@ static char *get_timestamp(char* snappath, char *name)
 	if (len > 0) {
 		s = malloc(len+1);
 		if (s) {
+			ssize_t nbytes;
+
 			s[len] = '\0';
-			if (fread(s, 1, len, fin) != len)
+			nbytes = fread(s, 1, len, fin);
+			if (nbytes < 0 || nbytes != (ssize_t)len)
 				return log_error_errno(NULL, errno, "reading timestamp");
 		}
 	}
@@ -5471,13 +5473,13 @@ int list_defined_containers(const char *lxcpath, char ***names,
 
 free_bad:
 	if (names && *names) {
-		for (int i = 0; i < name_array_len; i++)
+		for (size_t i = 0; i < name_array_len; i++)
 			free((*names)[i]);
 		free(*names);
 	}
 
 	if (cret && *cret) {
-		for (int i = 0; i < ct_array_len; i++)
+		for (size_t i = 0; i < ct_array_len; i++)
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}

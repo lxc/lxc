@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,7 +10,6 @@
 #include <sys/mount.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "log.h"
 #include "parse.h"
 #include "rsync.h"
@@ -380,7 +378,7 @@ bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 
 	len -= snapshot_len;
 	ret = snprintf(snapshot + snapshot_len, len, "@%s", snap_name);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		free(snapshot);
 		return false;
@@ -514,7 +512,7 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 
 	len -= dataset_len - 4;
 	ret = snprintf(new->src + dataset_len + 4, len, "/%s", cname);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		return -1;
 	}
@@ -539,7 +537,7 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 	}
 
 	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string \"%s/%s/rootfs\"", lxcpath, cname);
 		return -1;
 	}
@@ -717,7 +715,7 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	}
 
 	ret = snprintf(bdev->src, len, "zfs:%s/%s", zfsroot, n);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		return -1;
 	}

@@ -1,18 +1,17 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "lxc.h"
+
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "overlay.h"
@@ -116,7 +115,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate memory");
 
 		ret = snprintf(new->src, len, "overlay:%s:%s", src, delta);
-		if (ret < 0 || (size_t)ret >= len)
+		if (ret < 0 || ret >= len)
 			return log_error_errno(-EIO, EIO, "Failed to create string");
 	} else if (!strcmp(orig->type, "overlayfs") ||
 		   !strcmp(orig->type, "overlay")) {
@@ -467,7 +466,7 @@ int ovl_mount(struct lxc_storage *bdev)
 				lower, work);
 	}
 
-	if (ret < 0 || ret >= len || ret2 < 0 || ret2 >= len2) {
+	if (ret < 0 || (size_t)ret >= len || ret2 < 0 || (size_t)ret2 >= len2) {
 		ERROR("Failed to create string");
 		free(mntdata);
 		free(dup);

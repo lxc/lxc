@@ -3,11 +3,12 @@
 #ifndef __LXC_CONFILE_H
 #define __LXC_CONFILE_H
 
+#include "config.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <lxc/attach_options.h>
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "compiler.h"
 

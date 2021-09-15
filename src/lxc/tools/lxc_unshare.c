@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -22,7 +21,6 @@
 
 #include "arguments.h"
 #include "caps.h"
-#include "config.h"
 #include "list.h"
 #include "log.h"
 #include "namespace.h"
@@ -149,14 +147,14 @@ static bool lookup_user(const char *oparg, uid_t *uid)
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	if (!oparg || (oparg[0] == '\0'))
 		return false;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);

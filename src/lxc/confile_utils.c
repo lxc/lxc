@@ -1,23 +1,22 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "lxc.h"
+
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "list.h"
 #include "lxc.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "network.h"
@@ -25,7 +24,7 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 lxc_log_define(confile_utils, lxc);
@@ -799,7 +798,7 @@ int lxc_get_conf_str(char *retv, int inlen, const char *value)
 		return 0;
 
 	value_len = strlen(value);
-	if (retv && inlen >= value_len + 1)
+	if (retv && (size_t)inlen >= value_len + 1)
 		memcpy(retv, value, value_len + 1);
 
 	return value_len;

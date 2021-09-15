@@ -40,7 +40,7 @@
 #include <../src/config.h>
 
 #if IS_BIONIC
-#include <../src/include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif

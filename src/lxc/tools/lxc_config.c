@@ -1,14 +1,11 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <string.h>
 
-#include <lxc/lxccontainer.h>
-
-#include "config.h"
+#include "lxc.h"
 
 struct lxc_config_items {
 	char *name;

@@ -31,7 +31,7 @@
 #include "../lxc/memory_utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 static const char *const arches[] = {

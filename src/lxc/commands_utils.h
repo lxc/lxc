@@ -3,6 +3,8 @@
 #ifndef __LXC_COMMANDS_UTILS_H
 #define __LXC_COMMANDS_UTILS_H
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include "state.h"

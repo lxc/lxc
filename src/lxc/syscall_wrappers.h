@@ -3,9 +3,8 @@
 #ifndef __LXC_SYSCALL_WRAPPER_H
 #define __LXC_SYSCALL_WRAPPER_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <asm/unistd.h>
 #include <errno.h>
 #include <linux/keyctl.h>
@@ -15,7 +14,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "macro.h"
 #include "syscall_numbers.h"
 
@@ -67,7 +65,7 @@ extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 #ifndef HAVE_PIVOT_ROOT
-static int pivot_root(const char *new_root, const char *put_old)
+static inline int pivot_root(const char *new_root, const char *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
 }

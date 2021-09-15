@@ -125,8 +125,10 @@ struct mntent *getmntent_r(FILE *stream, struct mntent *mp, char *buffer, int bu
 		switch (ret) {
 		case 0:
 			mp->mnt_freq = 0;
+			break;
 		case 1:
 			mp->mnt_passno = 0;
+			break;
 		case 2:
 			break;
 		}

@@ -3,6 +3,8 @@
 #ifndef __LXC_LIST_H
 #define __LXC_LIST_H
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include "memory_utils.h"

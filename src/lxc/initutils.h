@@ -3,6 +3,8 @@
 #ifndef __LXC_INITUTILS_H
 #define __LXC_INITUTILS_H
 
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -15,8 +17,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "config.h"
-#include "cgroups/cgroup.h"
 #include "compiler.h"
 #include "string_utils.h"
 

@@ -1288,6 +1288,7 @@ AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	     -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
 	     -DSBINDIR=\"$(SBINDIR)\" \
 	     -I $(top_srcdir)/src \
+	     -I $(top_srcdir)/src/include \
 	     -I $(top_srcdir)/src/lxc \
 	     -I $(top_srcdir)/src/lxc/cgroups \
 	     -I $(top_srcdir)/src/lxc/tools \

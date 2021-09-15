@@ -21,7 +21,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "af_unix.h"
 #include "config.h"

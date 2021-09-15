@@ -3,9 +3,8 @@
 #ifndef __LXC_LXCSECCOMP_H
 #define __LXC_LXCSECCOMP_H
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #ifdef HAVE_SECCOMP
 #include <linux/seccomp.h>
@@ -18,7 +17,6 @@
 
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 #include "memory_utils.h"
 
 struct lxc_conf;

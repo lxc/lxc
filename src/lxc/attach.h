@@ -3,9 +3,12 @@
 #ifndef __LXC_ATTACH_H
 #define __LXC_ATTACH_H
 
+#include "config.h"
+
 #include <stdbool.h>
-#include <lxc/attach_options.h>
 #include <sys/types.h>
+
+#include "lxc.h"
 
 #include "compiler.h"
 #include "namespace.h"

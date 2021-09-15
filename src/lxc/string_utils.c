@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#include "config.h"
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -26,20 +24,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "config.h"
-#include "lxclock.h"
+#include "string_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
-#include "namespace.h"
-#include "parse.h"
-#include "string_utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
@@ -1000,10 +994,9 @@ char *lxc_trim_whitespace_in_place(char *buffer)
 
 int lxc_is_line_empty(const char *line)
 {
-	int i;
 	size_t len = strlen(line);
 
-	for (i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 		if (line[i] != ' ' && line[i] != '\t' &&
 		    line[i] != '\n' && line[i] != '\r' &&
 		    line[i] != '\f' && line[i] != '\0')

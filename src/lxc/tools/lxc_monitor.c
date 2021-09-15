@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -23,11 +21,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "af_unix.h"
 #include "arguments.h"
-#include "config.h"
 #include "log.h"
 #include "macro.h"
 #include "monitor.h"
@@ -185,8 +182,9 @@ static int lxc_tool_monitord_spawn(const char *lxcpath)
 		 * synced with the child process. the if-empty-statement
 		 * construct is to quiet the warn-unused-result warning.
 		 */
-		if (lxc_read_nointr(pipefd[0], &c, 1))
+		if (lxc_read_nointr(pipefd[0], &c, 1)) {
 			;
+		}
 
 		close(pipefd[0]);
 
@@ -207,7 +205,7 @@ static int lxc_tool_monitord_spawn(const char *lxcpath)
 	close(pipefd[0]);
 
 	ret = snprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
-	if (ret < 0 || ret >= sizeof(pipefd_str)) {
+	if (ret < 0 || (size_t)ret >= sizeof(pipefd_str)) {
 		ERROR("Failed to create pid argument to pass to monitord");
 		_exit(EXIT_FAILURE);
 	}

@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -22,7 +21,6 @@
 #include <unistd.h>
 
 #include "af_unix.h"
-#include "config.h"
 #include "error.h"
 #include "log.h"
 #include "lxclock.h"
@@ -33,7 +31,7 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 lxc_log_define(monitor, lxc);
@@ -224,7 +222,6 @@ int lxc_monitor_open(const char *lxcpath)
 int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
 			   int timeout)
 {
-	long i;
 	int ret;
 
 	ret = poll(fds, nfds, timeout * 1000);
@@ -236,7 +233,7 @@ int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
 	/* Only read from the first ready fd, the others will remain ready for
 	 * when this routine is called again.
 	 */
-	for (i = 0; i < nfds; i++) {
+	for (size_t i = 0; i < nfds; i++) {
 		if (fds[i].revents != 0) {
 			fds[i].revents = 0;
 			ret = recv(fds[i].fd, msg, sizeof(*msg), 0);
@@ -327,8 +324,9 @@ int lxc_monitord_spawn(const char *lxcpath)
 		 * synced with the child process. the if-empty-statement
 		 * construct is to quiet the warn-unused-result warning.
 		 */
-		if (lxc_read_nointr(pipefd[0], &c, 1))
+		if (lxc_read_nointr(pipefd[0], &c, 1)) {
 			;
+		}
 
 		close(pipefd[0]);
 

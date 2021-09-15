@@ -3,6 +3,8 @@
 #ifndef __LXC_AF_UNIX_H
 #define __LXC_AF_UNIX_H
 
+#include "config.h"
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stddef.h>

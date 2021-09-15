@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,7 +21,6 @@
 
 #include "btrfs.h"
 #include "conf.h"
-#include "config.h"
 #include "dir.h"
 #include "error.h"
 #include "log.h"
@@ -43,7 +41,7 @@
 #include "zfs.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef BLKGETSIZE64

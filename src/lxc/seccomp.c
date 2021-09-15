@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <seccomp.h>
 #include <stdio.h>
@@ -11,11 +10,11 @@
 #include <sys/mount.h>
 #include <sys/utsname.h>
 
+#include "lxc.h"
+
 #include "af_unix.h"
 #include "commands.h"
-#include "config.h"
 #include "log.h"
-#include "lxccontainer.h"
 #include "lxcseccomp.h"
 #include "mainloop.h"
 #include "memory_utils.h"
@@ -93,9 +92,9 @@ static const char *get_action_name(uint32_t action)
 	return "invalid action";
 }
 
-static uint32_t get_v2_default_action(char *line)
+static int32_t get_v2_default_action(char *line)
 {
-	uint32_t ret_action = -1;
+	int32_t ret_action = -1;
 
 	while (*line == ' ')
 		line++;
@@ -129,7 +128,7 @@ static uint32_t get_v2_default_action(char *line)
 	return ret_action;
 }
 
-static uint32_t get_v2_action(char *line, uint32_t def_action)
+static int32_t get_v2_action(char *line, uint32_t def_action)
 {
 	char *p;
 	uint32_t ret;
@@ -264,12 +263,13 @@ static int parse_v2_rules(char *line, uint32_t def_action,
 		return -1;
 
 	/* read optional action which follows the syscall */
-	rules->action = get_v2_action(tmp, def_action);
-	if (rules->action == -1) {
+	ret = get_v2_action(tmp, def_action);
+	if (ret == -1) {
 		ERROR("Failed to interpret action");
-		ret = -1;
 		goto on_error;
 	}
+
+	rules->action = ret;
 
 	ret = 0;
 	rules->args_num = 0;
@@ -496,7 +496,7 @@ enum lxc_seccomp_rule_status_t {
 static enum lxc_seccomp_rule_status_t do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 				struct seccomp_v2_rule *rule)
 {
-	int i, nr, ret;
+	int nr, ret;
 	struct scmp_arg_cmp arg_cmp[6];
 
 	ret = seccomp_arch_exist(ctx, arch);
@@ -543,8 +543,8 @@ static enum lxc_seccomp_rule_status_t do_resolve_add_rule(uint32_t arch, char *l
 	}
 
 	memset(&arg_cmp, 0, sizeof(arg_cmp));
-	for (i = 0; i < rule->args_num; i++) {
-		INFO("arg_cmp[%d]: SCMP_CMP(%u, %llu, %llu, %llu)", i,
+	for (size_t i = 0; i < rule->args_num; i++) {
+		INFO("arg_cmp[%zu]: SCMP_CMP(%u, %llu, %llu, %llu)", i,
 		     rule->args_value[i].index,
 		     (long long unsigned int)rule->args_value[i].op,
 		     (long long unsigned int)rule->args_value[i].mask,
@@ -618,7 +618,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 	char *p;
 	enum lxc_hostarch_t cur_rule_arch, native_arch;
 	bool denylist = false;
-	uint32_t default_policy_action = -1, default_rule_action = -1;
+	int32_t default_policy_action = -1, default_rule_action = -1;
 	struct seccomp_v2_rule rule;
 	struct scmp_ctx_info {
 		uint32_t architectures[3];

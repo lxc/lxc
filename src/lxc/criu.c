@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <inttypes.h>
 #include <linux/limits.h>
 #include <sched.h>
@@ -14,10 +13,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "attach_options.h"
+
 #include "cgroup.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "criu.h"
 #include "log.h"
 #include "lxc.h"
@@ -29,13 +29,13 @@
 #include "utils.h"
 
 #if IS_BIONIC
-#include <../include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #define CRIU_VERSION		"2.0"
@@ -335,7 +335,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			WARN("No cgroup controllers configured in container's cgroup %s", cgroup_base_path);
 			ret = sprintf(buf, "%s", cgroup_base_path);
 		}
-		if (ret < 0 || ret >= sizeof(buf))
+		if (ret < 0 || (size_t)ret >= sizeof(buf))
 			return log_error_errno(-EIO, EIO, "sprintf of cgroup root arg failed");
 
 		DECLARE_ARG("--cgroup-root");
@@ -443,7 +443,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			char ghost_limit[32];
 
 			ret = sprintf(ghost_limit, "%"PRIu64, opts->user->ghost_limit);
-			if (ret < 0 || ret >= sizeof(ghost_limit))
+			if (ret < 0 || (size_t)ret >= sizeof(ghost_limit))
 				return log_error_errno(-EIO, EIO, "Failed to print ghost limit %"PRIu64, opts->user->ghost_limit);
 
 			DECLARE_ARG("--ghost-limit");

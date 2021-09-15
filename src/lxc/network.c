@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
@@ -26,10 +25,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../include/netns_ifaddrs.h"
+#include "netns_ifaddrs.h"
 #include "af_unix.h"
 #include "conf.h"
-#include "config.h"
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
@@ -42,7 +40,7 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 lxc_log_define(network, lxc);
@@ -2518,7 +2516,7 @@ static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void **res)
 			 * the address length is correct, but check here just in
 			 * case.
 			 */
-			if (RTA_PAYLOAD(rta) != addrlen)
+			if (RTA_PAYLOAD(rta) != (unsigned int)addrlen)
 				return -1;
 
 			/* We might have found an IFA_ADDRESS before, which we
@@ -2621,7 +2619,7 @@ static int ip_addr_get(int family, int ifindex, void **res)
 				return ret_errno(EINVAL);
 
 			ifa = (struct ifaddrmsg *)NLMSG_DATA(msg);
-			if (ifa->ifa_index == ifindex) {
+			if (ifa->ifa_index == (__u32)ifindex) {
 				if (ifa_get_local_ip(family, msg, res) < 0)
 					return ret_errno(EINVAL);
 

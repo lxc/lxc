@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -18,16 +17,15 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "lxc.h"
 
 #include "arguments.h"
-#include "config.h"
 #include "log.h"
 #include "storage_utils.h"
 #include "utils.h"
 
 #ifndef HAVE_GETSUBOPT
-#include "include/getsubopt.h"
+#include "getsubopt.h"
 #endif
 
 lxc_log_define(lxc_copy, lxc);

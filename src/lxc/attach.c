@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -22,7 +21,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <lxc/lxccontainer.h>
+#include "attach.h"
 
 #include "af_unix.h"
 #include "attach.h"
@@ -31,7 +30,6 @@
 #include "cgroups/cgroup_utils.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lsm/lsm.h"
@@ -163,7 +161,7 @@ static inline bool sync_wait_fd(int fd, int *fd_recv)
 	return lxc_abstract_unix_recv_one_fd(fd, fd_recv, NULL, 0) > 0;
 }
 
-static bool attach_lsm(lxc_attach_options_t *options)
+static inline bool attach_lsm(lxc_attach_options_t *options)
 {
 	return (options->attach_flags & (LXC_ATTACH_LSM | LXC_ATTACH_LSM_LABEL));
 }
@@ -1797,7 +1795,7 @@ int lxc_attach_run_shell(void* payload)
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *user_shell;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	/* Ignore payload parameter. */
@@ -1806,7 +1804,7 @@ int lxc_attach_run_shell(void* payload)
 	uid = getuid();
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);

@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -34,12 +33,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "conf.h"
 #include "af_unix.h"
 #include "caps.h"
 #include "cgroups/cgroup.h"
 #include "compiler.h"
-#include "conf.h"
-#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "error.h"
@@ -75,7 +73,7 @@
 #if HAVE_OPENPTY
 #include <pty.h>
 #else
-#include <../include/openpty.h>
+#include "openpty.h"
 #endif
 
 #if HAVE_LIBCAP
@@ -83,25 +81,25 @@
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 #if IS_BIONIC
-#include <../include/lxcmntent.h>
+#include "lxcmntent.h"
 #else
 #include <mntent.h>
 #endif
 
 #if !defined(HAVE_PRLIMIT) && defined(HAVE_PRLIMIT64)
-#include <../include/prlimit.h>
+#include "prlimit.h"
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRCHRNUL
-#include "include/strchrnul.h"
+#include "strchrnul.h"
 #endif
 
 lxc_log_define(conf, lxc);
@@ -185,7 +183,7 @@ static struct mount_opt propagation_opt[] = {
 	{ "rshared",     0, true,  MS_SHARED,     MS_SHARED | MS_REC     },
 	{ "rslave",      0, true,  MS_SLAVE,      MS_SLAVE | MS_REC      },
 	{ "runbindable", 0, true,  MS_UNBINDABLE, MS_UNBINDABLE | MS_REC },
-	{ NULL,          0, 0                                            },
+	{ NULL,          0, false, 0,             0                     },
 };
 
 static struct caps_opt caps_opt[] = {
@@ -885,7 +883,7 @@ static const struct dev_symlinks dev_symlinks[] = {
 
 static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
-	for (int i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+	for (size_t i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
 		int ret;
 		struct stat s;
 		const struct dev_symlinks *d = &dev_symlinks[i];
@@ -974,7 +972,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (int i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		__do_close int fd_to = -EBADF;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
@@ -982,7 +980,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			char *tty_name, *tty_path;
 
 			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
-				       "/dev/%s/tty%d", ttydir, i + 1);
+				       "/dev/%s/tty%zu", ttydir, i + 1);
 			if (ret < 0)
 				return ret_errno(-EIO);
 
@@ -1028,7 +1026,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       rootfs->dfd_dev, tty_name,
 						       rootfs->dfd_dev, tty_path);
 		} else {
-			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "tty%zu", i + 1);
 			if (ret < 0)
 				return ret_errno(-EIO);
 
@@ -1107,7 +1105,7 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 	if (!ttys || !ttys->tty)
 		return;
 
-	for (int i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 		close_prot_errno_disarm(tty->ptx);
 		close_prot_errno_disarm(tty->pty);
@@ -1118,7 +1116,6 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 
 static int __lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
-	int i;
 	int ret = -1;
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *ttys = &conf->ttys;
@@ -1127,7 +1124,7 @@ static int __lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	if (ttys->max == 0)
 		return 0;
 
-	for (i = 0; i < ttys->max; i++) {
+	for (size_t i = 0; i < ttys->max; i++) {
 		int ttyfds[2];
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
@@ -1298,7 +1295,7 @@ enum {
 
 static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 {
-	int i, ret;
+	int ret;
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
@@ -1308,7 +1305,7 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 	INFO("Populating \"/dev\"");
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
-	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
+	for (size_t i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -2247,7 +2244,7 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 			return 0;
 		}
 
-		if (mo->flag == ~0)
+		if (mo->flag == (__u64)~0)
 			return log_info(0, "Ignoring %s mount option", mo->name);
 
 		if (mo->clear) {
@@ -2803,7 +2800,7 @@ FILE *make_anonymous_mount_file(const struct list_head *mount_entries,
 		len = strlen(entry->val);
 
 		ret = lxc_write_nointr(fd, entry->val, len);
-		if (ret != len)
+		if (ret < 0 || (size_t)ret != len)
 			return NULL;
 
 		ret = lxc_write_nointr(fd, "\n", 1);
@@ -2979,7 +2976,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		/* Set propagation mount options. */
 		if (opts.attr.propagation) {
 			attr = (struct lxc_mount_attr) {
-				attr.propagation = opts.attr.propagation,
+				.propagation = opts.attr.propagation,
 			};
 
 			ret = mount_setattr(fd_from,
@@ -3438,7 +3435,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		return log_error_errno(-1, errno, "Failed to open \"%s\"", path);
 
 	ret = lxc_write_nointr(fd, buf, buf_size);
-	if (ret != buf_size)
+	if (ret < 0 || (size_t)ret != buf_size)
 		return log_error_errno(-1, errno, "Failed to write %cid mapping to \"%s\"",
 				       idtype == ID_TYPE_UID ? 'u' : 'g', path);
 
@@ -3509,7 +3506,9 @@ static struct id_map *find_mapped_hostid_entry(const struct list_head *idmap,
 
 int lxc_map_ids(struct list_head *idmap, pid_t pid)
 {
-	int hostuid, hostgid, fill, left;
+	int fill, left;
+	uid_t hostuid;
+	gid_t hostgid;
 	char u_or_g;
 	char *pos;
 	char cmd_output[PATH_MAX];
@@ -3718,7 +3717,7 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->dfd_mnt);
 
 		goto domount;
-	} else if (link_len >= sizeof(link)) {
+	} else if ((size_t)link_len >= sizeof(link)) {
 		return log_error_errno(-EIO, EIO, "Truncated link target");
 	}
 	link[link_len] = '\0';
@@ -4116,14 +4115,14 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	if (!info_new->tty)
 		return ret_errno(ENOMEM);
 
-	for (int i = 0; i < ttys_max; i++) {
+	for (size_t i = 0; i < ttys_max; i++) {
 		terminal_info = &info_new->tty[i];
 		terminal_info->busy = -1;
 		terminal_info->ptx = -EBADF;
 		terminal_info->pty = -EBADF;
 	}
 
-	for (int i = 0; i < ttys_max; i++) {
+	for (size_t i = 0; i < ttys_max; i++) {
 		int ptx = -EBADF, pty = -EBADF;
 
 		ret = lxc_abstract_unix_recv_two_fds(sock, &ptx, &pty);
@@ -5521,11 +5520,11 @@ static char *getuname(void)
 	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = zalloc(bufsize);
@@ -5549,11 +5548,11 @@ static char *getgname(void)
 	__do_free char *buf = NULL;
 	struct group grent;
 	struct group *grentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = zalloc(bufsize);

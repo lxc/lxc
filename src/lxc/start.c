@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -25,7 +24,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "lxc.h"
+
 #include "af_unix.h"
+#include "attach_options.h"
 #include "caps.h"
 #include "cgroups/cgroup.h"
 #include "cgroups/cgroup_utils.h"
@@ -33,14 +35,12 @@
 #include "commands_utils.h"
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "file_utils.h"
 #include "list.h"
 #include "log.h"
 #include "lsm/lsm.h"
-#include "lxccontainer.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "macro.h"
@@ -63,7 +63,7 @@
 #endif
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 lxc_log_define(start, lxc);
@@ -316,7 +316,7 @@ restart:
 
 #endif
 
-		if (fd <= listen_fds_max) {
+		if ((size_t)fd <= listen_fds_max) {
 			INFO("Inheriting fd %d (using the LISTEN_FDS environment variable)", fd);
 			continue;
 		}
@@ -354,7 +354,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	if (ret < 0)
 		return -EBADF;
 
-	for (int sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
+	for (size_t sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
 		ret = sigdelset(&mask, signals[sig]);
 		if (ret < 0)
 			return -EBADF;
@@ -445,7 +445,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
-	if (siginfo.ssi_pid != hdlr->pid) {
+	if ((__u64)siginfo.ssi_pid != (__u64)hdlr->pid) {
 		NOTICE("Received %d from pid %d instead of container init %d",
 		       siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE

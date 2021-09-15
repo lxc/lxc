@@ -3,6 +3,8 @@
 #ifndef __LXC_LXC_H
 #define __LXC_LXC_H
 
+#include "config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,6 +13,9 @@ extern "C" {
 #include <stddef.h>
 #include <sys/select.h>
 #include <sys/types.h>
+
+#include "attach_options.h"
+#include "lxccontainer.h"
 
 #include "compiler.h"
 #include "memory_utils.h"

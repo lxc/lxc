@@ -3,6 +3,8 @@
 #ifndef __LXC_MAINLOOP_H
 #define __LXC_MAINLOOP_H
 
+#include "config.h"
+
 #include <stdint.h>
 
 #include "compiler.h"

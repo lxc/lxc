@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#include "config.h"
+
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -13,10 +11,10 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "attach_options.h"
 #include "af_unix.h"
 #include "commands.h"
 #include "commands_utils.h"
-#include "config.h"
 #include "file_utils.h"
 #include "initutils.h"
 #include "log.h"
@@ -129,7 +127,7 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	 * ret >= len. This means lxcpath and name are too long. We need to
 	 * hash both.
 	 */
-	if (ret >= len) {
+	if ((size_t)ret >= len) {
 		tmplen = strlen(name) + strlen(lxcpath) + 2;
 		tmppath = must_realloc(NULL, tmplen);
 		ret = strnprintf(tmppath, tmplen, "%s/%s", lxcpath, name);

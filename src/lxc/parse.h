@@ -3,6 +3,8 @@
 #ifndef __LXC_PARSE_H
 #define __LXC_PARSE_H
 
+#include "config.h"
+
 #include <stdio.h>
 #include <sys/types.h>
 

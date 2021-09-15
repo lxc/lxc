@@ -14,10 +14,6 @@
 
 #include "config.h"
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -54,11 +50,11 @@
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
+#include "strlcpy.h"
 #endif
 
 #ifndef HAVE_STRLCAT
-#include "include/strlcat.h"
+#include "strlcat.h"
 #endif
 
 lxc_log_define(cgfsng, cgroup);
@@ -163,7 +159,7 @@ int prepare_cgroup_fd(const struct cgroup_ops *ops, struct cgroup_fd *fd, bool l
 	 * The client requested that the controller must be in a specific
 	 * cgroup version.
 	 */
-	if (fd->type != 0 && fd->type != h->fs_type)
+	if (fd->type != 0 && (cgroupfs_type_magic_t)fd->type != h->fs_type)
 		return ret_errno(EINVAL);
 
 	if (limit)
@@ -2132,7 +2128,7 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 		 * that a short write would cause a buffer overrun. So be on
 		 * the safe side.
 		 */
-		if (ret < STRLITERALLEN(".lxc-/cgroup.procs"))
+		if ((size_t)ret < STRLITERALLEN(".lxc-/cgroup.procs"))
 			return log_error_errno(-EINVAL, EINVAL, "Unexpected short write would cause buffer-overrun");
 
 		slash += (ret - STRLITERALLEN("/cgroup.procs"));
@@ -2208,11 +2204,11 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 
 	ret = lxc_write_nointr(target_fd0, pidstr, pidstr_len);
-	if (ret > 0 && ret == pidstr_len)
+	if (ret > 0 && (size_t)ret == pidstr_len)
 		return log_debug(0, "Moved process into target cgroup via fd %d", target_fd0);
 
 	ret = lxc_write_nointr(target_fd1, pidstr, pidstr_len);
-	if (ret > 0 && ret == pidstr_len)
+	if (ret > 0 && (size_t)ret == pidstr_len)
 		return log_debug(0, "Moved process into target cgroup via fd %d", target_fd1);
 
 	return log_debug_errno(-1, errno, "Failed to move process into target cgroup via fd %d and %d",
@@ -2437,7 +2433,8 @@ static int device_cgroup_parse_access(struct device_item *device, const char *va
 static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 				    const char *val)
 {
-	int count, ret;
+	size_t count;
+	int ret;
 	char temp[50];
 
 	if (strequal("devices.allow", key))
