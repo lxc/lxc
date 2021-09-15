@@ -5478,14 +5478,12 @@ int list_active_containers(const char *lxcpath, char ***nret,
 		return -1;
 
 	while (getline(&line, &len, f) != -1) {
-		char *p = strrchr(line, ' '), *p2;
+		char *p, *p2;
+
+		p = strstr(line, " @");
 		if (!p)
 			continue;
-		p++;
-
-		if (*p != 0x40)
-			continue;
-		p++;
+		p += 2;
 
 		is_hashed = false;
 
