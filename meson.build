@@ -4,6 +4,7 @@ project('lxc', 'c',
         version : '4.0.0',
         license : 'LGPLv2+',
         default_options: [
+		'b_lto=true',
 		'b_colorout=always',
 		'b_asneeded=true',
 		'b_pie=true',
