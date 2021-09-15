@@ -25,7 +25,7 @@
 #include "utils.h"
 
 #ifndef HAVE_GETSUBOPT
-#include "getsubopt.h"
+#include "include/getsubopt.h"
 #endif
 
 lxc_log_define(lxc_copy, lxc);
