@@ -106,7 +106,7 @@ tools_common_sources = files(
 	'../uuid.c',
 	'../uuid.h',
 	'../log.h',
-	'../log.c') + include_sources
+	'../log.c') + include_sources + netns_ifaddrs_sources
 
 tools_lxc_autostart_sources = files(
 	'lxc_autostart.c') + tools_common_sources
