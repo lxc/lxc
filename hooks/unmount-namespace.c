@@ -25,7 +25,8 @@
  * namespaces are gone.
  */
 
-#define _GNU_SOURCE    /* setns */
+#include "config.h"
+
 #include <stdio.h>     /* fdopen, getmntent, endmntent */
 #include <stdlib.h>    /* malloc, qsort */
 #include <unistd.h>    /* close */
@@ -36,8 +37,6 @@
 #include <sys/stat.h>  /* openat, open */
 #include <fcntl.h>     /* openat, open */
 #include <errno.h>     /* errno */
-
-#include <../src/config.h>
 
 #if IS_BIONIC
 #include "lxcmntent.h"

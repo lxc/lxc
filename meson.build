@@ -335,6 +335,7 @@ liblxc_includes = [basic_includes, include_directories(
 
 add_project_arguments('-include', 'config.h', language : 'c')
 
+subdir('hooks')
 subdir('src/include')
 subdir('src/lxc')
 subdir('src/lxc/tools')
@@ -515,6 +516,15 @@ public_programs += executable(
                 include_directories : tools_liblxc_includes,
 		dependencies : liblxc_dep,
                 install : true)
+
+hook_programs = []
+
+hook_programs += executable(
+		'unmount-namespace',
+		hooks_unmount_namespace_sources,
+		include_directories : hooks_include_directories,
+		install : true,
+		install_dir : lxchookdir)
 
 found_syscalls = []
 missing_syscalls = []
