@@ -8,17 +8,6 @@ tools_liblxc_includes = include_directories(
 	'../storage',
 	'../../include')
 
-tools_basic_source = files(
-	'arguments.c',
-	'arguments.h',
-	'../compiler.h',
-	'../initutils.c',
-	'../initutils.h',
-	'../macro.h',
-	'../string_utils.c',
-	'../string_utils.h',
-	'../lxc.h') + include_sources
-
 tools_common_sources = files(
 	'arguments.c',
 	'arguments.h',
@@ -120,16 +109,16 @@ tools_common_sources = files(
 	'../log.c') + include_sources
 
 tools_lxc_autostart_sources = files(
-	'lxc_autostart.c') + tools_basic_source
+	'lxc_autostart.c') + tools_common_sources
 
 tools_lxc_cgroup_sources = files(
-	'lxc_cgroup.c') + tools_basic_source
+	'lxc_cgroup.c') + tools_common_sources
 
 tools_lxc_checkpoint_sources = files(
 	'lxc_checkpoint.c') + tools_common_sources
 
 tools_lxc_config_sources = files(
-	'lxc_config.c') + tools_basic_source
+	'lxc_config.c') + tools_common_sources
 
 tools_lxc_console_sources = files(
 	'lxc_console.c') + tools_common_sources
@@ -170,13 +159,13 @@ tools_lxc_monitor_sources = files(
 	'lxc_monitor.c') + tools_common_sources
 
 tools_lxc_snapshot_sources = files(
-	'lxc_snapshot.c') + tools_basic_source
+	'lxc_snapshot.c') + tools_common_sources
 
 tools_lxc_start_sources = files(
 	'lxc_start.c') + tools_common_sources
 
 tools_lxc_stop_sources = files(
-	'lxc_stop.c') + tools_basic_source
+	'lxc_stop.c') + tools_common_sources
 
 tools_lxc_top_sources = files(
 	'lxc_top.c') + tools_common_sources
@@ -188,4 +177,4 @@ tools_lxc_unshare_sources = files(
 	'lxc_unshare.c') + tools_common_sources
 
 tools_lxc_wait_sources = files(
-	'lxc_wait.c') + tools_basic_source
+	'lxc_wait.c') + tools_common_sources
