@@ -124,7 +124,7 @@ liblxc_sources = files(
 
 liblxc_static = static_library(
         'lxc_static',
-        liblxc_sources + include_sources,
+        liblxc_sources + include_sources + netns_ifaddrs_sources,
         install : false,
         include_directories : liblxc_includes,
         dependencies : [threads],

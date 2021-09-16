@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-tools_liblxc_includes = include_directories(
+cmd_liblxc_includes = include_directories(
 	'.',
 	'../',
 	'../cgroups',
@@ -8,9 +8,7 @@ tools_liblxc_includes = include_directories(
 	'../storage',
 	'../../include')
 
-tools_common_sources = files(
-	'arguments.c',
-	'arguments.h',
+cmd_common_sources = files(
 	'../af_unix.c',
 	'../af_unix.h',
 	'../attach_options.h',
@@ -106,75 +104,66 @@ tools_common_sources = files(
 	'../uuid.c',
 	'../uuid.h',
 	'../log.h',
-	'../log.c') + include_sources + netns_ifaddrs_sources
+	'../log.c') + include_sources
 
-tools_lxc_autostart_sources = files(
-	'lxc_autostart.c') + tools_common_sources
+cmd_lxc_init_sources = files(
+	'lxc_init.c',
+	'../af_unix.c',
+	'../af_unix.h',
+	'../caps.c',
+	'../caps.h',
+	'../error.c',
+	'../error.h',
+	'../file_utils.c',
+	'../file_utils.h',
+	'../initutils.c',
+	'../initutils.h',
+	'../log.h',
+	'../log.c',
+	'../macro.h',
+	'../memory_utils.h',
+	'../namespace.c',
+	'../namespace.h',
+	'../string_utils.c',
+	'../string_utils.h') + include_sources
 
-tools_lxc_cgroup_sources = files(
-	'lxc_cgroup.c') + tools_common_sources
+cmd_lxc_init_static_sources = files(
+	'lxc_init.c',
+	'../af_unix.c',
+	'../af_unix.h',
+	'../caps.c',
+	'../caps.h',
+	'../error.c',
+	'../error.h',
+	'../file_utils.c',
+	'../file_utils.h',
+	'../initutils.c',
+	'../initutils.h',
+	'../log.h',
+	'../log.c',
+	'../macro.h',
+	'../memory_utils.h',
+	'../namespace.c',
+	'../namespace.h',
+	'../string_utils.c',
+	'../string_utils.h') + include_sources
 
-tools_lxc_checkpoint_sources = files(
-	'lxc_checkpoint.c') + tools_common_sources
+cmd_lxc_monitord_sources = files('lxc_monitord.c') + cmd_common_sources
+cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources
+cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources
 
-tools_lxc_config_sources = files(
-	'lxc_config.c') + tools_common_sources
+dummy_config_data = configuration_data()
+dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
 
-tools_lxc_console_sources = files(
-	'lxc_console.c') + tools_common_sources
+cmd_lxc_checkconfig = configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-checkconfig.in',
+                        output : 'lxc-checkconfig')
+install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-checkconfig'), install_dir : bindir)
 
-if cc.has_function('getsubopt', prefix : '#include <stdlib.h>', args : '-D_GNU_SOURCE')
-	conf.set10('HAVE_GETSUBOPT', true)
-else
-	include_sources += files(
-		'tools/include/getsubopt.c',
-		'tools/include/getsubopt.h')
-endif
-
-tools_lxc_copy_sources = files(
-	'lxc_copy.c') + tools_common_sources
-
-tools_lxc_create_sources = files(
-	'lxc_create.c') + tools_common_sources
-
-tools_lxc_destroy_sources = files(
-	'lxc_destroy.c') + tools_common_sources
-
-tools_lxc_device_sources = files(
-	'lxc_device.c') + tools_common_sources
-
-tools_lxc_execute_sources = files(
-	'lxc_execute.c') + tools_common_sources
-
-tools_lxc_freeze_sources = files(
-	'lxc_freeze.c') + tools_common_sources
-
-tools_lxc_info_sources = files(
-	'lxc_info.c') + tools_common_sources
-
-tools_lxc_ls_sources = files(
-	'lxc_ls.c') + tools_common_sources
-
-tools_lxc_monitor_sources = files(
-	'lxc_monitor.c') + tools_common_sources
-
-tools_lxc_snapshot_sources = files(
-	'lxc_snapshot.c') + tools_common_sources
-
-tools_lxc_start_sources = files(
-	'lxc_start.c') + tools_common_sources
-
-tools_lxc_stop_sources = files(
-	'lxc_stop.c') + tools_common_sources
-
-tools_lxc_top_sources = files(
-	'lxc_top.c') + tools_common_sources
-
-tools_lxc_unfreeze_sources = files(
-	'lxc_unfreeze.c') + tools_common_sources
-
-tools_lxc_unshare_sources = files(
-	'lxc_unshare.c') + tools_common_sources
-
-tools_lxc_wait_sources = files(
-	'lxc_wait.c') + tools_common_sources
+cmd_lxc_update_config_data = configuration_data()
+cmd_lxc_update_config = configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-update-config.in',
+                        output : 'lxc-update-config')
+install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir : bindir)

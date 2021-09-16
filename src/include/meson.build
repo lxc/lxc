@@ -2,7 +2,9 @@
 
 include_sources = files(
 	'bpf.h',
-	'bpf_common.h',
+	'bpf_common.h')
+
+netns_ifaddrs_sources = files(
 	'netns_ifaddrs.c',
 	'netns_ifaddrs.h')
 

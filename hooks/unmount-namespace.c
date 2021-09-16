@@ -25,7 +25,8 @@
  * namespaces are gone.
  */
 
-#define _GNU_SOURCE    /* setns */
+#include "config.h"
+
 #include <stdio.h>     /* fdopen, getmntent, endmntent */
 #include <stdlib.h>    /* malloc, qsort */
 #include <unistd.h>    /* close */
@@ -37,8 +38,6 @@
 #include <fcntl.h>     /* openat, open */
 #include <errno.h>     /* errno */
 
-#include <../src/config.h>
-
 #if IS_BIONIC
 #include "lxcmntent.h"
 #else
@@ -46,7 +45,7 @@
 #endif
 
 #ifndef O_PATH
-#define O_PATH      010000000
+#define O_PATH 010000000
 #endif
 
 /* Define setns() if missing from the C library */
@@ -111,13 +110,13 @@ static int read_mounts(int procfd, struct mount **mp, size_t *countp) {
 	*mp = NULL;
 	*countp = 0;
 
-	fd = openat(procfd, "self/mounts", O_RDONLY);
+	fd = openat(procfd, "self/mounts", O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		free(mounts);
 		return 0;
 	}
 
-	mf = fdopen(fd, "r");
+	mf = fdopen(fd, "re");
 	if (!mf) {
 		int error = errno;
 		close(fd);
@@ -189,14 +188,14 @@ int main(int argc, char **argv) {
 	/* Open a handle to /proc on the host as we need to access /proc/self/mounts
 	 * and the container's /proc doesn't contain our /self. See read_mounts().
 	 */
-	procfd = open("/proc", O_RDONLY | O_DIRECTORY | O_PATH);
+	procfd = open("/proc", O_RDONLY | O_DIRECTORY | O_PATH | O_CLOEXEC);
 	if (procfd < 0) {
 		fprintf(stderr, "%s: failed to open /proc: %s\n", argv[0], strerror(errno));
 		return 4;
 	}
 
 	/* Open the mount namespace and enter it. */
-	ctmntfd = open(mntns, O_RDONLY);
+	ctmntfd = open(mntns, O_RDONLY | O_CLOEXEC);
 	if (ctmntfd < 0) {
 		fprintf(stderr, "%s: failed to open mount namespace: %s\n",
 			argv[0], strerror(errno));

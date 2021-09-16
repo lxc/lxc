@@ -5,9 +5,11 @@ project('lxc', 'c',
         license : 'LGPLv2+',
         default_options: [
 		'b_lto=true',
+		'b_lto_mode=thin',
 		'b_colorout=always',
 		'b_asneeded=true',
 		'b_pie=true',
+		'b_staticpic=true',
                 'c_std=gnu11',
                 'warning_level=2',
         ],
@@ -323,6 +325,16 @@ if libcap.found()
 	conf.set10('HAVE_LIBCAP', libcap.found())
 endif
 
+libcap_static = dependency('libcap', required : false, static : true)
+if not libcap_static.found()
+        # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
+        libcap_static = cc.find_library('cap', required : false, static : true)
+endif
+
+if libcap_static.found()
+	conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+endif
+
 basic_includes = include_directories(
 	'src',
 	'src/include',
@@ -335,8 +347,10 @@ liblxc_includes = [basic_includes, include_directories(
 
 add_project_arguments('-include', 'config.h', language : 'c')
 
+subdir('hooks')
 subdir('src/include')
 subdir('src/lxc')
+subdir('src/lxc/cmd')
 subdir('src/lxc/tools')
 
 config_h = configure_file(
@@ -515,6 +529,34 @@ public_programs += executable(
                 include_directories : tools_liblxc_includes,
 		dependencies : liblxc_dep,
                 install : true)
+
+cmd_programs = []
+
+cmd_programs += executable(
+		'lxc-init',
+		cmd_lxc_init_sources,
+		include_directories: cmd_liblxc_includes,
+		dependencies : liblxc_dep,
+		install : true)
+
+cmd_programs += executable(
+		'init.lxc.static',
+		cmd_lxc_init_sources,
+		include_directories: cmd_liblxc_includes,
+		link_with : [liblxc_static],
+		link_args : ['-static'],
+		c_args : ['-DNO_LXC_CONF'],
+		dependencies : [libcap_static],
+		install : true)
+
+hook_programs = []
+
+hook_programs += executable(
+		'unmount-namespace',
+		hooks_unmount_namespace_sources,
+		include_directories : hooks_include_directories,
+		install : true,
+		install_dir : lxchookdir)
 
 found_syscalls = []
 missing_syscalls = []

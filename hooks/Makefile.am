@@ -13,6 +13,9 @@ hooks_SCRIPTS = \
 binhooks_PROGRAMS = \
 	unmount-namespace
 
+AM_CFLAGS += -I $(top_srcdir)/src \
+	     -I $(top_srcdir)/src/include
+
 unmount_namespace_SOURCES = \
 	unmount-namespace.c
 
