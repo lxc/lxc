@@ -3,8 +3,6 @@
 #ifndef __LXC_CONTAINER_H
 #define __LXC_CONTAINER_H
 
-#include "config.h"
-
 #include <malloc.h>
 #include <semaphore.h>
 #include <stdbool.h>
