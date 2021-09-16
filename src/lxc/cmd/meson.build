@@ -152,16 +152,18 @@ cmd_lxc_monitord_sources = files('lxc_monitord.c') + cmd_common_sources
 cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources
 cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources
 
-cmd_lxc_checkconfig_data = configuration_data()
+dummy_config_data = configuration_data()
+dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
+
 cmd_lxc_checkconfig = configure_file(
-			configuration : cmd_lxc_checkconfig_data,
+			configuration : dummy_config_data,
                         input : 'lxc-checkconfig.in',
                         output : 'lxc-checkconfig')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-checkconfig'), install_dir : bindir)
 
 cmd_lxc_update_config_data = configuration_data()
 cmd_lxc_update_config = configure_file(
-			configuration : cmd_lxc_update_config_data,
+			configuration : dummy_config_data,
                         input : 'lxc-update-config.in',
                         output : 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir : bindir)
