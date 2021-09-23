@@ -254,7 +254,7 @@ __hidden extern pid_t lxc_raw_legacy_clone(unsigned long flags, int *pidfd);
 __hidden extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags,
 				       int *pidfd);
 
-#ifndef HAVE_EXECVEAT
+#if !HAVE_EXECVEAT
 static inline int execveat(int dirfd, const char *pathname, char *const argv[],
 			   char *const envp[], int flags)
 {

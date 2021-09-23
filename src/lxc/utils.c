@@ -39,11 +39,11 @@
 #include "syscall_wrappers.h"
 #include "utils.h"
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 
-#ifndef HAVE_STRLCAT
+#if !HAVE_STRLCAT
 #include "strlcat.h"
 #endif
 

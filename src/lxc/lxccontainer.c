@@ -76,7 +76,7 @@
 #include <mntent.h>
 #endif
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "include/strlcpy.h"
 #endif
 

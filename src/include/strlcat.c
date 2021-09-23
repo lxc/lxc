@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 
