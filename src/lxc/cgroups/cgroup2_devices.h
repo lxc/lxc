@@ -28,7 +28,7 @@
 #include "bpf.h"
 #include "bpf_common.h"
 
-#ifndef HAVE_BPF
+#if !HAVE_BPF
 static inline int bpf_lxc(int cmd, union bpf_attr *attr, size_t size)
 {
 	return syscall(__NR_bpf, cmd, attr, size);

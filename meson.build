@@ -206,15 +206,24 @@ foreach ident : [
 				   #include <unistd.h>'''],
         ['close_range',       	'''#include <unistd.h>'''],
         ['execveat',          	'''#include <unistd.h>'''],
+        ['endmntent',         	'''#include <stdio.h>
+				   #include <mntent.h>'''],
         ['faccessat',         	'''#include <fcntl.h>
 				   #include <unistd.h>'''],
         ['fexecve',          	'''#include <unistd.h>'''],
+        ['fgetln',          	'''#include <stdio.h>'''],
         ['fsconfig',		'''#include <sys/mount.h>'''],
         ['fsmount',		'''#include <sys/mount.h>'''],
         ['fsopen',		'''#include <sys/mount.h>'''],
         ['fspick',		'''#include <sys/mount.h>'''],
+        ['getgrgid_r',          '''#include <sys/types.h>
+				   #include <grp.h>'''],
+        ['getline',		'''#include <stdio.h>'''],
+        ['getsubopt',		'''#include <stdlib.h>'''],
         ['gettid',            	'''#include <sys/types.h>
 				   #include <unistd.h>'''],
+        ['hasmntopt',         	'''#include <stdio.h>
+				   #include <mntent.h>'''],
         ['kcmp',              	'''#include <linux/kcmp.h>'''],
         ['keyctl',            	'''#include <sys/types.h>
 				   #include <keyutils.h>'''],
@@ -243,19 +252,21 @@ foreach ident : [
         ['renameat2',         	'''#include <stdio.h>
 				   #include <fcntl.h>'''],
         ['sethostname',	      	'''#include <unistd.h>'''],
+        ['setmntent',         	'''#include <stdio.h>
+				   #include <mntent.h>'''],
         ['setns',             	'''#include <sched.h>'''],
         ['signalfd',	      	'''#include <sys/signalfd.h>'''],
         ['statx',             	'''#include <sys/types.h>
 				   #include <sys/stat.h>
 				   #include <unistd.h>'''],
+        ['strchrnul',	      	'''#include <string.h>'''],
         ['strlcat',	      	'''#include <string.h>'''],
         ['strlcpy',	      	'''#include <string.h>'''],
         ['unshare',	      	'''#include <sched.h>'''],
 ]
 
-        if cc.has_function(ident[0], prefix : ident[1], args : '-D_GNU_SOURCE')
-		conf.set10('HAVE_' + ident[0].to_upper(), true)
-	endif
+        have = cc.has_function(ident[0], prefix : ident[1], args : '-D_GNU_SOURCE')
+	conf.set10('HAVE_' + ident[0].to_upper(), have)
 endforeach
 
 sh = find_program('sh')
@@ -335,32 +346,37 @@ if libcap_static.found()
 	conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 endif
 
+have = cc.has_function('strchrnul', prefix : '#include <string.h>', args : '-D_GNU_SOURCE')
+conf.set10('HAVE_STRCHRNUL', have)
+
+have = cc.has_function('openpty', prefix : '#include <pty.h>', args : '-D_GNU_SOURCE')
+conf.set10('HAVE_OPENPTY', have)
+
+config_h = configure_file(
+        output : 'config.h',
+        configuration : conf)
+
+add_project_arguments('-include', 'config.h', language : 'c')
+
 basic_includes = include_directories(
+	'.',
 	'src',
-	'src/include',
-	'.')
+	'src/include')
 
 liblxc_includes = [basic_includes, include_directories(
         'src/lxc/cgroups',
         'src/lxc/lsm',
         'src/lxc/storage')]
 
-add_project_arguments('-include', 'config.h', language : 'c')
-
-subdir('hooks')
 subdir('src/include')
+subdir('src/lxc/tools/include')
+subdir('hooks')
 subdir('src/lxc')
-subdir('src/lxc/cmd')
-subdir('src/lxc/tools')
-
-config_h = configure_file(
-        output : 'config.h',
-        configuration : conf)
 
 liblxc = shared_library(
         'lxc',
         version : liblxc_version,
-        include_directories : tools_liblxc_includes,
+	include_directories: liblxc_includes,
         link_args : ['-DPIC'],
         c_args : ['-DPIC'],
         link_whole : [liblxc_static],
@@ -381,156 +397,11 @@ liblxc_dep = declare_dependency(
 				libselinux,
 				libapparmor])
 
-public_programs = []
-
-public_programs += executable(
-                'lxc-autostart',
-		tools_lxc_autostart_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-cgroup',
-		tools_lxc_cgroup_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-checkpoint',
-		tools_lxc_checkpoint_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-config',
-		tools_lxc_config_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-console',
-		tools_lxc_console_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-copy',
-		tools_lxc_copy_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-create',
-		tools_lxc_create_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-destroy',
-		tools_lxc_destroy_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-device',
-		tools_lxc_device_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-execute',
-		tools_lxc_execute_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-freeze',
-		tools_lxc_freeze_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-info',
-		tools_lxc_info_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-ls',
-		tools_lxc_ls_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-monitor',
-		tools_lxc_monitor_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-snapshot',
-		tools_lxc_snapshot_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-start',
-		tools_lxc_start_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-stop',
-		tools_lxc_stop_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-top',
-		tools_lxc_top_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-unfreeze',
-		tools_lxc_unfreeze_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-unshare',
-		tools_lxc_unshare_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
-public_programs += executable(
-                'lxc-wait',
-		tools_lxc_wait_sources,
-                include_directories : tools_liblxc_includes,
-		dependencies : liblxc_dep,
-                install : true)
-
 cmd_programs = []
+subdir('src/lxc/cmd')
+
+public_programs = []
+subdir('src/lxc/tools')
 
 cmd_programs += executable(
 		'lxc-init',
@@ -564,14 +435,20 @@ missing_syscalls = []
 foreach tuple : [
         ['bpf'],
         ['close_range'],
+        ['endmntent'],
         ['execveat'],
         ['faccessat'],
-        ['fexecve'],
+        ['strchrnul'],
+        ['fgetln'],
         ['fsconfig'],
         ['fsmount'],
         ['fsopen'],
         ['fspick'],
+        ['getgrgid_r'],
+        ['getline'],
+        ['getsubopt'],
         ['gettid'],
+        ['hasmntopt'],
         ['kcmp'],
         ['keyctl'],
         ['memfd_create'],
@@ -587,6 +464,7 @@ foreach tuple : [
         ['prlimit64'],
         ['renameat2'],
         ['sethostname'],
+        ['setmntent'],
         ['setns'],
         ['signalfd'],
         ['statx'],

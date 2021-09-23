@@ -33,8 +33,8 @@ __hidden extern int mkdir_p(const char *dir, mode_t mode);
 __hidden extern char *get_rundir(void);
 
 /* Define getline() if missing from the C library */
-#ifndef HAVE_GETLINE
-#ifdef HAVE_FGETLN
+#if !HAVE_GETLINE
+#if !HAVE_FGETLN
 #include "getline.h"
 #endif
 #endif
