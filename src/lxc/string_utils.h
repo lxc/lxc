@@ -10,15 +10,15 @@
 #include "initutils.h"
 #include "macro.h"
 
-#ifndef HAVE_STRLCAT
+#if !HAVE_STRLCAT
 #include "strlcat.h"
 #endif
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 
-#ifndef HAVE_STRCHRNUL
+#if !HAVE_STRCHRNUL
 #include "strchrnul.h"
 #endif
 

@@ -62,7 +62,7 @@
 #include <sys/capability.h>
 #endif
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 

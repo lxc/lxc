@@ -49,7 +49,7 @@
 #endif
 
 /* Define setns() if missing from the C library */
-#ifndef HAVE_SETNS
+#if !HAVE_SETNS
 static inline int setns(int fd, int nstype)
 {
 #ifdef __NR_setns

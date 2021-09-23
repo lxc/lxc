@@ -54,7 +54,7 @@ static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 #define F_SEAL_WRITE 0x0008
 #endif
 
-#ifndef HAVE_MEMFD_CREATE
+#if !HAVE_MEMFD_CREATE
 static inline int memfd_create_lxc(const char *name, unsigned int flags)
 {
 	return syscall(__NR_memfd_create, name, flags);
@@ -64,7 +64,7 @@ static inline int memfd_create_lxc(const char *name, unsigned int flags)
 extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
-#ifndef HAVE_PIVOT_ROOT
+#if !HAVE_PIVOT_ROOT
 static inline int pivot_root(const char *new_root, const char *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
@@ -74,7 +74,7 @@ extern int pivot_root(const char *new_root, const char *put_old);
 #endif
 
 /* Define sethostname() if missing from the C library */
-#ifndef HAVE_SETHOSTNAME
+#if !HAVE_SETHOSTNAME
 static inline int sethostname(const char *name, size_t len)
 {
 	return syscall(__NR_sethostname, name, len);
@@ -82,14 +82,14 @@ static inline int sethostname(const char *name, size_t len)
 #endif
 
 /* Define setns() if missing from the C library */
-#ifndef HAVE_SETNS
+#if !HAVE_SETNS
 static inline int setns(int fd, int nstype)
 {
 	return syscall(__NR_setns, fd, nstype);
 }
 #endif
 
-#ifndef HAVE_SYS_SIGNALFD_H
+#if !HAVE_SYS_SIGNALFD_H
 struct signalfd_siginfo {
 	uint32_t ssi_signo;
 	int32_t ssi_errno;
@@ -125,7 +125,7 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 #endif
 
 /* Define unshare() if missing from the C library */
-#ifndef HAVE_UNSHARE
+#if !HAVE_UNSHARE
 static inline int unshare(int flags)
 {
 	return syscall(__NR_unshare, flags);
@@ -135,14 +135,14 @@ extern int unshare(int);
 #endif
 
 /* Define faccessat() if missing from the C library */
-#ifndef HAVE_FACCESSAT
+#if !HAVE_FACCESSAT
 static int faccessat(int __fd, const char *__file, int __type, int __flag)
 {
 	return syscall(__NR_faccessat, __fd, __file, __type, __flag);
 }
 #endif
 
-#ifndef HAVE_MOVE_MOUNT
+#if !HAVE_MOVE_MOUNT
 static inline int move_mount_lxc(int from_dfd, const char *from_pathname,
 				 int to_dfd, const char *to_pathname,
 				 unsigned int flags)
@@ -156,7 +156,7 @@ extern int move_mount(int from_dfd, const char *from_pathname, int to_dfd,
 		      const char *to_pathname, unsigned int flags);
 #endif
 
-#ifndef HAVE_OPEN_TREE
+#if !HAVE_OPEN_TREE
 static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flags)
 {
 	return syscall(__NR_open_tree, dfd, filename, flags);
@@ -166,7 +166,7 @@ static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flag
 extern int open_tree(int dfd, const char *filename, unsigned int flags);
 #endif
 
-#ifndef HAVE_FSOPEN
+#if !HAVE_FSOPEN
 static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
 {
 	return syscall(__NR_fsopen, fs_name, flags);
@@ -176,7 +176,7 @@ static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
 extern int fsopen(const char *fs_name, unsigned int flags);
 #endif
 
-#ifndef HAVE_FSPICK
+#if !HAVE_FSPICK
 static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
 {
 	return syscall(__NR_fspick, dfd, path, flags);
@@ -186,7 +186,7 @@ static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
 extern int fspick(int dfd, const char *path, unsigned int flags);
 #endif
 
-#ifndef HAVE_FSCONFIG
+#if !HAVE_FSCONFIG
 static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const void *value, int aux)
 {
 	return syscall(__NR_fsconfig, fd, cmd, key, value, aux);
@@ -196,7 +196,7 @@ static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const 
 extern int fsconfig(int fd, unsigned int cmd, const char *key, const void *value, int aux);
 #endif
 
-#ifndef HAVE_FSMOUNT
+#if !HAVE_FSMOUNT
 static inline int fsmount_lxc(int fs_fd, unsigned int flags, unsigned int attr_flags)
 {
 	return syscall(__NR_fsmount, fs_fd, flags, attr_flags);
@@ -216,7 +216,7 @@ struct lxc_mount_attr {
 	__u64 userns_fd;
 };
 
-#ifndef HAVE_MOUNT_SETATTR
+#if !HAVE_MOUNT_SETATTR
 static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
 				struct lxc_mount_attr *attr, size_t size)
 {
@@ -291,7 +291,7 @@ struct lxc_open_how {
 #define PROTECT_OPEN_W (PROTECT_OPEN_W_WITH_TRAILING_SYMLINKS | O_NOFOLLOW)
 #define PROTECT_OPEN_RW (O_CLOEXEC | O_NOCTTY | O_RDWR | O_NOFOLLOW)
 
-#ifndef HAVE_OPENAT2
+#if !HAVE_OPENAT2
 static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
 {
 	return syscall(__NR_openat2, dfd, filename, how, size);
@@ -306,14 +306,14 @@ static inline int openat2(int dfd, const char *filename, struct lxc_open_how *ho
 #define CLOSE_RANGE_CLOEXEC	(1U << 2)
 #endif
 
-#ifndef HAVE_CLOSE_RANGE
+#if !HAVE_CLOSE_RANGE
 static inline int close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
 {
 	return syscall(__NR_close_range, fd, max_fd, flags);
 }
 #endif
 
-#ifndef HAVE_SYS_PERSONALITY_H
+#if !HAVE_SYS_PERSONALITY_H
 static inline int personality(unsigned long persona)
 {
 	return syscall(__NR_personality, persona);

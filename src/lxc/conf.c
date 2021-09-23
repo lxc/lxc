@@ -80,7 +80,7 @@
 #include <sys/capability.h>
 #endif
 
-#ifndef HAVE_STRLCAT
+#if !HAVE_STRLCAT
 #include "strlcat.h"
 #endif
 
@@ -94,11 +94,11 @@
 #include "prlimit.h"
 #endif
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 
-#ifndef HAVE_STRCHRNUL
+#if !HAVE_STRCHRNUL
 #include "strchrnul.h"
 #endif
 

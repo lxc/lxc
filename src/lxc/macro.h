@@ -731,7 +731,7 @@ enum {
 #define hweight32(w) __const_hweight32(w)
 #define hweight64(w) __const_hweight64(w)
 
-#ifndef HAVE___ALIGNED_U64
+#if !HAVE___ALIGNED_U64
 #define __aligned_u64 __u64 __attribute__((aligned(8)))
 #endif
 
@@ -739,7 +739,7 @@ enum {
 #define BITS_PER_TYPE(type) (sizeof(type) * 8)
 #define LAST_BIT_PER_TYPE(type) (BITS_PER_TYPE(type) - 1)
 
-#ifndef HAVE_SYS_PERSONALITY_H
+#if !HAVE_SYS_PERSONALITY_H
 #define PER_LINUX	0x0000
 #define PER_LINUX32	0x0008
 #endif
