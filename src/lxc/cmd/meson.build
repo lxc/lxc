@@ -6,7 +6,8 @@ cmd_liblxc_includes = include_directories(
 	'../cgroups',
 	'../lsm',
 	'../storage',
-	'../../include')
+	'../../include',
+	'../../../')
 
 cmd_common_sources = files(
 	'../af_unix.c',
@@ -148,9 +149,9 @@ cmd_lxc_init_static_sources = files(
 	'../string_utils.c',
 	'../string_utils.h') + include_sources
 
-cmd_lxc_monitord_sources = files('lxc_monitord.c') + cmd_common_sources
-cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources
-cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources
+cmd_lxc_monitord_sources = files('lxc_monitord.c') + cmd_common_sources + netns_ifaddrs_sources
+cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources + netns_ifaddrs_sources
+cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources + netns_ifaddrs_sources
 
 cmd_lxc_checkconfig = configure_file(
 			configuration : dummy_config_data,
@@ -164,3 +165,43 @@ cmd_lxc_update_config = configure_file(
                         input : 'lxc-update-config.in',
                         output : 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir : bindir)
+
+cmd_lxc_update_config_data = configuration_data()
+
+cmd_programs += executable(
+		'init.lxc.static',
+		cmd_lxc_init_sources,
+		include_directories: cmd_liblxc_includes,
+		link_with : [liblxc_static],
+		link_args : ['-static'],
+		c_args : ['-DNO_LXC_CONF'],
+		dependencies : [libcap_static],
+		install : true)
+
+cmd_programs += executable(
+		'lxc-init',
+		cmd_lxc_init_sources,
+		include_directories: cmd_liblxc_includes,
+		dependencies : liblxc_dep,
+		install : true)
+
+cmd_programs += executable(
+		'lxc-monitord',
+		cmd_lxc_monitord_sources,
+		include_directories: cmd_liblxc_includes,
+		dependencies : liblxc_dep,
+		install : true)
+
+cmd_programs += executable(
+		'lxc-user-nic',
+		cmd_lxc_user_nic_sources,
+		include_directories: cmd_liblxc_includes,
+		dependencies : liblxc_dep,
+		install : true)
+
+cmd_programs += executable(
+		'lxc-usernsexec',
+		cmd_lxc_usernsexec_sources,
+		include_directories: cmd_liblxc_includes,
+		dependencies : liblxc_dep,
+		install : true)
