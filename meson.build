@@ -370,7 +370,6 @@ liblxc_includes = [basic_includes, include_directories(
 
 subdir('src/include')
 subdir('src/lxc/tools/include')
-subdir('hooks')
 subdir('src/lxc')
 
 liblxc = shared_library(
@@ -403,6 +402,9 @@ subdir('src/lxc/cmd')
 public_programs = []
 subdir('src/lxc/tools')
 
+hook_programs = []
+subdir('hooks')
+
 cmd_programs += executable(
 		'lxc-init',
 		cmd_lxc_init_sources,
@@ -419,15 +421,6 @@ cmd_programs += executable(
 		c_args : ['-DNO_LXC_CONF'],
 		dependencies : [libcap_static],
 		install : true)
-
-hook_programs = []
-
-hook_programs += executable(
-		'unmount-namespace',
-		hooks_unmount_namespace_sources,
-		include_directories : hooks_include_directories,
-		install : true,
-		install_dir : lxchookdir)
 
 found_syscalls = []
 missing_syscalls = []
