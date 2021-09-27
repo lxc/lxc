@@ -103,8 +103,15 @@ conf.set_quoted('LXCHOOKDIR',			lxchookdir)
 lxchookbindir = join_paths(libexecdir, 'lxc/hooks')
 conf.set_quoted('LXCBINHOOKDIR',		lxchookbindir)
 
+user_network_conf_opt = get_option('user-network-conf')
+lxc_user_network_conf = join_paths(sysconfdir, user_network_conf_opt)
+conf.set_quoted('LXC_USERNIC_CONF',		lxc_user_network_conf)
+
+user_network_db_opt = get_option('user-network-db')
+lxc_user_network_db = join_paths(runtimepath, user_network_db_opt)
+conf.set_quoted('LXC_USERNIC_DB',		lxc_user_network_db)
+
 # AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date --utc --date=@${SOURCE_DATE_EPOCH:-$(date +%s)} '+%Y-%m-%d')")
-# AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
 # AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
 # AS_AC_EXPAND(LXC_DISTRO_SYSCONF, "$distrosysconf")
 
@@ -408,23 +415,6 @@ subdir('src/lxc/tools')
 hook_programs = []
 subdir('hooks')
 
-cmd_programs += executable(
-		'lxc-init',
-		cmd_lxc_init_sources,
-		include_directories: cmd_liblxc_includes,
-		dependencies : liblxc_dep,
-		install : true)
-
-cmd_programs += executable(
-		'init.lxc.static',
-		cmd_lxc_init_sources,
-		include_directories: cmd_liblxc_includes,
-		link_with : [liblxc_static],
-		link_args : ['-static'],
-		c_args : ['-DNO_LXC_CONF'],
-		dependencies : [libcap_static],
-		install : true)
-
 found_syscalls = []
 missing_syscalls = []
 
@@ -589,7 +579,9 @@ status = [
         'log path:			@0@'.format(lxclogpath),
         'lxc path:			@0@'.format(lxcpath),
         'lxc template config:		@0@'.format(lxctemplateconfig),
-        'lxc template directory:	@0@'.format(lxctemplatedir)]
+        'lxc template directory:	@0@'.format(lxctemplatedir),
+        'lxc user network config:	@0@'.format(lxc_user_network_conf),
+        'lxc user network database:	@0@'.format(lxc_user_network_db)]
 
 alt_time_epoch = run_command('date', '-Is', '-u', '-d',
                              '@@0@'.format(time_epoch)).stdout().strip()
