@@ -205,6 +205,8 @@ foreach decl : [
         # We get -1 if the size cannot be determined
         if cc.sizeof(decl, prefix : decl_headers, args : '-D_GNU_SOURCE') > 0
 		conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+	else
+		conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
 	endif
 endforeach
 
@@ -289,17 +291,20 @@ conf.set('TIME_EPOCH', time_epoch)
 
 threads = dependency('threads')
 libseccomp = dependency('libseccomp')
+conf.set10('HAVE_SECCOMP', libseccomp.found())
 if libseccomp.found()
-	conf.set10('HAVE_SECCOMP', libseccomp.found())
-
 	if libseccomp.version().version_compare('>=2.5.0')
 		# https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
 		conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
+	else
+		conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
 	endif
 
 	if libseccomp.version().version_compare('>=2.0.0')
 		# https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
 		conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+	else
+		conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
 	endif
 
 	seccomp_headers = '''
@@ -314,44 +319,34 @@ if libseccomp.found()
 	        # We get -1 if the size cannot be determined
 	        if cc.sizeof(decl, prefix : seccomp_headers, args : '-D_GNU_SOURCE') > 0
 			conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+		else
+			conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
 		endif
 	endforeach
 endif
 
 libselinux = dependency('libselinux', required : false)
-if libselinux.found()
-	conf.set10('HAVE_SELINUX', libselinux.found())
-endif
+conf.set10('HAVE_SELINUX', libselinux.found())
 
 libapparmor = dependency('libapparmor', required : false)
-if libapparmor.found()
-	conf.set10('HAVE_APPARMOR', libapparmor.found())
-endif
+conf.set10('HAVE_APPARMOR', libapparmor.found())
 
 libopenssl = dependency('openssl', required : false)
-if libopenssl.found()
-	conf.set10('HAVE_OPENSSL', libopenssl.found())
-endif
+conf.set10('HAVE_OPENSSL', libopenssl.found())
 
 libcap = dependency('libcap', required : false)
 if not libcap.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap = cc.find_library('cap', required : false)
 endif
-
-if libcap.found()
-	conf.set10('HAVE_LIBCAP', libcap.found())
-endif
+conf.set10('HAVE_LIBCAP', libcap.found())
 
 libcap_static = dependency('libcap', required : false, static : true)
 if not libcap_static.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap_static = cc.find_library('cap', required : false, static : true)
 endif
-
-if libcap_static.found()
-	conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
-endif
+conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 
 have = cc.has_function('strchrnul', prefix : '#include <string.h>', args : '-D_GNU_SOURCE')
 conf.set10('HAVE_STRCHRNUL', have)
