@@ -304,7 +304,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
  * Helper macro to define errno string.
  */
 #if HAVE_STRERROR_R
-	#ifndef HAVE_DECL_STRERROR_R
+	#if !HAVE_DECL_STRERROR_R
 		#ifdef STRERROR_R_CHAR_P
 			char *strerror_r(int errnum, char *buf, size_t buflen);
 		#else

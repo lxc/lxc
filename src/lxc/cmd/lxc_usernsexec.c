@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -22,7 +21,6 @@
 
 #include "compiler.h"
 #include "conf.h"
-#include "config.h"
 #include "hlist.h"
 #include "list.h"
 #include "log.h"
@@ -228,13 +226,13 @@ static int read_default_map(char *fnam, int which, char *user)
 static int find_default_map(void)
 {
 	__do_free char *buf = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	struct passwd pwent;
 	int ret = -1;
 	struct passwd *pwentp = NULL;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);
@@ -261,12 +259,14 @@ static int find_default_map(void)
 	return 0;
 }
 
-static bool is_in_ns_range(long id, struct id_map *map)
+static bool is_in_ns_range(unsigned long id, struct id_map *map)
 {
 	if (id < map->nsid)
 		return false;
+
 	if (id >= map->nsid + map->range)
 		return false;
+
 	return true;
 }
 

@@ -30,3 +30,9 @@ option('global-config', type : 'string', value : 'lxc/lxc.conf',
 
 option('docdir', type : 'string',
        description : 'documentation directory')
+
+option('user-network-conf', type : 'string', value : 'lxc/lxc-usernet',
+       description : 'user network interface configuration file')
+
+option('user-network-db', type : 'string', value : 'lxc/nics',
+       description : 'user network database')

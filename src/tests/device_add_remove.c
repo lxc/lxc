@@ -24,7 +24,7 @@
 #include "memory_utils.h"
 #include "utils.h"
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 

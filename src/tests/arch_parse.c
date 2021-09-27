@@ -30,7 +30,7 @@
 #include "../lxc/lxc.h"
 #include "../lxc/memory_utils.h"
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 

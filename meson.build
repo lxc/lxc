@@ -22,6 +22,7 @@ conf = configuration_data()
 conf.set_quoted('PROJECT_URL', 'https://linuxcontainers.org/lxc/introduction/')
 conf.set('PROJECT_VERSION',    meson.project_version(),
          description : 'Numerical project version (used where a simple number is expected)')
+conf.set('PACKAGE_VERSION',    meson.project_version())
 conf.set('_GNU_SOURCE', true)
 conf.set('__STDC_FORMAT_MACROS', true)
 
@@ -103,8 +104,15 @@ conf.set_quoted('LXCHOOKDIR',			lxchookdir)
 lxchookbindir = join_paths(libexecdir, 'lxc/hooks')
 conf.set_quoted('LXCBINHOOKDIR',		lxchookbindir)
 
+user_network_conf_opt = get_option('user-network-conf')
+lxc_user_network_conf = join_paths(sysconfdir, user_network_conf_opt)
+conf.set_quoted('LXC_USERNIC_CONF',		lxc_user_network_conf)
+
+user_network_db_opt = get_option('user-network-db')
+lxc_user_network_db = join_paths(runtimepath, user_network_db_opt)
+conf.set_quoted('LXC_USERNIC_DB',		lxc_user_network_db)
+
 # AS_AC_EXPAND(LXC_GENERATE_DATE, "$(date --utc --date=@${SOURCE_DATE_EPOCH:-$(date +%s)} '+%Y-%m-%d')")
-# AS_AC_EXPAND(LXC_USERNIC_CONF, "$with_usernic_conf")
 # AS_AC_EXPAND(LXC_USERNIC_DB, "$with_usernic_db")
 # AS_AC_EXPAND(LXC_DISTRO_SYSCONF, "$distrosysconf")
 
@@ -198,6 +206,8 @@ foreach decl : [
         # We get -1 if the size cannot be determined
         if cc.sizeof(decl, prefix : decl_headers, args : '-D_GNU_SOURCE') > 0
 		conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+	else
+		conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
 	endif
 endforeach
 
@@ -282,17 +292,20 @@ conf.set('TIME_EPOCH', time_epoch)
 
 threads = dependency('threads')
 libseccomp = dependency('libseccomp')
+conf.set10('HAVE_SECCOMP', libseccomp.found())
 if libseccomp.found()
-	conf.set10('HAVE_SECCOMP', libseccomp.found())
-
 	if libseccomp.version().version_compare('>=2.5.0')
 		# https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
 		conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
+	else
+		conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
 	endif
 
 	if libseccomp.version().version_compare('>=2.0.0')
 		# https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
 		conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+	else
+		conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
 	endif
 
 	seccomp_headers = '''
@@ -307,44 +320,34 @@ if libseccomp.found()
 	        # We get -1 if the size cannot be determined
 	        if cc.sizeof(decl, prefix : seccomp_headers, args : '-D_GNU_SOURCE') > 0
 			conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+		else
+			conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
 		endif
 	endforeach
 endif
 
 libselinux = dependency('libselinux', required : false)
-if libselinux.found()
-	conf.set10('HAVE_SELINUX', libselinux.found())
-endif
+conf.set10('HAVE_SELINUX', libselinux.found())
 
 libapparmor = dependency('libapparmor', required : false)
-if libapparmor.found()
-	conf.set10('HAVE_APPARMOR', libapparmor.found())
-endif
+conf.set10('HAVE_APPARMOR', libapparmor.found())
 
 libopenssl = dependency('openssl', required : false)
-if libopenssl.found()
-	conf.set10('HAVE_OPENSSL', libopenssl.found())
-endif
+conf.set10('HAVE_OPENSSL', libopenssl.found())
 
 libcap = dependency('libcap', required : false)
 if not libcap.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap = cc.find_library('cap', required : false)
 endif
-
-if libcap.found()
-	conf.set10('HAVE_LIBCAP', libcap.found())
-endif
+conf.set10('HAVE_LIBCAP', libcap.found())
 
 libcap_static = dependency('libcap', required : false, static : true)
 if not libcap_static.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap_static = cc.find_library('cap', required : false, static : true)
 endif
-
-if libcap_static.found()
-	conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
-endif
+conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 
 have = cc.has_function('strchrnul', prefix : '#include <string.h>', args : '-D_GNU_SOURCE')
 conf.set10('HAVE_STRCHRNUL', have)
@@ -370,7 +373,6 @@ liblxc_includes = [basic_includes, include_directories(
 
 subdir('src/include')
 subdir('src/lxc/tools/include')
-subdir('hooks')
 subdir('src/lxc')
 
 liblxc = shared_library(
@@ -397,37 +399,20 @@ liblxc_dep = declare_dependency(
 				libselinux,
 				libapparmor])
 
+dummy_config_data = configuration_data()
+dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
+
+hook_programs = []
+subdir('hooks')
+
+template_scripts = []
+subdir('templates')
+
 cmd_programs = []
 subdir('src/lxc/cmd')
 
 public_programs = []
 subdir('src/lxc/tools')
-
-cmd_programs += executable(
-		'lxc-init',
-		cmd_lxc_init_sources,
-		include_directories: cmd_liblxc_includes,
-		dependencies : liblxc_dep,
-		install : true)
-
-cmd_programs += executable(
-		'init.lxc.static',
-		cmd_lxc_init_sources,
-		include_directories: cmd_liblxc_includes,
-		link_with : [liblxc_static],
-		link_args : ['-static'],
-		c_args : ['-DNO_LXC_CONF'],
-		dependencies : [libcap_static],
-		install : true)
-
-hook_programs = []
-
-hook_programs += executable(
-		'unmount-namespace',
-		hooks_unmount_namespace_sources,
-		include_directories : hooks_include_directories,
-		install : true,
-		install_dir : lxchookdir)
 
 found_syscalls = []
 missing_syscalls = []
@@ -593,7 +578,9 @@ status = [
         'log path:			@0@'.format(lxclogpath),
         'lxc path:			@0@'.format(lxcpath),
         'lxc template config:		@0@'.format(lxctemplateconfig),
-        'lxc template directory:	@0@'.format(lxctemplatedir)]
+        'lxc template directory:	@0@'.format(lxctemplatedir),
+        'lxc user network config:	@0@'.format(lxc_user_network_conf),
+        'lxc user network database:	@0@'.format(lxc_user_network_db)]
 
 alt_time_epoch = run_command('date', '-Is', '-u', '-d',
                              '@@0@'.format(time_epoch)).stdout().strip()

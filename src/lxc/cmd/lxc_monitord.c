@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -24,7 +23,6 @@
 #include "lxc.h"
 
 #include "af_unix.h"
-#include "config.h"
 #include "log.h"
 #include "mainloop.h"
 #include "monitor.h"
@@ -409,8 +407,9 @@ int main(int argc, char *argv[])
 		 * if-empty-statement construct is to quiet the
 		 * warn-unused-result warning.
 		 */
-		if (lxc_write_nointr(pipefd, "S", 1))
+		if (lxc_write_nointr(pipefd, "S", 1)) {
 			;
+		}
 		close(pipefd);
 	}
 
