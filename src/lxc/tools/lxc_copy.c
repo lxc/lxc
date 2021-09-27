@@ -24,7 +24,7 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-#ifndef HAVE_GETSUBOPT
+#if !HAVE_GETSUBOPT
 #include "include/getsubopt.h"
 #endif
 

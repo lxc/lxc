@@ -19,7 +19,7 @@
 #include "syscall_wrappers.h"
 #include "utils.h"
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 

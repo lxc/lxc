@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#ifndef HAVE_STRCHRNUL
+#if !HAVE_STRCHRNUL
 #include "strchrnul.h"
 #endif
 

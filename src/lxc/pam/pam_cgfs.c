@@ -31,11 +31,11 @@
 #include <security/_pam_macros.h>
 #include <security/pam_modules.h>
 
-#ifndef HAVE_STRLCPY
+#if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
 
-#ifndef HAVE_STRLCAT
+#if !HAVE_STRLCAT
 #include "strlcat.h"
 #endif
 

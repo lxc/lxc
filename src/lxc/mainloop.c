@@ -84,7 +84,7 @@ static inline void cleanup_handler(struct lxc_async_descr *descr,
 		delete_handler(handler);
 }
 
-#ifndef HAVE_LIBURING
+#if !HAVE_LIBURING
 static inline int __lxc_mainloop_io_uring(struct lxc_async_descr *descr,
 					  int timeout_ms)
 {
@@ -514,7 +514,7 @@ void lxc_mainloop_close(struct lxc_async_descr *descr)
 	}
 
 	if (descr->type == LXC_MAINLOOP_IO_URING) {
-#ifdef HAVE_LIBURING
+#if HAVE_LIBURING
 		io_uring_queue_exit(descr->ring);
 		munmap(descr->ring, sizeof(struct io_uring));
 #else
