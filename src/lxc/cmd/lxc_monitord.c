@@ -409,8 +409,9 @@ int main(int argc, char *argv[])
 		 * if-empty-statement construct is to quiet the
 		 * warn-unused-result warning.
 		 */
-		if (lxc_write_nointr(pipefd, "S", 1))
+		if (lxc_write_nointr(pipefd, "S", 1)) {
 			;
+		}
 		close(pipefd);
 	}
 
