@@ -397,15 +397,18 @@ int main(int argc, char *argv[])
 		goto on_error;
 	monitord_created = true;
 
-	/* sync with parent, we're ignoring the return from write
-	 * because regardless if it works or not, the following
-	 * close will sync us with the parent process. the
-	 * if-empty-statement construct is to quiet the
-	 * warn-unused-result warning.
-	 */
-	if (lxc_write_nointr(pipefd, "S", 1))
-		;
-	close(pipefd);
+	if (pipefd != -1) {
+		/* sync with parent, we're ignoring the return from write
+		 * because regardless if it works or not, the following
+		 * close will sync us with the parent process. the
+		 * if-empty-statement construct is to quiet the
+		 * warn-unused-result warning.
+		 */
+		if (lxc_write_nointr(pipefd, "S", 1)) {
+			;
+		}
+		close(pipefd);
+	}
 
 	if (lxc_monitord_mainloop_add(&monitor)) {
 		ERROR("Failed to add mainloop handlers");
