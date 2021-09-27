@@ -396,6 +396,9 @@ liblxc_dep = declare_dependency(
 				libselinux,
 				libapparmor])
 
+dummy_config_data = configuration_data()
+dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
+
 cmd_programs = []
 subdir('src/lxc/cmd')
 

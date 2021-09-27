@@ -152,9 +152,6 @@ cmd_lxc_monitord_sources = files('lxc_monitord.c') + cmd_common_sources
 cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources
 cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources
 
-dummy_config_data = configuration_data()
-dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
-
 cmd_lxc_checkconfig = configure_file(
 			configuration : dummy_config_data,
                         input : 'lxc-checkconfig.in',
