@@ -22,6 +22,7 @@ conf = configuration_data()
 conf.set_quoted('PROJECT_URL', 'https://linuxcontainers.org/lxc/introduction/')
 conf.set('PROJECT_VERSION',    meson.project_version(),
          description : 'Numerical project version (used where a simple number is expected)')
+conf.set('PACKAGE_VERSION',    meson.project_version())
 conf.set('_GNU_SOURCE', true)
 conf.set('__STDC_FORMAT_MACROS', true)
 
@@ -401,14 +402,17 @@ liblxc_dep = declare_dependency(
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
 
+hook_programs = []
+subdir('hooks')
+
+template_scripts = []
+subdir('templates')
+
 cmd_programs = []
 subdir('src/lxc/cmd')
 
 public_programs = []
 subdir('src/lxc/tools')
-
-hook_programs = []
-subdir('hooks')
 
 found_syscalls = []
 missing_syscalls = []
