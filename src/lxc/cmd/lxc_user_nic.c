@@ -111,11 +111,11 @@ static char *get_username(void)
 	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);
@@ -144,7 +144,7 @@ static char **get_groupnames(void)
 	int ret, i;
 	struct group grent;
 	struct group *grentp = NULL;
-	size_t bufsize;
+	ssize_t bufsize;
 
 	ngroups = getgroups(0, NULL);
 	if (ngroups < 0) {
@@ -174,7 +174,7 @@ static char **get_groupnames(void)
 	}
 
 	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (bufsize == -1)
+	if (bufsize < 0)
 		bufsize = 1024;
 
 	buf = malloc(bufsize);
@@ -659,6 +659,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	size_t length = 0;
 	int ret;
 	size_t slen;
+	ssize_t nbytes;
 	char *owner;
 	char nicname[IFNAMSIZ];
 	struct alloted_s *n;
@@ -755,7 +756,8 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		return NULL;
 	}
 
-	if (lxc_pwrite_nointr(fd, newline, slen, length) != slen) {
+	nbytes = lxc_pwrite_nointr(fd, newline, slen, length);
+	if (nbytes < 0 || (size_t)nbytes != slen) {
 		CMD_SYSERROR("Failed to append new entry \"%s\" to database file", newline);
 
 		if (lxc_netdev_delete_by_name(nicname) != 0)
