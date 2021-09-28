@@ -3116,7 +3116,12 @@ static bool legacy_hierarchy_delegated(int dfd_base)
  * Ensure that we always use the systemd-guaranteed stable order when checking
  * for the mountpoint.
  */
-__attribute__((returns_nonnull)) __attribute__((nonnull))
+#if HAVE_COMPILER_ATTR_NONNULL
+__attribute__((nonnull))
+#endif
+#if HAVE_COMPILER_ATTR_RETURNS_NONNULL
+__attribute__((returns_nonnull))
+#endif
 static const char *stable_order(const char *controllers)
 {
 	if (strequal(controllers, "cpuacct,cpu"))
