@@ -13,7 +13,7 @@ project('lxc', 'c',
                 'c_std=gnu11',
                 'warning_level=2',
         ],
-        meson_version : '>= 0.46',
+        meson_version : '>= 0.48',
        )
 
 liblxc_version = '4.0.0'
@@ -354,6 +354,9 @@ conf.set10('HAVE_STRCHRNUL', have)
 
 have = cc.has_function('openpty', prefix : '#include <pty.h>', args : '-D_GNU_SOURCE')
 conf.set10('HAVE_OPENPTY', have)
+
+conf.set10('HAVE_COMPILER_ATTR_NONNULL', cc.has_function_attribute('nonnull'))
+conf.set10('HAVE_COMPILER_ATTR_RETURNS_NONNULL', cc.has_function_attribute('returns_nonnull'))
 
 config_h = configure_file(
         output : 'config.h',
