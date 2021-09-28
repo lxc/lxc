@@ -11,12 +11,8 @@ jobs:
           - gcc
           - clang
         os:
-          - ubuntu-16.04
           - ubuntu-18.04
           - ubuntu-20.04
-        exclude:
-          - os: ubuntu-16.04
-            compiler: gcc
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
