@@ -362,6 +362,11 @@ static inline int personality(unsigned long persona)
 
 #define INVALID_SCHED_CORE_COOKIE ((__u64)-1)
 
+static inline bool core_scheduling_cookie_valid(__u64 cookie)
+{
+	return (cookie > 0) && (cookie != INVALID_SCHED_CORE_COOKIE);
+}
+
 static inline __u64 core_scheduling_cookie_get(pid_t pid)
 {
 	__u64 cookie;
@@ -385,6 +390,12 @@ static inline int core_scheduling_cookie_create_thread(pid_t pid)
 		return -errno;
 
 	return 0;
+}
+
+static inline int core_scheduling_cookie_share_with(pid_t pid)
+{
+	return prctl(PR_SCHED_CORE, PR_SCHED_CORE_SHARE_FROM, pid,
+		     PR_SCHED_CORE_SCOPE_THREAD, 0);
 }
 
 #endif /* __LXC_SYSCALL_WRAPPER_H */
