@@ -3382,6 +3382,8 @@ struct lxc_conf *lxc_conf_init(void)
 	new->transient_procfs_mnt = false;
 	new->shmount.path_host = NULL;
 	new->shmount.path_cont = NULL;
+	new->sched_core = false;
+	new->sched_core_cookie = INVALID_SCHED_CORE_COOKIE;
 
 	/* if running in a new user namespace, init and COMMAND
 	 * default to running as UID/GID 0 when using lxc-execute */

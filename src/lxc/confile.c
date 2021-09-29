@@ -154,6 +154,7 @@ lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
+lxc_config_define(sched_core);
 
 static int set_config_unsupported_key(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
@@ -207,6 +208,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.console.path",               true,  set_config_console_path,               get_config_console_path,               clr_config_console_path,               },
 	{ "lxc.console.rotate",             true,  set_config_console_rotate,             get_config_console_rotate,             clr_config_console_rotate,             },
 	{ "lxc.console.size",               true,  set_config_console_size,               get_config_console_size,               clr_config_console_size,               },
+	{ "lxc.sched.core",		    true,  set_config_sched_core,		  get_config_sched_core,                 clr_config_sched_core,                 },
 	{ "lxc.environment",                true,  set_config_environment,                get_config_environment,                clr_config_environment,                },
 	{ "lxc.ephemeral",                  true,  set_config_ephemeral,                  get_config_ephemeral,                  clr_config_ephemeral,                  },
 	{ "lxc.execute.cmd",                true,  set_config_execute_cmd,                get_config_execute_cmd,                clr_config_execute_cmd,                },
@@ -6582,4 +6584,36 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 	}
 
 	return fulllen;
+}
+
+static int set_config_sched_core(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf, void *data)
+{
+	int ret;
+	unsigned int nr;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_sched_core(key, lxc_conf, data);
+
+	ret = lxc_safe_uint(value, &nr);
+	if (ret)
+		return ret_errno(EINVAL);
+
+	if (nr != 0 && nr != 1)
+		return ret_errno(EINVAL);
+
+	lxc_conf->sched_core = (nr == 1);
+	return 0;
+}
+
+static int get_config_sched_core(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_bool(c, retv, inlen, c->sched_core);
+}
+
+static int clr_config_sched_core(const char *key, struct lxc_conf *c, void *data)
+{
+	c->sched_core = false;
+	return 0;
 }

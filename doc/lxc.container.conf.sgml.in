@@ -339,6 +339,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Core Scheduling</title>
+      <para>
+        Core scheduling defines if the container payload
+	is marked as being schedulable on the same core. Doing so will cause
+	the kernel scheduler to ensure that tasks that are not in the same
+	group never run simultaneously on a core. This can serve as an extra
+	security measure to prevent the container payload from using
+	cross hyper thread attacks.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.sched.core</option>
+          </term>
+          <listitem>
+            <para>
+              The only allowed values are 0 and 1. Set this to 1 to create a
+	      core scheduling domain for the container or 0 to not create one.
+	      If not set explicitly no core scheduling domain will be created
+	      for the container.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Proc</title>
       <para>
         Configure proc filesystem for the container.
