@@ -355,8 +355,13 @@ conf.set10('HAVE_STRCHRNUL', have)
 have = cc.has_function('openpty', prefix : '#include <pty.h>', args : '-D_GNU_SOURCE')
 conf.set10('HAVE_OPENPTY', have)
 
-conf.set10('HAVE_COMPILER_ATTR_NONNULL', cc.has_function_attribute('nonnull'))
-conf.set10('HAVE_COMPILER_ATTR_RETURNS_NONNULL', cc.has_function_attribute('returns_nonnull'))
+foreach ccattr : ['fallthrough',
+		  'nonnull',
+		  'returns_nonnull',
+		 ]
+
+        conf.set10('HAVE_COMPILER_ATTR_' + ccattr.underscorify().to_upper(), cc.has_function_attribute(ccattr))
+endforeach
 
 config_h = configure_file(
         output : 'config.h',
