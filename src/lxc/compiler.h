@@ -18,7 +18,7 @@
 #endif
 #endif
 
-#if __GNUC__ >= 7
+#if HAVE_COMPILER_ATTR_FALLTHROUGH || __GNUC__ >= 7
 #define __fallthrough __attribute__((__fallthrough__))
 #else
 #define __fallthrough /* fall through */
