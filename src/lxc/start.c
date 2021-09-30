@@ -1577,7 +1577,7 @@ static int core_scheduling(struct lxc_handler *handler)
 		return syserror("Failed to retrieve core scheduling domain cookie");
 
 	TRACE("Created new core scheduling domain with cookie %llu",
-	      (long long unsigned int)conf->sched_core_cookie);
+	      (llu)conf->sched_core_cookie);
 
 	return 0;
 }
