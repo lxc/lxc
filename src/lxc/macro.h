@@ -763,4 +763,6 @@ static inline bool has_exact_flags(__u32 flags, __u32 mask)
 			 "pointer type mismatch in container_of()");	\
 	((type *)(__mptr - offsetof(type, member))); })
 
+typedef long long unsigned int llu;
+
 #endif /* __LXC_MACRO_H */

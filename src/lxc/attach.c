@@ -414,7 +414,7 @@ static int get_attach_context(struct attach_context *ctx,
 		INFO("Container does not run in a separate core scheduling domain");
 	else
 		INFO("Container runs in separate core scheduling domain %llu",
-		     (long long unsigned int)ctx->core_sched_cookie);
+		     (llu)ctx->core_sched_cookie);
 
 	ret = strnprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0)
@@ -1158,13 +1158,13 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		if (!core_scheduling_cookie_valid(core_sched_cookie) &&
 		    ctx->core_sched_cookie != core_sched_cookie) {
 			SYSERROR("Invalid core scheduling domain cookie %llu != %llu",
-				 (long long unsigned int)core_sched_cookie,
-				 (long long unsigned int)ctx->core_sched_cookie);
+				 (llu)core_sched_cookie,
+				 (llu)ctx->core_sched_cookie);
 			goto on_error;
 		}
 
 		INFO("Joined core scheduling domain of %d with cookie %lld",
-		     ctx->init_pid, core_sched_cookie);
+		     ctx->init_pid, (llu)core_sched_cookie);
 	}
 
 	/* A description of the purpose of this functionality is provided in the
