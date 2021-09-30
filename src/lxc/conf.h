@@ -523,6 +523,9 @@ struct lxc_conf {
 	} shmount;
 
 	struct timens_offsets timens;
+
+	bool sched_core;
+	__u64 sched_core_cookie;
 };
 
 __hidden extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf, size_t buf_size)

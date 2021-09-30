@@ -1553,6 +1553,35 @@ static inline int do_share_ns(void *arg)
 	return 0;
 }
 
+static int core_scheduling(struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+	int ret;
+
+	if (!conf->sched_core)
+		return log_trace(0, "No new core scheduling domain requested");
+
+	if (!(handler->ns_clone_flags & CLONE_NEWPID))
+		return syserror_set(-EINVAL, "Core scheduling currently requires a separate pid namespace");
+
+	ret = core_scheduling_cookie_create_thread(handler->pid);
+	if (ret < 0) {
+		if (ret == -EINVAL)
+			return sysinfo("The kernel does not support core scheduling");
+
+		return syserror("Failed to create new core scheduling domain");
+	}
+
+	conf->sched_core_cookie = core_scheduling_cookie_get(handler->pid);
+	if (conf->sched_core_cookie == INVALID_SCHED_CORE_COOKIE)
+		return syserror("Failed to retrieve core scheduling domain cookie");
+
+	TRACE("Created new core scheduling domain with cookie %llu",
+	      (long long unsigned int)conf->sched_core_cookie);
+
+	return 0;
+}
+
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1708,6 +1737,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (handler->pidfd < 0)
 		handler->clone_flags &= ~CLONE_PIDFD;
 	TRACE("Cloned child process %d", handler->pid);
+
+	ret = core_scheduling(handler);
+	if (ret < 0)
+		goto out_delete_net;
 
 	/* Verify that we can actually make use of pidfds. */
 	if (!lxc_can_use_pidfd(handler->pidfd))

@@ -53,33 +53,35 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 
 /*
  * The context used to attach to the container.
- * @attach_flags    : the attach flags specified in lxc_attach_options_t
- * @init_pid        : the PID of the container's init process
- * @dfd_init_pid    : file descriptor to /proc/@init_pid
- *                    __Must be closed in attach_context_security_barrier()__!
- * @dfd_self_pid    : file descriptor to /proc/self
- *                    __Must be closed in attach_context_security_barrier()__!
- * @setup_ns_uid    : if CLONE_NEWUSER is specified will contain the uid used
- *                    during attach setup.
- * @setup_ns_gid    : if CLONE_NEWUSER is specified will contain the gid used
- *                    during attach setup.
- * @target_ns_uid   : if CLONE_NEWUSER is specified the uid that the final
- *                    program will be run with.
- * @target_ns_gid   : if CLONE_NEWUSER is specified the gid that the final
- *                    program will be run with.
- * @target_host_uid : if CLONE_NEWUSER is specified the uid that the final
- *                    program will be run with on the host.
- * @target_host_gid : if CLONE_NEWUSER is specified the gid that the final
- *                    program will be run with on the host.
- * @lsm_label       : LSM label to be used for the attaching process
- * @container       : the container we're attaching o
- * @personality     : the personality to use for the final program
- * @capability      : the capability mask of the @init_pid
- * @ns_inherited    : flags of namespaces that the final program will inherit
- *                    from @init_pid
- * @ns_fd           : file descriptors to @init_pid's namespaces
+ * @attach_flags	: the attach flags specified in lxc_attach_options_t
+ * @init_pid        	: the PID of the container's init process
+ * @dfd_init_pid    	: file descriptor to /proc/@init_pid
+ *                  	  __Must be closed in attach_context_security_barrier()__!
+ * @dfd_self_pid    	: file descriptor to /proc/self
+ *                  	  __Must be closed in attach_context_security_barrier()__!
+ * @setup_ns_uid    	: if CLONE_NEWUSER is specified will contain the uid used
+ *                  	  during attach setup.
+ * @setup_ns_gid    	: if CLONE_NEWUSER is specified will contain the gid used
+ *                  	  during attach setup.
+ * @target_ns_uid   	: if CLONE_NEWUSER is specified the uid that the final
+ *                  	  program will be run with.
+ * @target_ns_gid   	: if CLONE_NEWUSER is specified the gid that the final
+ *                  	  program will be run with.
+ * @target_host_uid 	: if CLONE_NEWUSER is specified the uid that the final
+ *                  	  program will be run with on the host.
+ * @target_host_gid 	: if CLONE_NEWUSER is specified the gid that the final
+ *                  	  program will be run with on the host.
+ * @lsm_label       	: LSM label to be used for the attaching process
+ * @container       	: the container we're attaching o
+ * @personality     	: the personality to use for the final program
+ * @capability      	: the capability mask of the @init_pid
+ * @ns_inherited    	: flags of namespaces that the final program will inherit
+ *                  	  from @init_pid
+ * @ns_fd           	: file descriptors to @init_pid's namespaces
+ * @core_sched_cookie	: core scheduling cookie
  */
 struct attach_context {
+	unsigned int ns_clone_flags;
 	unsigned int attach_flags;
 	int init_pid;
 	int init_pidfd;
@@ -98,6 +100,7 @@ struct attach_context {
 	int ns_inherited;
 	int ns_fd[LXC_NS_MAX];
 	struct lsm_ops *lsm_ops;
+	__u64 core_sched_cookie;
 };
 
 static pid_t pidfd_get_pid(int dfd_init_pid, int pidfd)
@@ -186,6 +189,8 @@ static struct attach_context *alloc_attach_context(void)
 	ctx->target_ns_gid	= LXC_INVALID_GID;
 	ctx->target_host_uid	= LXC_INVALID_UID;
 	ctx->target_host_gid	= LXC_INVALID_GID;
+
+	ctx->core_sched_cookie	= INVALID_SCHED_CORE_COOKIE;
 
 	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -399,6 +404,18 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
+	ret = lxc_cmd_get_clone_flags(container->name, container->config_path);
+	if (ret < 0)
+		log_error(-1, "Failed to retrieve namespace flags");
+	ctx->ns_clone_flags = ret;
+
+	ctx->core_sched_cookie = core_scheduling_cookie_get(ctx->init_pid);
+	if (!core_scheduling_cookie_valid(ctx->core_sched_cookie))
+		INFO("Container does not run in a separate core scheduling domain");
+	else
+		INFO("Container runs in separate core scheduling domain %llu",
+		     (long long unsigned int)ctx->core_sched_cookie);
+
 	ret = strnprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0)
 		return ret_errno(EIO);
@@ -428,7 +445,7 @@ static int get_attach_context(struct attach_context *ctx,
 
 	/* Determine which namespaces the container was created with. */
 	if (options->namespaces == -1) {
-		options->namespaces = lxc_cmd_get_clone_flags(container->name, container->config_path);
+		options->namespaces = ctx->ns_clone_flags;
 		if (options->namespaces == -1)
 			return log_error_errno(-EINVAL, EINVAL, "Failed to automatically determine the namespaces which the container uses");
 
@@ -1116,6 +1133,39 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	lxc_attach_options_t* options = ap->options;
         struct attach_context *ctx = ap->ctx;
         struct lxc_conf *conf = ctx->container->lxc_conf;
+
+	/*
+	 * We currently artificially restrict core scheduling to be a pid
+	 * namespace concept since this makes the code easier. We can revisit
+	 * this no problem and make this work with shared pid namespaces as
+	 * well. This check here makes sure that the container was created with
+	 * a separate pid namespace (ctx->ns_clone_flags) and whether we are
+	 * actually attaching to this pid namespace (options->namespaces).
+	 */
+	if (core_scheduling_cookie_valid(ctx->core_sched_cookie) &&
+	    (ctx->ns_clone_flags & CLONE_NEWPID) &&
+	    (options->namespaces & CLONE_NEWPID)) {
+		__u64 core_sched_cookie;
+
+		ret = core_scheduling_cookie_share_with(1);
+		if (ret < 0) {
+			SYSERROR("Failed to join core scheduling domain of %d",
+				 ctx->init_pid);
+			goto on_error;
+		}
+
+		core_sched_cookie = core_scheduling_cookie_get(getpid());
+		if (!core_scheduling_cookie_valid(core_sched_cookie) &&
+		    ctx->core_sched_cookie != core_sched_cookie) {
+			SYSERROR("Invalid core scheduling domain cookie %llu != %llu",
+				 (long long unsigned int)core_sched_cookie,
+				 (long long unsigned int)ctx->core_sched_cookie);
+			goto on_error;
+		}
+
+		INFO("Joined core scheduling domain of %d with cookie %lld",
+		     ctx->init_pid, core_sched_cookie);
+	}
 
 	/* A description of the purpose of this functionality is provided in the
 	 * lxc-attach(1) manual page. We have to remount here and not in the
