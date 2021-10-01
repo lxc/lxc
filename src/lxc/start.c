@@ -1573,7 +1573,7 @@ static int core_scheduling(struct lxc_handler *handler)
 	}
 
 	conf->sched_core_cookie = core_scheduling_cookie_get(handler->pid);
-	if (conf->sched_core_cookie == INVALID_SCHED_CORE_COOKIE)
+	if (!core_scheduling_cookie_valid(conf->sched_core_cookie))
 		return syserror("Failed to retrieve core scheduling domain cookie");
 
 	TRACE("Created new core scheduling domain with cookie %llu",
