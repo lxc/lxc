@@ -1567,7 +1567,7 @@ static int core_scheduling(struct lxc_handler *handler)
 	ret = core_scheduling_cookie_create_threadgroup(handler->pid);
 	if (ret < 0) {
 		if (ret == -EINVAL)
-			return sysinfo_ret(0, "The kernel does not support core scheduling");
+			return syserror("The kernel does not support core scheduling");
 
 		return syserror("Failed to create new core scheduling domain");
 	}
