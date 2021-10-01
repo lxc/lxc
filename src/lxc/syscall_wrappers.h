@@ -380,7 +380,7 @@ static inline __u64 core_scheduling_cookie_get(pid_t pid)
 	return cookie;
 }
 
-static inline int core_scheduling_cookie_create_thread(pid_t pid)
+static inline int core_scheduling_cookie_create_threadgroup(pid_t pid)
 {
 	int ret;
 

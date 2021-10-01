@@ -1564,16 +1564,16 @@ static int core_scheduling(struct lxc_handler *handler)
 	if (!(handler->ns_clone_flags & CLONE_NEWPID))
 		return syserror_set(-EINVAL, "Core scheduling currently requires a separate pid namespace");
 
-	ret = core_scheduling_cookie_create_thread(handler->pid);
+	ret = core_scheduling_cookie_create_threadgroup(handler->pid);
 	if (ret < 0) {
 		if (ret == -EINVAL)
-			return sysinfo("The kernel does not support core scheduling");
+			return sysinfo_ret(0, "The kernel does not support core scheduling");
 
 		return syserror("Failed to create new core scheduling domain");
 	}
 
 	conf->sched_core_cookie = core_scheduling_cookie_get(handler->pid);
-	if (conf->sched_core_cookie == INVALID_SCHED_CORE_COOKIE)
+	if (!core_scheduling_cookie_valid(conf->sched_core_cookie))
 		return syserror("Failed to retrieve core scheduling domain cookie");
 
 	TRACE("Created new core scheduling domain with cookie %llu",
