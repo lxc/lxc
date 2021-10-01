@@ -1564,7 +1564,7 @@ static int core_scheduling(struct lxc_handler *handler)
 	if (!(handler->ns_clone_flags & CLONE_NEWPID))
 		return syserror_set(-EINVAL, "Core scheduling currently requires a separate pid namespace");
 
-	ret = core_scheduling_cookie_create_thread(handler->pid);
+	ret = core_scheduling_cookie_create_threadgroup(handler->pid);
 	if (ret < 0) {
 		if (ret == -EINVAL)
 			return sysinfo("The kernel does not support core scheduling");
