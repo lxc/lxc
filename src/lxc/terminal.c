@@ -967,17 +967,17 @@ int lxc_devpts_terminal(int devpts_fd, int *ret_ptx, int *ret_pty,
 		if (errno == ENOSPC)
 			return systrace("Exceeded number of allocatable terminals");
 
-		return syserror("Failed to open terminal multiplexer device");
+		return syswarn("Failed to open terminal multiplexer device");
 	}
 
 	if (devpts_fd < 0) {
 		fd_devpts = open_at(-EBADF, "/dev/pts", PROTECT_OPATH_DIRECTORY,
 				    PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 		if (fd_devpts < 0)
-			return syserror("Failed to open devpts instance");
+			return syswarn("Failed to open devpts instance");
 
 		if (!same_device(fd_devpts, "ptmx", fd_ptx, ""))
-			return syserror("The acquired ptmx devices don't match");
+			return syswarn("The acquired ptmx devices don't match");
 		devpts_fd = fd_devpts;
 	}
 
