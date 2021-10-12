@@ -765,4 +765,24 @@ static inline bool has_exact_flags(__u32 flags, __u32 mask)
 
 typedef long long unsigned int llu;
 
+/* Taken over modified from the kernel sources. */
+#define NBITS 32 /* bits in uint32_t */
+#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
+#define BITS_TO_LONGS(nr) DIV_ROUND_UP(nr, NBITS)
+
+static inline void set_bit(unsigned bit, uint32_t *bitarr)
+{
+	bitarr[bit / NBITS] |= (1 << (bit % NBITS));
+}
+
+static inline void clear_bit(unsigned bit, uint32_t *bitarr)
+{
+	bitarr[bit / NBITS] &= ~(1 << (bit % NBITS));
+}
+
+static inline bool is_set(unsigned bit, uint32_t *bitarr)
+{
+	return (bitarr[bit / NBITS] & (1 << (bit % NBITS))) != 0;
+}
+
 #endif /* __LXC_MACRO_H */
