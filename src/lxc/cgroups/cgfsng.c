@@ -178,26 +178,6 @@ int prepare_cgroup_fd(const struct cgroup_ops *ops, struct cgroup_fd *fd, bool l
 	return 0;
 }
 
-/* Taken over modified from the kernel sources. */
-#define NBITS 32 /* bits in uint32_t */
-#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
-#define BITS_TO_LONGS(nr) DIV_ROUND_UP(nr, NBITS)
-
-static void set_bit(unsigned bit, uint32_t *bitarr)
-{
-	bitarr[bit / NBITS] |= (1 << (bit % NBITS));
-}
-
-static void clear_bit(unsigned bit, uint32_t *bitarr)
-{
-	bitarr[bit / NBITS] &= ~(1 << (bit % NBITS));
-}
-
-static bool is_set(unsigned bit, uint32_t *bitarr)
-{
-	return (bitarr[bit / NBITS] & (1 << (bit % NBITS))) != 0;
-}
-
 /* Create cpumask from cpulist aka turn:
  *
  *	0,2-3

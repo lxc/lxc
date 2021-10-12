@@ -3154,7 +3154,7 @@ bool has_cap(int cap, struct lxc_conf *conf)
 	return !cap_in_list;
 }
 
-static int setup_caps(struct lxc_conf *conf)
+static int capabilities_deny(struct lxc_conf *conf)
 {
 	struct cap_entry *cap;
 
@@ -3164,7 +3164,7 @@ static int setup_caps(struct lxc_conf *conf)
 		ret = prctl(PR_CAPBSET_DROP, prctl_arg(cap->cap), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remove %s capability", cap->cap_name);
+			return syserror("Failed to remove %s capability", cap->cap_name);
 
 		DEBUG("Dropped %s (%d) capability", cap->cap_name, cap->cap);
 	}
@@ -3173,10 +3173,12 @@ static int setup_caps(struct lxc_conf *conf)
 	return 0;
 }
 
-static int dropcaps_except(struct lxc_conf *conf)
+static int capabilities_allow(struct lxc_conf *conf)
 {
+	__do_free __u32 *keep_bits = NULL;
 	int numcaps;
 	struct cap_entry *cap;
+	size_t nr_u32;
 
 	numcaps = lxc_caps_last_cap() + 1;
 	if (numcaps <= 0 || numcaps > 200)
@@ -3184,20 +3186,31 @@ static int dropcaps_except(struct lxc_conf *conf)
 
 	TRACE("Found %d capabilities", numcaps);
 
-	list_for_each_entry(cap, &conf->caps.list, head) {
-		int ret;
+	nr_u32 = BITS_TO_LONGS(numcaps);
+	keep_bits = zalloc(nr_u32 * sizeof(__u32));
+	if (!keep_bits)
+		return ret_errno(ENOMEM);
 
+	list_for_each_entry(cap, &conf->caps.list, head) {
 		if (cap->cap >= numcaps)
 			continue;
 
-		ret = prctl(PR_CAPBSET_DROP, prctl_arg(cap->cap), prctl_arg(0),
+		set_bit(cap->cap, keep_bits);
+		DEBUG("Keeping %s (%d) capability", cap->cap_name, cap->cap);
+	}
+
+	for (int cap_bit = 0; cap_bit < numcaps; cap_bit++) {
+		int ret;
+
+		if (is_set(cap_bit, keep_bits))
+			continue;
+
+		ret = prctl(PR_CAPBSET_DROP, prctl_arg(cap_bit), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
-			return log_error_errno(-1, errno,
-					       "Failed to remove capability %s (%d)",
-					       cap->cap_name, cap->cap);
+			return syserror("Failed to remove capability %d", cap_bit);
 
-		DEBUG("Keep capability %s (%d)", cap->cap_name, cap->cap);
+		TRACE("Dropped capability %d", cap_bit);
 	}
 
 	DEBUG("Capabilities have been setup");
@@ -4259,11 +4272,11 @@ static int setcup_capabilities(struct lxc_conf *conf)
 	int ret;
 
 	if (conf->caps.keep)
-		ret = dropcaps_except(conf);
+		ret = capabilities_allow(conf);
 	else
-		ret = setup_caps(conf);
+		ret = capabilities_deny(conf);
 	if (ret < 0)
-		return log_error(-1, "Failed to %s capabilities", conf->caps.keep ? "keep" : "drop");
+		return syserror_ret(ret, "Failed to %s capabilities", conf->caps.keep ? "allow" : "deny");
 
 	return 0;
 }
