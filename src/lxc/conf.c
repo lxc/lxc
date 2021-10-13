@@ -3176,11 +3176,11 @@ static int capabilities_deny(struct lxc_conf *conf)
 static int capabilities_allow(struct lxc_conf *conf)
 {
 	__do_free __u32 *keep_bits = NULL;
-	int numcaps;
+	__s32 numcaps;
 	struct cap_entry *cap;
 	size_t nr_u32;
 
-	numcaps = lxc_caps_last_cap() + 1;
+	numcaps = lxc_caps_last_cap();
 	if (numcaps <= 0 || numcaps > 200)
 		return ret_errno(EINVAL);
 
@@ -3192,14 +3192,14 @@ static int capabilities_allow(struct lxc_conf *conf)
 		return ret_errno(ENOMEM);
 
 	list_for_each_entry(cap, &conf->caps.list, head) {
-		if (cap->cap >= numcaps)
+		if (cap->cap > numcaps)
 			continue;
 
 		set_bit(cap->cap, keep_bits);
 		DEBUG("Keeping %s (%d) capability", cap->cap_name, cap->cap);
 	}
 
-	for (int cap_bit = 0; cap_bit < numcaps; cap_bit++) {
+	for (__s32 cap_bit = 0; cap_bit <= numcaps; cap_bit++) {
 		int ret;
 
 		if (is_set(cap_bit, keep_bits))

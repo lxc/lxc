@@ -209,7 +209,8 @@ int lxc_caps_init(void)
 
 static long int _real_caps_last_cap(void)
 {
-	int fd, result = -1;
+	__do_close int fd = -EBADF;
+	__s32 result = -1;
 
 	/* Try to get the maximum capability over the kernel interface
 	 * introduced in v3.2.
@@ -230,7 +231,7 @@ static long int _real_caps_last_cap(void)
 
 		close(fd);
 	} else {
-		int cap = 0;
+		__s32 cap = 0;
 
 		/* Try to get it manually by trying to get the status of each
 		 * capability individually from the kernel.
@@ -246,7 +247,7 @@ static long int _real_caps_last_cap(void)
 
 int lxc_caps_last_cap(void)
 {
-	static long int last_cap = -1;
+	static __s32 last_cap = -1;
 
 	if (last_cap < 0) {
 		last_cap = _real_caps_last_cap();
