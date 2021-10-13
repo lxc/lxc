@@ -343,7 +343,7 @@ struct environment_entry {
 
 struct cap_entry {
 	char *cap_name;
-	int cap;
+	__u32 cap;
 	struct list_head head;
 };
 
@@ -579,10 +579,17 @@ __hidden extern int run_script(const char *name, const char *section, const char
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
 
-__hidden extern bool has_cap(int cap, struct lxc_conf *conf);
-static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
+__hidden extern bool has_cap(__u32 cap, struct lxc_conf *conf);
+static inline bool lxc_wants_cap(__u32 cap, struct lxc_conf *conf)
 {
-	if (lxc_caps_last_cap() < cap)
+	__u32 last_cap;
+	int ret;
+
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret)
+		return false;
+
+	if (last_cap < cap)
 		return false;
 
 	return has_cap(cap, conf);
@@ -662,6 +669,6 @@ static inline int lxc_personality(personality_t persona)
 }
 
 __hidden extern int lxc_set_environment(const struct lxc_conf *conf);
-__hidden extern int parse_cap(const char *cap);
+__hidden extern int parse_cap(const char *cap_name, __u32 *cap);
 
 #endif /* __LXC_CONF_H */

@@ -2246,7 +2246,8 @@ static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
 	 */
 	lxc_iterate_parts(token, caps, " \t") {
 		__do_free struct cap_entry *new_cap = NULL;
-		int cap;
+		int ret;
+		__u32 cap;
 
 		if (strequal(token, "none")) {
 			if (!keep)
@@ -2256,9 +2257,9 @@ static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
 			continue;
 		}
 
-		cap = parse_cap(token);
-		if (cap < 0) {
-			if (cap != -2)
+		ret = parse_cap(token, &cap);
+		if (ret < 0) {
+			if (ret != -2)
 				return syserror_set(-EINVAL, "Invalid capability specified");
 
 			INFO("Ignoring unknown capability \"%s\"", token);

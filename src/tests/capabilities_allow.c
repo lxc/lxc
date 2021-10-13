@@ -40,10 +40,16 @@
 #if HAVE_LIBCAP
 static int capabilities_allow(void *payload)
 {
-	int last_cap;
+	int ret;
+	__u32 last_cap;
 
-	last_cap = lxc_caps_last_cap();
-	for (int cap = 0; cap <= last_cap; cap++) {
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret) {
+		lxc_error("%s\n", "Failed to retrieve last capability");
+		return EXIT_FAILURE;
+	}
+
+	for (__u32 cap = 0; cap <= last_cap; cap++) {
 		bool bret;
 
 		if (cap == CAP_MKNOD)
