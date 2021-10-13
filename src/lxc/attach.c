@@ -775,10 +775,14 @@ int lxc_attach_remount_sys_proc(void)
 
 static int drop_capabilities(struct attach_context *ctx)
 {
-	int last_cap;
+	int ret;
+	__u32 last_cap;
 
-	last_cap = lxc_caps_last_cap();
-	for (int cap = 0; cap <= last_cap; cap++) {
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret)
+		return ret;
+
+	for (__u32 cap = 0; cap <= last_cap; cap++) {
 		if (ctx->capability_mask & (1LL << cap))
 			continue;
 
