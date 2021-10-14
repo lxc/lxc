@@ -133,7 +133,7 @@ struct mount_opt {
 
 struct caps_opt {
 	char *name;
-	int value;
+	__u32 value;
 };
 
 struct limit_opt {
@@ -3097,44 +3097,45 @@ out:
 	return fret;
 }
 
-int parse_cap(const char *cap)
+int parse_cap(const char *cap_name, __u32 *cap)
 {
-	size_t i;
-	int capid = -1;
 	size_t end = sizeof(caps_opt) / sizeof(caps_opt[0]);
-	char *ptr = NULL;
+	int ret;
+	unsigned int res;
+	__u32 last_cap;
 
-	if (strequal(cap, "none"))
+	if (strequal(cap_name, "none"))
 		return -2;
 
-	for (i = 0; i < end; i++) {
-		if (!strequal(cap, caps_opt[i].name))
+	for (size_t i = 0; i < end; i++) {
+		if (!strequal(cap_name, caps_opt[i].name))
 			continue;
 
-		capid = caps_opt[i].value;
-		break;
+		*cap = caps_opt[i].value;
+		return 0;
 	}
 
-	if (capid < 0) {
-		/* Try to see if it's numeric, so the user may specify
-		 * capabilities that the running kernel knows about but we
-		 * don't
-		 */
-		errno = 0;
-		capid = strtol(cap, &ptr, 10);
-		if (!ptr || *ptr != '\0' || errno != 0)
-			/* not a valid number */
-			capid = -1;
-		else if (capid > lxc_caps_last_cap())
-			/* we have a number but it's not a valid
-			 * capability */
-			capid = -1;
-	}
+	/*
+	 * Try to see if it's numeric, so the user may specify
+	 * capabilities that the running kernel knows about but we
+	 * don't.
+	 */
+	ret = lxc_safe_uint(cap_name, &res);
+	if (ret < 0)
+		return -1;
 
-	return capid;
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret)
+		return -1;
+
+	if ((__u32)res > last_cap)
+		return -1;
+
+	*cap = (__u32)res;
+	return 0;
 }
 
-bool has_cap(int cap, struct lxc_conf *conf)
+bool has_cap(__u32 cap, struct lxc_conf *conf)
 {
 	bool cap_in_list = false;
 	struct cap_entry *cap_entry;
@@ -3176,32 +3177,30 @@ static int capabilities_deny(struct lxc_conf *conf)
 static int capabilities_allow(struct lxc_conf *conf)
 {
 	__do_free __u32 *keep_bits = NULL;
-	__s32 numcaps;
+	int ret;
 	struct cap_entry *cap;
-	size_t nr_u32;
+	__u32 last_cap, nr_u32;
 
-	numcaps = lxc_caps_last_cap();
-	if (numcaps <= 0 || numcaps > 200)
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret || last_cap > 200)
 		return ret_errno(EINVAL);
 
-	TRACE("Found %d capabilities", numcaps);
+	TRACE("Found %d capabilities", last_cap);
 
-	nr_u32 = BITS_TO_LONGS(numcaps);
+	nr_u32 = BITS_TO_LONGS(last_cap);
 	keep_bits = zalloc(nr_u32 * sizeof(__u32));
 	if (!keep_bits)
 		return ret_errno(ENOMEM);
 
 	list_for_each_entry(cap, &conf->caps.list, head) {
-		if (cap->cap > numcaps)
+		if (cap->cap > last_cap)
 			continue;
 
 		set_bit(cap->cap, keep_bits);
 		DEBUG("Keeping %s (%d) capability", cap->cap_name, cap->cap);
 	}
 
-	for (__s32 cap_bit = 0; cap_bit <= numcaps; cap_bit++) {
-		int ret;
-
+	for (__u32 cap_bit = 0; cap_bit <= last_cap; cap_bit++) {
 		if (is_set(cap_bit, keep_bits))
 			continue;
 
@@ -4267,7 +4266,7 @@ int lxc_sync_fds_child(struct lxc_handler *handler)
 	return 0;
 }
 
-static int setcup_capabilities(struct lxc_conf *conf)
+static int setup_capabilities(struct lxc_conf *conf)
 {
 	int ret;
 
@@ -4423,7 +4422,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup sysctl parameters");
 
-	ret = setcup_capabilities(lxc_conf);
+	ret = setup_capabilities(lxc_conf);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup capabilities");
 

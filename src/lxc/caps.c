@@ -90,7 +90,7 @@ int lxc_ambient_caps_up(void)
 	__do_free char *cap_names = NULL;
 	int ret;
 	cap_value_t cap;
-	int last_cap = CAP_LAST_CAP;
+	cap_value_t last_cap = CAP_LAST_CAP;
 
 	if (!getuid() || geteuid())
 		return 0;
@@ -207,55 +207,71 @@ int lxc_caps_init(void)
 	return 0;
 }
 
-static long int _real_caps_last_cap(void)
+static int __caps_last_cap(__u32 *cap)
 {
 	__do_close int fd = -EBADF;
-	__s32 result = -1;
 
-	/* Try to get the maximum capability over the kernel interface
+	if (!cap)
+		return ret_errno(EINVAL);
+
+	*cap = 0;
+
+	/*
+	 * Try to get the maximum capability over the kernel interface
 	 * introduced in v3.2.
 	 */
-	fd = open("/proc/sys/kernel/cap_last_cap", O_RDONLY | O_CLOEXEC);
+	fd = open_at(-EBADF,
+		     "/proc/sys/kernel/cap_last_cap",
+		     PROTECT_OPEN,
+		     PROTECT_LOOKUP_ABSOLUTE,
+		     0);
 	if (fd >= 0) {
-		ssize_t n;
-		char *ptr;
-		char buf[INTTYPE_TO_STRLEN(int)] = {0};
+		ssize_t ret;
+		unsigned int res;
+		char buf[INTTYPE_TO_STRLEN(unsigned int)] = {0};
 
-		n = lxc_read_nointr(fd, buf, STRARRAYLEN(buf));
-		if (n >= 0) {
-			errno = 0;
-			result = strtol(buf, &ptr, 10);
-			if (!ptr || (*ptr != '\0' && *ptr != '\n') || errno != 0)
-				result = -1;
-		}
+		ret = lxc_read_nointr(fd, buf, STRARRAYLEN(buf));
+		if (ret <= 0)
+			return syserror_set(EINVAL, "Failed to read \"/proc/sys/kernel/cap_last_cap\"");
 
-		close(fd);
+		ret = lxc_safe_uint(lxc_trim_whitespace_in_place(buf), &res);
+		if (ret < 0)
+			return syserror("Failed to parse unsigned integer %s", buf);
+
+		*cap = (__u32)res;
 	} else {
-		__s32 cap = 0;
+		__u32 cur_cap = 0;
 
-		/* Try to get it manually by trying to get the status of each
+		/*
+		 * Try to get it manually by trying to get the status of each
 		 * capability individually from the kernel.
 		 */
-		while (prctl(PR_CAPBSET_READ, prctl_arg(cap)) >= 0)
-			cap++;
+		while (prctl(PR_CAPBSET_READ, prctl_arg(cur_cap)) >= 0)
+			cur_cap++;
 
-		result = cap - 1;
+		if (cur_cap)
+			*cap = cur_cap - 1;
 	}
 
-	return result;
+	return 0;
 }
 
-int lxc_caps_last_cap(void)
+int lxc_caps_last_cap(__u32 *cap)
 {
-	static __s32 last_cap = -1;
+	static int ret = -1;
+	static __u32 last_cap = 0;
 
-	if (last_cap < 0) {
-		last_cap = _real_caps_last_cap();
-		if (last_cap < 0 || last_cap > INT_MAX)
-			last_cap = -1;
+	if (!cap)
+		return ret_errno(EINVAL);
+
+	if (ret < 0) {
+		ret = __caps_last_cap(&last_cap);
+		if (ret)
+			return ret;
 	}
 
-	return last_cap;
+	*cap = last_cap;
+	return 0;
 }
 
 static bool lxc_cap_is_set(cap_t caps, cap_value_t cap, cap_flag_t flag)

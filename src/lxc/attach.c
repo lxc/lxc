@@ -775,16 +775,20 @@ int lxc_attach_remount_sys_proc(void)
 
 static int drop_capabilities(struct attach_context *ctx)
 {
-	int last_cap;
+	int ret;
+	__u32 last_cap;
 
-	last_cap = lxc_caps_last_cap();
-	for (int cap = 0; cap <= last_cap; cap++) {
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret)
+		return syserror_ret(ret, "%d - Failed to drop capabilities", ret);
+
+	for (__u32 cap = 0; cap <= last_cap; cap++) {
 		if (ctx->capability_mask & (1LL << cap))
 			continue;
 
 		if (prctl(PR_CAPBSET_DROP, prctl_arg(cap), prctl_arg(0),
 			  prctl_arg(0), prctl_arg(0)))
-			return log_error_errno(-1, errno, "Failed to drop capability %d", cap);
+			return syserror("Failed to drop capability %d", cap);
 
 		TRACE("Dropped capability %d", cap);
 	}

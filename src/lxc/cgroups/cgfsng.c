@@ -186,20 +186,20 @@ int prepare_cgroup_fd(const struct cgroup_ops *ops, struct cgroup_fd *fd, bool l
  *
  *	1 0 1 1
  */
-static int lxc_cpumask(char *buf, uint32_t **bitarr, size_t *last_set_bit)
+static int lxc_cpumask(char *buf, __u32 **bitarr, __u32 *last_set_bit)
 {
-	__do_free uint32_t *arr_u32 = NULL;
-	size_t cur_last_set_bit = 0, nbits = 256;
-	size_t nr_u32;
+	__do_free __u32 *arr_u32 = NULL;
+	__u32 cur_last_set_bit = 0, nbits = 256;
+	__u32 nr_u32;
 	char *token;
 
 	nr_u32 = BITS_TO_LONGS(nbits);
-	arr_u32 = zalloc(nr_u32 * sizeof(uint32_t));
+	arr_u32 = zalloc(nr_u32 * sizeof(__u32));
 	if (!arr_u32)
 		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(token, buf, ",") {
-		unsigned last_bit, first_bit;
+		__u32 last_bit, first_bit;
 		char *range;
 
 		errno = 0;
@@ -213,9 +213,9 @@ static int lxc_cpumask(char *buf, uint32_t **bitarr, size_t *last_set_bit)
 			return ret_errno(EINVAL);
 
 		if (last_bit >= nbits) {
-			size_t add_bits = last_bit - nbits + 32;
-			size_t new_nr_u32;
-			uint32_t *p;
+			__u32 add_bits = last_bit - nbits + 32;
+			__u32 new_nr_u32;
+			__u32 *p;
 
 			new_nr_u32 = BITS_TO_LONGS(nbits + add_bits);
 			p = realloc(arr_u32, new_nr_u32 * sizeof(uint32_t));
@@ -240,14 +240,14 @@ static int lxc_cpumask(char *buf, uint32_t **bitarr, size_t *last_set_bit)
 	return 0;
 }
 
-static int lxc_cpumask_update(char *buf, uint32_t *bitarr, size_t last_set_bit,
+static int lxc_cpumask_update(char *buf, __u32 *bitarr, __u32 last_set_bit,
 			      bool clear)
 {
 	bool flipped = false;
 	char *token;
 
 	lxc_iterate_parts(token, buf, ",") {
-		unsigned last_bit, first_bit;
+		__u32 last_bit, first_bit;
 		char *range;
 
 		errno = 0;
@@ -285,17 +285,17 @@ static int lxc_cpumask_update(char *buf, uint32_t *bitarr, size_t last_set_bit,
 }
 
 /* Turn cpumask into simple, comma-separated cpulist. */
-static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t last_set_bit)
+static char *lxc_cpumask_to_cpulist(__u32 *bitarr, __u32 last_set_bit)
 {
 	__do_free_string_list char **cpulist = NULL;
-	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
+	char numstr[INTTYPE_TO_STRLEN(__u32)] = {0};
 	int ret;
 
-	for (size_t i = 0; i <= last_set_bit; i++) {
-		if (!is_set(i, bitarr))
+	for (__u32 bit = 0; bit <= last_set_bit; bit++) {
+		if (!is_set(bit, bitarr))
 			continue;
 
-		ret = strnprintf(numstr, sizeof(numstr), "%zu", i);
+		ret = strnprintf(numstr, sizeof(numstr), "%u", bit);
 		if (ret < 0)
 			return NULL;
 
@@ -576,9 +576,9 @@ static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
 {
 	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
 		       *offlinecpus = NULL, *posscpus = NULL;
-	__do_free uint32_t *possmask = NULL;
+	__do_free __u32 *possmask = NULL;
 	int ret;
-	size_t poss_last_set_bit = 0;
+	__u32 poss_last_set_bit = 0;
 
 	posscpus = read_file_at(dfd_parent, "cpuset.cpus", PROTECT_OPEN, 0);
 	if (!posscpus)
