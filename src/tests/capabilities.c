@@ -65,26 +65,53 @@ static int capabilities_allow(void *payload)
 	return EXIT_SUCCESS;
 }
 
-int main(int argc, char *argv[])
+static int capabilities_deny(void *payload)
+{
+	int ret;
+	__u32 last_cap;
+
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret) {
+		lxc_error("%s\n", "Failed to retrieve last capability");
+		return EXIT_FAILURE;
+	}
+
+	for (__u32 cap = 0; cap <= last_cap; cap++) {
+		bool bret;
+
+		if (cap == CAP_MKNOD)
+			bret = cap_get_bound(cap) != CAP_SET;
+		else
+			bret = cap_get_bound(cap) == CAP_SET;
+		if (!bret) {
+			lxc_error("Capability %d unexpectedly raised or lowered\n", cap);
+			return EXIT_FAILURE;
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static int run(int (*test)(void *), bool allow)
 {
 	__do_close int fd_log = -EBADF;
-	int fret = EXIT_FAILURE;
+	int fret = -1;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	int ret;
 	pid_t pid;
 	struct lxc_container *c;
 	struct lxc_log log;
-	char template[sizeof(P_tmpdir"/capabilities_allow_XXXXXX")];
+	char template[sizeof(P_tmpdir"/capabilities_XXXXXX")];
 
-	(void)strlcpy(template, P_tmpdir"/capabilities_allow_XXXXXX", sizeof(template));
+	(void)strlcpy(template, P_tmpdir"/capabilities_XXXXXX", sizeof(template));
 
 	fd_log = lxc_make_tmpfile(template, false);
 	if (fd_log < 0) {
-		lxc_error("%s", "Failed to create temporary log file for container \"capabilities-allow\"");
-		exit(fret);
+		lxc_error("%s", "Failed to create temporary log file for container \"capabilities\"");
+		return fret;
 	}
 
-	log.name = "capabilities-allow";
+	log.name = "capabilities";
 	log.file = template;
 	log.level = "TRACE";
 	log.prefix = "capabilities";
@@ -92,26 +119,26 @@ int main(int argc, char *argv[])
 	log.lxcpath = NULL;
 
 	if (lxc_log_init(&log))
-		exit(fret);
+		return fret;
 
-	c = lxc_container_new("capabilities-allow", NULL);
+	c = lxc_container_new("capabilities", NULL);
 	if (!c) {
-		lxc_error("%s\n", "Failed to create container \"capabilities-allow\"");
-		exit(fret);
+		lxc_error("%s\n", "Failed to create container \"capabilities\"");
+		return fret;
 	}
 
 	if (c->is_defined(c)) {
-		lxc_error("%s\n", "Container \"capabilities-allow\" is defined");
+		lxc_error("%s\n", "Container \"capabilities\" is defined");
 		goto on_error_put;
 	}
 
 	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
-		lxc_error("%s\n", "Failed to create busybox container \"capabilities-allow\"");
+		lxc_error("%s\n", "Failed to create busybox container \"capabilities\"");
 		goto on_error_put;
 	}
 
 	if (!c->is_defined(c)) {
-		lxc_error("%s\n", "Container \"capabilities-allow\" is not defined");
+		lxc_error("%s\n", "Container \"capabilities\" is not defined");
 		goto on_error_destroy;
 	}
 
@@ -125,30 +152,37 @@ int main(int argc, char *argv[])
 		goto on_error_destroy;
 	}
 
-	if (!c->set_config_item(c, "lxc.cap.keep", "mknod")) {
-		lxc_error("%s\n", "Failed to set config item \"lxc.cap.keep=mknod\"");
-		goto on_error_destroy;
+	if (allow) {
+		if (!c->set_config_item(c, "lxc.cap.keep", "mknod")) {
+			lxc_error("%s\n", "Failed to set config item \"lxc.cap.keep=mknod\"");
+			goto on_error_destroy;
+		}
+	} else {
+		if (!c->set_config_item(c, "lxc.cap.drop", "mknod")) {
+			lxc_error("%s\n", "Failed to set config item \"lxc.cap.drop=mknod\"");
+			goto on_error_destroy;
+		}
 	}
 
 	if (!c->want_daemonize(c, true)) {
-		lxc_error("%s\n", "Failed to mark container \"capabilities-allow\" daemonized");
+		lxc_error("%s\n", "Failed to mark container \"capabilities\" daemonized");
 		goto on_error_destroy;
 	}
 
 	if (!c->startl(c, 0, NULL)) {
-		lxc_error("%s\n", "Failed to start container \"capabilities-allow\" daemonized");
+		lxc_error("%s\n", "Failed to start container \"capabilities\" daemonized");
 		goto on_error_destroy;
 	}
 
-	ret = c->attach(c, capabilities_allow, NULL, &attach_options, &pid);
+	ret = c->attach(c, test, NULL, &attach_options, &pid);
 	if (ret < 0) {
-		lxc_error("%s\n", "Failed to run function in container \"capabilities-allow\"");
+		lxc_error("%s\n", "Failed to run function in container \"capabilities\"");
 		goto on_error_stop;
 	}
 
 	ret = wait_for_pid(pid);
 	if (ret) {
-		lxc_error("%s\n", "Function \"capabilities-allow\" failed");
+		lxc_error("%s\n", "Function \"capabilities\" failed");
 		goto on_error_stop;
 	}
 
@@ -156,17 +190,17 @@ int main(int argc, char *argv[])
 
 on_error_stop:
 	if (c->is_running(c) && !c->stop(c))
-		lxc_error("%s\n", "Failed to stop container \"capabilities-allow\"");
+		lxc_error("%s\n", "Failed to stop container \"capabilities\"");
 
 on_error_destroy:
 	if (!c->destroy(c))
-		lxc_error("%s\n", "Failed to destroy container \"capabilities-allow\"");
+		lxc_error("%s\n", "Failed to destroy container \"capabilities\"");
 
 on_error_put:
 	lxc_container_put(c);
 
 	if (fret == EXIT_SUCCESS) {
-		lxc_debug("%s\n", "All capability allow tests passed");
+		lxc_debug("All capability %s tests passed\n", allow ? "allow" : "deny");
 	} else {
 		int fd;
 
@@ -184,7 +218,18 @@ on_error_put:
 	}
 	(void)unlink(template);
 
-	exit(fret);
+	return fret;
+}
+
+int main(int argc, char *argv[])
+{
+	if (run(capabilities_allow, true))
+		exit(EXIT_FAILURE);
+
+	if (run(capabilities_deny, false))
+		exit(EXIT_FAILURE);
+
+	exit(EXIT_SUCCESS);
 }
 
 #else /* !HAVE_LIBCAP */

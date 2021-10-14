@@ -108,7 +108,7 @@ src/tests/lxc-test-cve-2019-5736
 src/tests/lxc-test-mount-injection
 src/tests/lxc-test-sys-mixed
 src/tests/lxc-test-rootfs-options
-src/tests/lxc-test-capabilities-allow
+src/tests/lxc-test-capabilities
 
 config/compile
 config/config.guess
