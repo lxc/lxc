@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 
 	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
 		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH));
-	if (ret < 0 || ret >= sizeof(logpath))
+	if (ret < 0 || (size_t)ret >= sizeof(logpath))
 		exit(EXIT_FAILURE);
 
 	log.name = NULL;
