@@ -38,19 +38,16 @@
 #include "utils.h"
 
 #if HAVE_LIBCAP
+__u32 *cap_bset_bits = NULL;
+__u32 last_cap = 0;
+
 static int capabilities_allow(void *payload)
 {
-	int ret;
-	__u32 last_cap;
-
-	ret = lxc_caps_last_cap(&last_cap);
-	if (ret) {
-		lxc_error("%s\n", "Failed to retrieve last capability");
-		return EXIT_FAILURE;
-	}
-
 	for (__u32 cap = 0; cap <= last_cap; cap++) {
 		bool bret;
+
+		if (!is_set(cap, cap_bset_bits))
+			continue;
 
 		if (cap == CAP_MKNOD)
 			bret = cap_get_bound(cap) == CAP_SET;
@@ -67,17 +64,11 @@ static int capabilities_allow(void *payload)
 
 static int capabilities_deny(void *payload)
 {
-	int ret;
-	__u32 last_cap;
-
-	ret = lxc_caps_last_cap(&last_cap);
-	if (ret) {
-		lxc_error("%s\n", "Failed to retrieve last capability");
-		return EXIT_FAILURE;
-	}
-
 	for (__u32 cap = 0; cap <= last_cap; cap++) {
 		bool bret;
+
+		if (!is_set(cap, cap_bset_bits))
+			continue;
 
 		if (cap == CAP_MKNOD)
 			bret = cap_get_bound(cap) != CAP_SET;
@@ -219,6 +210,33 @@ on_error_put:
 	(void)unlink(template);
 
 	return fret;
+}
+
+static void __attribute__((constructor)) capabilities_init(void)
+{
+	int ret;
+	__u32 nr_u32;
+
+	ret = lxc_caps_last_cap(&last_cap);
+	if (ret || last_cap > 200)
+		_exit(EXIT_FAILURE);
+
+	nr_u32 = BITS_TO_LONGS(last_cap);
+	cap_bset_bits = zalloc(nr_u32 * sizeof(__u32));
+	if (!cap_bset_bits)
+		_exit(EXIT_FAILURE);
+
+	for (__u32 cap_bit = 0; cap_bit <= last_cap; cap_bit++) {
+		if (prctl(PR_CAPBSET_READ, prctl_arg(cap_bit)) == 0)
+			continue;
+
+		set_bit(cap_bit, cap_bset_bits);
+	}
+}
+
+static void __attribute__((destructor)) capabilities_exit(void)
+{
+	free(cap_bset_bits);
 }
 
 int main(int argc, char *argv[])
