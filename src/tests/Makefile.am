@@ -1276,7 +1276,7 @@ lxc_test_rootfs_options_SOURCES += ../include/prlimit.c ../include/prlimit.h
 endif
 endif
 
-lxc_test_capabilities_allow_SOURCES = capabilities_allow.c \
+lxc_test_capabilities_SOURCES = capabilities.c \
 				      ../lxc/af_unix.c ../lxc/af_unix.h \
 				      ../lxc/caps.c ../lxc/caps.h \
 				      ../lxc/cgroups/cgfsng.c \
@@ -1323,37 +1323,37 @@ lxc_test_capabilities_allow_SOURCES = capabilities_allow.c \
 				      ../lxc/uuid.c ../lxc/uuid.h \
 				      $(LSM_SOURCES)
 if ENABLE_SECCOMP
-lxc_test_capabilities_allow_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+lxc_test_capabilities_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
 endif
 
 if !HAVE_STRCHRNUL
-lxc_test_capabilities_allow_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+lxc_test_capabilities_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
 endif
 
 if !HAVE_STRLCPY
-lxc_test_capabilities_allow_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+lxc_test_capabilities_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
 endif
 
 if !HAVE_STRLCAT
-lxc_test_capabilities_allow_SOURCES += ../include/strlcat.c ../include/strlcat.h
+lxc_test_capabilities_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
 if !HAVE_OPENPTY
-lxc_test_capabilities_allow_SOURCES += ../include/openpty.c ../include/openpty.h
+lxc_test_capabilities_SOURCES += ../include/openpty.c ../include/openpty.h
 endif
 
 if IS_BIONIC
-lxc_test_capabilities_allow_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+lxc_test_capabilities_SOURCES += ../include/fexecve.c ../include/fexecve.h \
 		../include/lxcmntent.c ../include/lxcmntent.h
 endif
 
 if !HAVE_GETGRGID_R
-lxc_test_capabilities_allow_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+lxc_test_capabilities_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
 endif
 
 if !HAVE_PRLIMIT
 if HAVE_PRLIMIT64
-lxc_test_capabilities_allow_SOURCES += ../include/prlimit.c ../include/prlimit.h
+lxc_test_capabilities_SOURCES += ../include/prlimit.c ../include/prlimit.h
 endif
 endif
 
@@ -1395,7 +1395,7 @@ bin_PROGRAMS = lxc-test-api-reboot \
 	       lxc-test-arch-parse \
 	       lxc-test-attach \
 	       lxc-test-basic \
-	       lxc-test-capabilities-allow \
+	       lxc-test-capabilities \
 	       lxc-test-cgpath \
 	       lxc-test-clonetest \
 	       lxc-test-concurrent \
@@ -1488,7 +1488,7 @@ endif
 
 EXTRA_DIST = arch_parse.c \
 	     basic.c \
-	     capabilities_allow.c \
+	     capabilities.c \
 	     cgpath.c \
 	     clonetest.c \
 	     concurrent.c \
