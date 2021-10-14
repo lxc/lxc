@@ -389,7 +389,6 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "lxc.apparmor.allow_incomplete");
 		goto non_test_error;
 	}
-#endif
 
 	ret = set_get_compare_clear_save_load(c, "lxc.selinux.context", "system_u:system_r:lxc_t:s0:c22", tmpf, true);
 #if HAVE_SELINUX
@@ -401,7 +400,6 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "lxc.selinux.context");
 		goto non_test_error;
 	}
-#endif
 
 	if (set_get_compare_clear_save_load(c, "lxc.cgroup.cpuset.cpus",
 					    "1-100", tmpf, false) < 0) {
