@@ -211,6 +211,11 @@ static int __caps_last_cap(__u32 *cap)
 {
 	__do_close int fd = -EBADF;
 
+	if (!cap)
+		return ret_errno(EINVAL);
+
+	*cap = 0;
+
 	/*
 	 * Try to get the maximum capability over the kernel interface
 	 * introduced in v3.2.
@@ -222,16 +227,16 @@ static int __caps_last_cap(__u32 *cap)
 		     0);
 	if (fd >= 0) {
 		ssize_t ret;
-		unsigned res;
-		char buf[INTTYPE_TO_STRLEN(__u32)] = {0};
+		unsigned int res;
+		char buf[INTTYPE_TO_STRLEN(unsigned int)] = {0};
 
 		ret = lxc_read_nointr(fd, buf, STRARRAYLEN(buf));
 		if (ret <= 0)
-			return ret_errno(EINVAL);
+			return syserror_set(EINVAL, "Failed to read \"/proc/sys/kernel/cap_last_cap\"");
 
-		ret = lxc_safe_uint(buf, &res);
+		ret = lxc_safe_uint(lxc_trim_whitespace_in_place(buf), &res);
 		if (ret < 0)
-			return ret;
+			return syserror("Failed to parse unsigned integer %s", buf);
 
 		*cap = (__u32)res;
 	} else {
@@ -244,7 +249,8 @@ static int __caps_last_cap(__u32 *cap)
 		while (prctl(PR_CAPBSET_READ, prctl_arg(cur_cap)) >= 0)
 			cur_cap++;
 
-		*cap = cur_cap - 1;
+		if (cur_cap)
+			*cap = cur_cap - 1;
 	}
 
 	return 0;
@@ -254,6 +260,9 @@ int lxc_caps_last_cap(__u32 *cap)
 {
 	static int ret = -1;
 	static __u32 last_cap = 0;
+
+	if (!cap)
+		return ret_errno(EINVAL);
 
 	if (ret < 0) {
 		ret = __caps_last_cap(&last_cap);
