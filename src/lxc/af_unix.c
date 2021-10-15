@@ -464,9 +464,7 @@ int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 		memcpy(&cred, CMSG_DATA(cmsg), sizeof(cred));
 
 		if (cred.uid && (cred.uid != getuid() || cred.gid != getgid()))
-			return log_error_errno(-1, EACCES,
-					       "Message denied for '%d/%d'",
-					       cred.uid, cred.gid);
+			return syserror_set(-EACCES, "Message denied for '%d/%d'", cred.uid, cred.gid);
 	}
 
 	return ret;
@@ -508,8 +506,7 @@ int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 
 	fd = socket(AF_UNIX, type | SOCK_CLOEXEC, 0);
 	if (fd < 0)
-		return log_error_errno(-1, errno,
-				       "Failed to open new AF_UNIX socket");
+		return syserror("Failed to open new AF_UNIX socket");
 
 	if (addr->sun_path[0] == '\0')
 		len = strlen(&addr->sun_path[1]);
@@ -519,8 +516,7 @@ int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 	ret = connect(fd, (struct sockaddr *)addr,
 		      offsetof(struct sockaddr_un, sun_path) + len);
 	if (ret < 0)
-		return log_error_errno(-1, errno,
-				       "Failed to bind new AF_UNIX socket");
+		return syserror("Failed to bind new AF_UNIX socket");
 
 	return move_fd(fd);
 }

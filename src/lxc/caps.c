@@ -228,11 +228,11 @@ static int __caps_last_cap(__u32 *cap)
 	if (fd >= 0) {
 		ssize_t ret;
 		unsigned int res;
-		char buf[INTTYPE_TO_STRLEN(unsigned int)] = {0};
+		char buf[INTTYPE_TO_STRLEN(unsigned int)];
 
-		ret = lxc_read_nointr(fd, buf, STRARRAYLEN(buf));
-		if (ret <= 0)
-			return syserror_set(EINVAL, "Failed to read \"/proc/sys/kernel/cap_last_cap\"");
+		ret = lxc_read_string_nointr(fd, buf, STRARRAYLEN(buf));
+		if (ret)
+			return syserror("Failed to read \"/proc/sys/kernel/cap_last_cap\"");
 
 		ret = lxc_safe_uint(lxc_trim_whitespace_in_place(buf), &res);
 		if (ret < 0)
