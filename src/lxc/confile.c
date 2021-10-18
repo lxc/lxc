@@ -125,6 +125,8 @@ lxc_config_define(net_script_down);
 lxc_config_define(net_script_up);
 lxc_config_define(net_type);
 lxc_config_define(net_veth_mode);
+lxc_config_define(net_veth_n_rxqueues);
+lxc_config_define(net_veth_n_txqueues);
 lxc_config_define(net_veth_pair);
 lxc_config_define(net_veth_ipv4_route);
 lxc_config_define(net_veth_ipv6_route);
@@ -307,6 +309,8 @@ static struct lxc_config_net_t config_jump_table_net[] = {
 	{ "type",                   true,  set_config_net_type,                   get_config_net_type,                   clr_config_net_type,                   },
 	{ "vlan.id",                true,  set_config_net_vlan_id,                get_config_net_vlan_id,                clr_config_net_vlan_id,                },
 	{ "veth.mode",              true,  set_config_net_veth_mode,              get_config_net_veth_mode,              clr_config_net_veth_mode,              },
+	{ "veth.n_rxqueues",        true,  set_config_net_veth_n_rxqueues,        get_config_net_veth_n_rxqueues,        clr_config_net_veth_n_rxqueues,        },
+	{ "veth.n_txqueues",        true,  set_config_net_veth_n_txqueues,        get_config_net_veth_n_txqueues,        clr_config_net_veth_n_txqueues,        },
 	{ "veth.pair",              true,  set_config_net_veth_pair,              get_config_net_veth_pair,              clr_config_net_veth_pair,              },
 	{ "veth.ipv4.route",        true,  set_config_net_veth_ipv4_route,        get_config_net_veth_ipv4_route,        clr_config_net_veth_ipv4_route,        },
 	{ "veth.ipv6.route",        true,  set_config_net_veth_ipv6_route,        get_config_net_veth_ipv6_route,        clr_config_net_veth_ipv6_route,        },
@@ -585,6 +589,56 @@ static int set_config_net_veth_mode(const char *key, const char *value,
 		return ret_errno(EINVAL);
 
 	return lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, value);
+}
+
+static int set_config_net_veth_n_rxqueues(const char *key, const char *value,
+					  struct lxc_conf *lxc_conf, void *data)
+{
+	int n_rxqueues;
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_veth_n_rxqueues(key, lxc_conf, data);
+
+	if (lxc_safe_int(value, &n_rxqueues))
+		return ret_errno(EINVAL);
+
+	if (n_rxqueues <= 0)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.n_rxqueues = n_rxqueues;
+	return 0;
+}
+
+static int set_config_net_veth_n_txqueues(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
+{
+	int n_txqueues;
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_veth_n_txqueues(key, lxc_conf, data);
+
+	if (lxc_safe_int(value, &n_txqueues))
+		return ret_errno(EINVAL);
+
+	if (n_txqueues <= 0)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.n_txqueues = n_txqueues;
+	return 0;
 }
 
 static int set_config_net_veth_pair(const char *key, const char *value,
@@ -5572,6 +5626,39 @@ static int clr_config_net_veth_mode(const char *key,
 	return 0;
 }
 
+static int clr_config_net_veth_n_rxqueues(const char *key, struct lxc_conf *lxc_conf,
+					  void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return 0;
+
+	netdev->priv.veth_attr.n_rxqueues = -1;
+
+	return 0;
+}
+
+static int clr_config_net_veth_n_txqueues(const char *key, struct lxc_conf *lxc_conf,
+					  void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return 0;
+
+	netdev->priv.veth_attr.n_txqueues = -1;
+
+	return 0;
+}
+
+
 static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 				    void *data)
 {
@@ -6058,6 +6145,54 @@ static int get_config_net_veth_mode(const char *key, char *retv, int inlen,
 	}
 
 	strprint(retv, inlen, "%s", mode);
+
+	return fulllen;
+}
+
+static int get_config_net_veth_n_rxqueues(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (netdev->priv.veth_attr.n_rxqueues > 0)
+		strprint(retv, inlen, "%d", netdev->priv.veth_attr.n_rxqueues);
+
+	return fulllen;
+}
+
+static int get_config_net_veth_n_txqueues(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (netdev->priv.veth_attr.n_txqueues > 0)
+		strprint(retv, inlen, "%d", netdev->priv.veth_attr.n_txqueues);
 
 	return fulllen;
 }

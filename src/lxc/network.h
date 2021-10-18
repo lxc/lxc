@@ -77,6 +77,8 @@ struct ifla_veth {
 	struct list_head ipv4_routes;
 	struct list_head ipv6_routes;
 	int mode; /* bridge, router */
+	int n_rxqueues;
+	int n_txqueues;
 	short vlan_id;
 	bool vlan_id_set;
 	struct lxc_list vlan_tagged_ids;
@@ -207,7 +209,7 @@ __hidden extern int lxc_netdev_set_mtu(const char *name, int mtu);
 
 /* Create a virtual network devices. */
 __hidden extern int lxc_veth_create(const char *name1, const char *name2, pid_t pid,
-				    unsigned int mtu);
+				    unsigned int mtu, int n_rxqueues, int n_txqueues);
 __hidden extern int lxc_macvlan_create(const char *parent, const char *name, int mode);
 __hidden extern int lxc_vlan_create(const char *parent, const char *name, unsigned short vid);
 
