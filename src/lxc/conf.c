@@ -579,9 +579,8 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 			 PROTECT_LOOKUP_BENEATH,
 			 S_IWUSR | S_IRUSR);
 	if (fd_pin < 0) {
-		if (errno == EROFS) {
+		if (errno == EROFS)
 			return log_trace_errno(0, EROFS, "Not pinning on read-only filesystem");
-		}
 		return syserror("Failed to pin rootfs");
 	}
 
@@ -1852,7 +1851,8 @@ static int lxc_finish_devpts_child(struct lxc_handler *handler)
 		return syserror("Failed to create path");
 
 	close_prot_errno_disarm(conf->devpts_fd);
-	return umount2(rootfs->buf, MNT_DETACH);
+	(void)umount2(rootfs->buf, MNT_DETACH);
+	return 0;
 }
 
 static int lxc_send_devpts_to_parent(struct lxc_handler *handler)
