@@ -1851,7 +1851,8 @@ static int lxc_finish_devpts_child(struct lxc_handler *handler)
 		return syserror("Failed to create path");
 
 	close_prot_errno_disarm(conf->devpts_fd);
-	return umount2(rootfs->buf, MNT_DETACH);
+	(void)umount2(rootfs->buf, MNT_DETACH);
+	return 0;
 }
 
 static int lxc_send_devpts_to_parent(struct lxc_handler *handler)
