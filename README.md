@@ -108,6 +108,7 @@ features. This includes (but isn't limited to):
 - i686
 - x86_64
 - ppc, ppc64, ppc64le
+- riscv64
 - s390x
 - armvl7, arm64
 
