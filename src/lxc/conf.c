@@ -1431,6 +1431,23 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 	return log_trace(0, "Container uses separate rootfs. Opened container's rootfs");
 }
 
+static bool lxc_rootfs_overmounted(struct lxc_rootfs *rootfs)
+{
+	__do_close int fd_rootfs = -EBADF;
+
+	if (!rootfs->path)
+		fd_rootfs = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	else
+		fd_rootfs = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (fd_rootfs < 0)
+		return true;
+
+	if (!same_file_lax(rootfs->dfd_mnt, fd_rootfs))
+		return syswarn_ret(true, "Rootfs seems to have changed after setting up mounts");
+
+	return false;
+}
+
 static int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
 	__do_free char *nroot = NULL;
@@ -4362,6 +4379,9 @@ int lxc_setup(struct lxc_handler *handler)
 	ret = run_lxc_hooks(name, "mount", lxc_conf, NULL);
 	if (ret < 0)
 		return log_error(-1, "Failed to run mount hooks");
+
+	if (lxc_rootfs_overmounted(&lxc_conf->rootfs))
+		return log_error(-1, "Rootfs overmounted");
 
 	if (lxc_conf->autodev > 0) {
 		ret = run_lxc_hooks(name, "autodev", lxc_conf, NULL);
