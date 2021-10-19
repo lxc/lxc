@@ -2993,6 +2993,7 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 		{ "ppc64el",   PER_LINUX   },
 		{ "ppc64le",   PER_LINUX   },
 		{ "powerpc64", PER_LINUX   },
+		{ "riscv64",   PER_LINUX   },
 		{ "s390x",     PER_LINUX   },
 		{ "x86_64",    PER_LINUX   },
 	};
