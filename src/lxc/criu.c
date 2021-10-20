@@ -45,6 +45,7 @@
 
 #define CRIU_IN_FLIGHT_SUPPORT	"2.4"
 #define CRIU_EXTERNAL_NOT_VETH	"2.8"
+#define CRIU_EXTERNAL_NETDEV	"3.15"
 
 lxc_log_define(criu, lxc);
 
@@ -551,7 +552,21 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				TRACE("Added macvlan device entry %s", buf);
 
 				break;
+			case LXC_NET_PHYS:
+				if (cmp_version(opts->criu_version, CRIU_EXTERNAL_NETDEV) < 0)
+					return syserror_set(-EOPNOTSUPP, "Restoring physical network devices not supported");
+
+				if (is_empty_string(netdev->link))
+					return syserror_set(-EINVAL, "Specifying link is required");
+
+				ret = strnprintf(buf, sizeof(buf), "netdev[%s]:%s", eth, netdev->link);
+				if (ret < 0)
+					return syserror_set(-EIO, "Failed to append phys device name");
+
+				TRACE("Added phys device entry %s", buf);
+				break;
 			case LXC_NET_NONE:
+				__fallthrough;
 			case LXC_NET_EMPTY:
 				break;
 			default:
@@ -825,6 +840,7 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 		case LXC_NET_VETH:
 		case LXC_NET_NONE:
 		case LXC_NET_EMPTY:
+		case LXC_NET_PHYS:
 		case LXC_NET_MACVLAN:
 			break;
 		default:
