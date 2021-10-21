@@ -282,6 +282,18 @@ enum {
 	/* /sys/fs/cgroup (full mount, parent r/o, own r/w) */
 	LXC_AUTO_CGROUP_FULL_MIXED    = LXC_AUTO_CGROUP_FULL_RO |
 					LXC_AUTO_CGROUP_FULL_RW,
+
+	/*
+	 * Mount a pure read-write cgroup2 layout in the container independent
+	 * of the cgroup layout used on the host.
+	 */
+	LXC_AUTO_CGROUP2_RW           = BIT(8),
+	/*
+	 * Mount a pure read-only cgroup2 layout in the container independent
+	 * of the cgroup layout used on the host.
+	 */
+	LXC_AUTO_CGROUP2_RO           = BIT(9),
+
 	/*
 	 * These are defined in such a way as to retain binary compatibility
 	 * with earlier versions of this code. If the previous mask is applied,
@@ -293,16 +305,18 @@ enum {
 	/* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
 	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0,
 	/* mount cgroups even when cgroup namespaces are supported */
-	LXC_AUTO_CGROUP_FORCE         = BIT(8),
+	LXC_AUTO_CGROUP_FORCE         = BIT(10),
 	/* all known cgroup options */
 	LXC_AUTO_CGROUP_MASK          = LXC_AUTO_CGROUP_MIXED |
 					LXC_AUTO_CGROUP_FULL_MIXED |
 					LXC_AUTO_CGROUP_NOSPEC |
 					LXC_AUTO_CGROUP_FULL_NOSPEC |
-					LXC_AUTO_CGROUP_FORCE,
+					LXC_AUTO_CGROUP_FORCE |
+					LXC_AUTO_CGROUP2_RW |
+					LXC_AUTO_CGROUP2_RO,
 
 	/* shared mount point */
-	LXC_AUTO_SHMOUNTS             = BIT(9),
+	LXC_AUTO_SHMOUNTS             = BIT(11),
 	/* shared mount point mask */
 	LXC_AUTO_SHMOUNTS_MASK        = LXC_AUTO_SHMOUNTS,
 

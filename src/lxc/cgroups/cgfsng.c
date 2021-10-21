@@ -1487,7 +1487,8 @@ static int __cgroupfs_mount(int cgroup_automount_type, struct hierarchy *h,
 	flags |= MOUNT_ATTR_RELATIME;
 
 	if ((cgroup_automount_type == LXC_AUTO_CGROUP_RO) ||
-	    (cgroup_automount_type == LXC_AUTO_CGROUP_FULL_RO))
+	    (cgroup_automount_type == LXC_AUTO_CGROUP_FULL_RO) ||
+	    (cgroup_automount_type == LXC_AUTO_CGROUP2_RO))
 		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h))
@@ -1618,6 +1619,12 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	case LXC_AUTO_CGROUP_FULL_MIXED:
 		TRACE("Full mixed cgroup mounts requested");
 		break;
+	case LXC_AUTO_CGROUP2_RW:
+		TRACE("Read-write cgroup2 mount requested");
+		break;
+	case LXC_AUTO_CGROUP2_RO:
+		TRACE("Read-only cgroup2 mount requested");
+		break;
 	default:
 		return log_error_errno(false, EINVAL, "Invalid cgroup mount options specified");
 	}
@@ -1647,8 +1654,13 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return log_trace(true, "Mounting cgroups not requested or needed");
 
 	/* This is really the codepath that we want. */
-	if (pure_unified_layout(ops)) {
+	if (pure_unified_layout(ops) ||
+	    (cgroup_automount_type == LXC_AUTO_CGROUP2_RW) ||
+	    (cgroup_automount_type == LXC_AUTO_CGROUP2_RO)) {
 		__do_close int dfd_mnt_unified = -EBADF;
+
+		if (!ops->unified)
+			return log_error_errno(false, EINVAL, "No unified cgroup hierarchy mounted on the host");
 
 		dfd_mnt_unified = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 					  PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
@@ -1684,6 +1696,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * 10. cgroup-full:rw:force    -> Not supported.
 			 * 11. cgroup-full:ro:force    -> Not supported.
 			 * 12. cgroup-full:mixed:force -> Not supported.
+			 *
+			 * 13. cgroup2		-> No-op; init system responsible for mounting.
+			 * 14. cgroup2:ro	-> No-op; init system responsible for mounting.
+			 * 15. cgroup2:force	-> Mount the cgroup2 filesystem read-write
+			 * 16. cgroup2:ro:force	-> Mount the cgroup2 filesystem read-only
 			 */
 			ret = cgroupfs_mount(cgroup_automount_type, ops->unified, rootfs, dfd_mnt_unified, "");
 			if (ret < 0)
@@ -1697,25 +1714,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * Or the user requested to keep the cgroup namespace
 			 * of the host or another container.
 			 */
-			if (wants_force_mount) {
-				/*
-				 * 1. cgroup:rw:force    -> Bind-mount the cgroup2 filesystem writable.
-				 * 2. cgroup:ro:force    -> Bind-mount the cgroup2 filesystem read-only.
-				 * 3. cgroup:mixed:force -> bind-mount the cgroup2 filesystem and
-				 *                          and make the parent directory of the
-				 *                          container's cgroup read-only but the
-				 *                          container's cgroup writable.
-                                 *
-				 * 10. cgroup-full:rw:force    ->
-				 * 11. cgroup-full:ro:force    ->
-				 * 12. cgroup-full:mixed:force ->
-				 */
-				errno = EOPNOTSUPP;
+			errno = EOPNOTSUPP;
+			if (wants_force_mount)
 				SYSWARN("Force-mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
-			} else {
-				errno = EOPNOTSUPP;
+			else
 				SYSWARN("Mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
-			}
 		}
 
 		return syserror_ret(false, "Failed to mount cgroups");
@@ -1729,15 +1732,15 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (can_use_mount_api()) {
 		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
 		if (fd_fs < 0)
-			return log_error_errno(-errno, errno, "Failed to create new filesystem context for tmpfs");
+			return log_error_errno(false, errno, "Failed to create new filesystem context for tmpfs");
 
 		ret = fs_set_property(fd_fs, "mode", "0755");
 		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+			return log_error_errno(false, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
 		ret = fs_set_property(fd_fs, "size", "10240k");
 		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+			return log_error_errno(false, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
 		ret = fs_attach(fd_fs, rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
