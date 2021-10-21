@@ -785,4 +785,6 @@ static inline bool is_set(__u32 bit, __u32 *bitarr)
 	return (bitarr[bit / NBITS] & ((__u32)1 << (bit % NBITS))) != 0;
 }
 
+#define BIT(nr) (1UL << (nr))
+
 #endif /* __LXC_MACRO_H */
