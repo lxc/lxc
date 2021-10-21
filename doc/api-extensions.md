@@ -144,3 +144,10 @@ Whether this LXC instance can handle idmapped mounts for the rootfs.
 
 Whether this LXC instance can handle idmapped mounts for lxc.mount.entry
 entries.
+
+## cgroup2\_auto_mounting
+
+This adds the new options `cgroup2`, `cgroup2:ro`, `cgroup2:force`,
+`cgroup2:ro:force` for the `lxc.mount.auto` configuration key. For example, if
+a user specifies `cgroup2:force` LXC will pre-mount a pure `cgroup2` layout for
+the container even if the host is running with a hybrid layout.
