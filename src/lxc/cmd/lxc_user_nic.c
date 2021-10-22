@@ -469,7 +469,7 @@ static int instantiate_veth(char *veth1, char *veth2, pid_t pid, unsigned int mt
 {
 	int ret;
 
-	ret = lxc_veth_create(veth1, veth2, pid, mtu);
+	ret = lxc_veth_create(veth1, veth2, pid, mtu, -1, -1);
 	if (ret < 0) {
 		CMD_SYSERROR("Failed to create %s-%s\n", veth1, veth2);
 		return ret_errno(-ret);

@@ -656,7 +656,8 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 		}
 	}
 
-	err = lxc_veth_create(veth1, veth2, handler->pid, mtu);
+	err = lxc_veth_create(veth1, veth2, handler->pid, mtu,
+			      netdev->priv.veth_attr.n_rxqueues, netdev->priv.veth_attr.n_txqueues);
 	if (err)
 		return log_error_errno(-1, -err, "Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
 
@@ -2070,7 +2071,8 @@ int lxc_netdev_down(const char *name)
 	return netdev_set_flag(name, 0);
 }
 
-int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned int mtu)
+int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned int mtu,
+                    int n_rxqueues, int n_txqueues)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
@@ -2130,6 +2132,12 @@ int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned in
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name2))
 		return ret_errno(ENOMEM);
 
+	if (n_rxqueues > 0 && nla_put_u32(nlmsg, IFLA_NUM_RX_QUEUES, (unsigned int)n_rxqueues))
+		return ret_errno(ENOMEM);
+
+	if (n_txqueues > 0 && nla_put_u32(nlmsg, IFLA_NUM_TX_QUEUES, (unsigned int)n_txqueues))
+		return ret_errno(ENOMEM);
+
 	if (mtu > 0 && nla_put_u32(nlmsg, IFLA_MTU, mtu))
 		return ret_errno(ENOMEM);
 
@@ -2141,6 +2149,12 @@ int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned in
 	nla_end_nested(nlmsg, nest1);
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name1))
+		return ret_errno(ENOMEM);
+
+	if (n_txqueues > 0 && nla_put_u32(nlmsg, IFLA_NUM_RX_QUEUES, (unsigned int)n_txqueues))
+		return ret_errno(ENOMEM);
+
+	if (n_rxqueues > 0 && nla_put_u32(nlmsg, IFLA_NUM_TX_QUEUES, (unsigned int)n_rxqueues))
 		return ret_errno(ENOMEM);
 
 	return netlink_transaction(nlh_ptr, nlmsg, answer);
