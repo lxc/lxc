@@ -682,7 +682,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               Specify the ipv4 address to assign to the virtualized interface.
               Several lines specify several ipv4 addresses. The address is in
               format x.y.z.t/m, eg. 192.168.1.123/24.
-              You can optionally specify the broadcast address after the IP adress,
+              You can optionally specify the broadcast address after the IP address,
               e.g. 192.168.1.123/24 255.255.255.255.
               Otherwise it is automatically calculated from the IP address.
             </para>
