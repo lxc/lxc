@@ -894,8 +894,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               Specify the ipv4 address to assign to the virtualized interface.
               Several lines specify several ipv4 addresses. The address is in
               format x.y.z.t/m, eg. 192.168.1.123/24.
+              You can optionally specify the broadcast address after the IP adress,
+              e.g. 192.168.1.123/24 255.255.255.255.
+              Otherwise it is automatically calculated from the IP address.
               -->
               仮想インターフェースに割り当てる ipv4 アドレスを指定します。複数行により複数の ipv4 アドレスを指定します。このアドレスは x.y.z.t/m というフォーマットで指定します。例) 192.168.1.123/24
+              IP アドレスのあとにオプションでブロードキャストアドレスを指定できます。例）192.168.1.123/24 255.255.255.255
+              指定しなければ IP アドレスから自動的に計算されます。
             </para>
           </listitem>
         </varlistentry>
