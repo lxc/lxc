@@ -105,16 +105,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	  Set log priority to
 	  <replaceable>LEVEL</replaceable>. The default log
 	  priority is <literal>ERROR</literal>. Possible values are :
-	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>FATAL</literal>, <literal>ALERT</literal>,
+	  <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>.
+	  <literal>DEBUG</literal>, <literal>TRACE</literal>.
           -->
           ログの優先度を <replaceable>LEVEL</replaceable> に設定します。デフォルトの優先度は <literal>ERROR</literal> です。以下の値を設定可能です:
-	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>FATAL</literal>, <literal>ALERT</literal>,
+	  <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>。
+	  <literal>DEBUG</literal>, <literal>TRACE</literal>。
 	</para>
 	<para>
           <!--
