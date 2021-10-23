@@ -105,16 +105,18 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	  Set log priority to
 	  <replaceable>LEVEL</replaceable>. The default log
 	  priority is <literal>ERROR</literal>. Possible values are :
-	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>FATAL</literal>, <literal>ALERT</literal>,
+	  <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>.
+	  <literal>DEBUG</literal>, <literal>TRACE</literal>.
           -->
           로그 수준을 <replaceable>LEVEL</replaceable>로 지정한다. 기본값은 <literal>ERROR</literal>이다. 사용 가능한 값 :
-	  <literal>FATAL</literal>, <literal>CRIT</literal>,
+	  <literal>FATAL</literal>, <literal>ALERT</literal>,
+	  <literal>CRIT</literal>,
 	  <literal>WARN</literal>, <literal>ERROR</literal>,
 	  <literal>NOTICE</literal>, <literal>INFO</literal>,
-	  <literal>DEBUG</literal>.
+	  <literal>DEBUG</literal>, <literal>TRACE</literal>.
 	</para>
 	<para>
           <!--
