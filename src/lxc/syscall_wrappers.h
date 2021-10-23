@@ -367,17 +367,21 @@ static inline bool core_scheduling_cookie_valid(__u64 cookie)
 	return (cookie > 0) && (cookie != INVALID_SCHED_CORE_COOKIE);
 }
 
-static inline __u64 core_scheduling_cookie_get(pid_t pid)
+static inline int core_scheduling_cookie_get(pid_t pid, __u64 *cookie)
 {
-	__u64 cookie;
 	int ret;
 
-	ret = prctl(PR_SCHED_CORE, PR_SCHED_CORE_GET, pid,
-		    PR_SCHED_CORE_SCOPE_THREAD, (unsigned long)&cookie);
-	if (ret)
-		return INVALID_SCHED_CORE_COOKIE;
+	if (!cookie)
+		return ret_errno(EINVAL);
 
-	return cookie;
+	ret = prctl(PR_SCHED_CORE, PR_SCHED_CORE_GET, pid,
+		    PR_SCHED_CORE_SCOPE_THREAD, (unsigned long)cookie);
+	if (ret) {
+		*cookie = INVALID_SCHED_CORE_COOKIE;
+		return -errno;
+	}
+
+	return 0;
 }
 
 static inline int core_scheduling_cookie_create_threadgroup(pid_t pid)
