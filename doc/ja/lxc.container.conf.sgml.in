@@ -446,6 +446,42 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title><!-- Core Scheduling -->コアスケジューリング</title>
+      <para>
+        <!--
+        Core scheduling defines if the container payload
+        is marked as being schedulable on the same core. Doing so will cause
+        the kernel scheduler to ensure that tasks that are not in the same
+        group never run simultaneously on a core. This can serve as an extra
+        security measure to prevent the container payload from using
+        cross hyper thread attacks.
+        -->
+        コアスケジューリングは、コンテナのペイロードが同じコアでスケジュール可能であるとマークするかどうかを指定します。
+        これによりカーネルスケジューラーは、同じグループに属さないタスクが同一コア上で同時に実行されないようにします。
+        これは、コンテナペイロードがクロスハイパースレッド攻撃を受けることを防ぐための、追加のセキュリティ対策として機能させることができます。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.sched.core</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              The only allowed values are 0 and 1. Set this to 1 to create a
+              core scheduling domain for the container or 0 to not create one.
+              If not set explicitly no core scheduling domain will be created
+              for the container.
+                -->
+              0 または 1 のみ指定できます。1 を設定すると、コンテナに対するコアスケジューリングドメインを作成し、0 を設定すると作成しません。
+              明示的に指定していない場合は、コンテナに対するコアスケジューリングドメインは作成されません。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Proc</title>
       <para>
         <!--
