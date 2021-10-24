@@ -409,8 +409,8 @@ static int get_attach_context(struct attach_context *ctx,
 		SYSERROR("Failed to retrieve namespace flags");
 	ctx->ns_clone_flags = ret;
 
-	ctx->core_sched_cookie = core_scheduling_cookie_get(ctx->init_pid);
-	if (!core_scheduling_cookie_valid(ctx->core_sched_cookie))
+	ret = core_scheduling_cookie_get(ctx->init_pid, &ctx->core_sched_cookie);
+	if (ret || !core_scheduling_cookie_valid(ctx->core_sched_cookie))
 		INFO("Container does not run in a separate core scheduling domain");
 	else
 		INFO("Container runs in separate core scheduling domain %llu",
@@ -1155,9 +1155,9 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			goto on_error;
 		}
 
-		core_sched_cookie = core_scheduling_cookie_get(getpid());
-		if (!core_scheduling_cookie_valid(core_sched_cookie) &&
-		    ctx->core_sched_cookie != core_sched_cookie) {
+		ret = core_scheduling_cookie_get(getpid(), &core_sched_cookie);
+		if (ret || !core_scheduling_cookie_valid(core_sched_cookie) ||
+		    (ctx->core_sched_cookie != core_sched_cookie)) {
 			SYSERROR("Invalid core scheduling domain cookie %llu != %llu",
 				 (llu)core_sched_cookie,
 				 (llu)ctx->core_sched_cookie);

@@ -1566,14 +1566,19 @@ static int core_scheduling(struct lxc_handler *handler)
 
 	ret = core_scheduling_cookie_create_threadgroup(handler->pid);
 	if (ret < 0) {
+		if (ret == -ENODEV) {
+			INFO("The kernel doesn't support or doesn't use simultaneous multithreading (SMT)");
+			conf->sched_core = false;
+			return 0;
+		}
 		if (ret == -EINVAL)
 			return syserror("The kernel does not support core scheduling");
 
 		return syserror("Failed to create new core scheduling domain");
 	}
 
-	conf->sched_core_cookie = core_scheduling_cookie_get(handler->pid);
-	if (!core_scheduling_cookie_valid(conf->sched_core_cookie))
+	ret = core_scheduling_cookie_get(handler->pid, &conf->sched_core_cookie);
+	if (ret || !core_scheduling_cookie_valid(conf->sched_core_cookie))
 		return syserror("Failed to retrieve core scheduling domain cookie");
 
 	TRACE("Created new core scheduling domain with cookie %llu",
