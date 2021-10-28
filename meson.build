@@ -59,6 +59,7 @@ logpath = get_option('log-path')
 lxcpathprefix = get_option('config-path')
 rootfsmount = get_option('rootfs-mount-dir')
 runtimepath = join_paths(prefixdir, get_option('runtime-path'))
+wants_io_uring = get_option('io-uring-event-loop')
 
 conf.set_quoted('BINDIR',			bindir)
 conf.set_quoted('DATADIR',			datadir)
@@ -279,6 +280,11 @@ foreach ident : [
 	conf.set10('HAVE_' + ident[0].to_upper(), have)
 endforeach
 
+if wants_io_uring == true
+	liburing = dependency('liburing')
+	conf.set10('HAVE_LIBURING', liburing.found())
+endif
+
 sh = find_program('sh')
 git = find_program('git', required : false)
 time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"').stdout().strip()
@@ -383,6 +389,17 @@ subdir('src/include')
 subdir('src/lxc/tools/include')
 subdir('src/lxc')
 
+liblxc_dependencies = [threads,
+		       libseccomp,
+		       libcap,
+		       libopenssl,
+		       libselinux,
+		       libapparmor]
+
+if wants_io_uring == true
+	liblxc_dependencies += [liburing]
+endif
+
 liblxc = shared_library(
         'lxc',
         version : liblxc_version,
@@ -390,22 +407,12 @@ liblxc = shared_library(
         link_args : ['-DPIC'],
         c_args : ['-DPIC'],
         link_whole : [liblxc_static],
-        dependencies : [threads,
-			libseccomp,
-			libcap,
-			libopenssl,
-			libselinux,
-			libapparmor],
+        dependencies: liblxc_dependencies,
         install : true)
 
 liblxc_dep = declare_dependency(
 		link_with: liblxc,
-		dependencies : [threads,
-				libseccomp,
-				libcap,
-				libopenssl,
-				libselinux,
-				libapparmor])
+		dependencies: liblxc_dependencies)
 
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
@@ -543,6 +550,7 @@ foreach tuple : [
         ['libcap'],
         ['static libcap'],
         ['openssl'],
+        ['liburing'],
 ]
 
         if tuple.length() >= 2
