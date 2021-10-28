@@ -80,7 +80,7 @@ lxc.idmap = u 0 910000 10000
 lxc.idmap = g 0 910000 10000
 EOF
 
-if which cgm >/dev/null 2>&1; then
+if command -v cgm >/dev/null 2>&1; then
 	cgm create all usernic-user
 	cgm chown all usernic-user $(id -u usernic-user) $(id -g usernic-user)
 	cgm movepid all usernic-user $$
