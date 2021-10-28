@@ -27,7 +27,7 @@ export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Check for required binaries
 for bin in skopeo umoci jq; do
-  if ! which $bin >/dev/null 2>&1; then
+  if ! command -v $bin >/dev/null 2>&1; then
     echo "ERROR: Missing required tool: $bin" 1>&2
     exit 1
   fi
@@ -303,7 +303,7 @@ mkdir -p "${DOWNLOAD_BASE}"
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
-if ! which mktemp >/dev/null 2>&1; then
+if ! command -v mktemp >/dev/null 2>&1; then
   DOWNLOAD_TEMP="${DOWNLOAD_BASE}/lxc-oci.$$"
   mkdir -p "${DOWNLOAD_TEMP}"
 else
