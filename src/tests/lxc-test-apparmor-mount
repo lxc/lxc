@@ -91,7 +91,7 @@ chmod 0666 "$logfile"
 # of an empty directory over the securityfs 'mount' directory
 # be removed, we need to do this as non-root.
 
-which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
+command -v newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
 # create a test user
 TUSER=lxcunpriv
 HDIR=/home/$TUSER
@@ -119,7 +119,7 @@ chown -R $TUSER: /run/user/$(id -u $TUSER)
 
 cd $HDIR
 
-if which cgm >/dev/null 2>&1; then
+if command -v cgm >/dev/null 2>&1; then
 	cgm create all $TUSER
 	cgm chown all $TUSER $(id -u $TUSER) $(id -g $TUSER)
 	cgm movepid all $TUSER $$

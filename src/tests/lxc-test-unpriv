@@ -62,7 +62,7 @@ if modprobe -q overlayfs; then
         fi
 fi
 
-which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
+command -v newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
 
 DONE=0
 UNPRIV_LOG=$(mktemp --dry-run)
@@ -130,7 +130,7 @@ chown -R $TUSER: /run/user/$(id -u $TUSER)
 
 cd $HDIR
 
-if which cgm >/dev/null 2>&1; then
+if command -v cgm >/dev/null 2>&1; then
 	cgm create all $TUSER
 	cgm chown all $TUSER $(id -u $TUSER) $(id -g $TUSER)
 	cgm movepid all $TUSER $$
@@ -181,7 +181,7 @@ p1=$(run_cmd lxc-info -n c2 -p -H -l trace -o "${UNPRIV_LOG}")
 
 run_cmd lxc-stop -n c2 -k -l trace -o "${UNPRIV_LOG}"
 
-if which cgm >/dev/null 2>&1; then
+if command -v cgm >/dev/null 2>&1; then
     echo "Testing containers under different cgroups per subsystem"
     run_cmd cgm create freezer x1/x2
     cgm movepid freezer x1 $$
