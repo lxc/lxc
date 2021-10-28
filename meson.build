@@ -541,6 +541,7 @@ foreach tuple : [
         ['SECCOMP'],
         ['SELinux'],
         ['libcap'],
+        ['static libcap'],
         ['openssl'],
 ]
 
