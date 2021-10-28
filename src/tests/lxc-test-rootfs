@@ -45,7 +45,7 @@ sed -i '/lxc.rootfs.options/d' $config
 echo "lxc.rootfs.options = ro" >> $config
 
 lxc-start -n lxc-test-rootfs
-pid=`lxc-info -n lxc-test-rootfs -p -H`
+pid=$(lxc-info -n lxc-test-rootfs -p -H)
 ro=0
 mkdir /proc/$pid/root/rotest || ro=1
 [ $ro -ne 0 ]
@@ -56,7 +56,7 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.rootfs.options/d' $config
 echo "lxc.rootfs.options = rw" >> $config
 lxc-start -n lxc-test-rootfs
-pid=`lxc-info -n lxc-test-rootfs -p -H`
+pid=$(lxc-info -n lxc-test-rootfs -p -H)
 ro=0
 mkdir /proc/$pid/root/rwtest || ro=1
 [ $ro -ne 1 ]

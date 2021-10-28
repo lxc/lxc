@@ -71,7 +71,7 @@ fi
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> attached to pty
-for i in `seq 1 100`; do
+for i in $(seq 1 100); do
 	attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname || FAIL "to allocate or setup pty")
 	if [ "$attach" != "busy" ]; then
 		FAIL "lxc-attach -n busy -- hostname"

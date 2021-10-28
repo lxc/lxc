@@ -54,8 +54,8 @@ echo "lxc.apparmor.profile = generated" >> $CONTAINER_PATH/config
 # Start it
 lxc-start -n $CONTAINER_NAME -lDEBUG -o "$LOGFILE"
 lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't start" && exit 1)
-pid=`lxc-info -p -H -n $CONTAINER_NAME`
-profile=`cat /proc/$pid/attr/current`
+pid=$(lxc-info -p -H -n $CONTAINER_NAME)
+profile=$(cat /proc/$pid/attr/current)
 expected_profile="lxc-${CONTAINER_NAME}_</var/lib/lxc>//&:lxc-${CONTAINER_NAME}_<-var-lib-lxc>:unconfined (enforce)"
 lxc-stop -n $CONTAINER_NAME -k
 if [ "x$profile" != "x$expected_profile" ]; then

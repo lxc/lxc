@@ -28,7 +28,7 @@
 #     a. c=q1
 #     b. mv /var/lib/lxc/$c/rootfs /var/lib/lxc/$c/rootfs.plain
 #     c. mkdir /var/lib/lxc/$c/rootfs{,.crypt}
-#     d. sig=`echo none | ecryptfs-add-passphrase | grep -v Passphrase | cut -d[ -f 2 | cut -d] -f 1`
+#     d. sig=$(echo none | ecryptfs-add-passphrase | grep -v Passphrase | cut -d[ -f 2 | cut -d] -f 1)
 #     e. echo $sig > /var/lib/lxc/$c/sig
 #     f. mount -t ecryptfs -o ecryptfs_cipher=aes,ecryptfs_key_bytes=16,ecryptfs_passthrough=n,ecryptfs_enable_filename_crypto=n,ecryptfs_sig=${sig},sig=${sig},verbosity=0 /var/lib/lxc/$c/rootfs.crypt /var/lib/lxc/$c/rootfs
 #     g. rsync -va /var/lib/lxc/$c/rootfs.plain/ /var/lib/lxc/$c/rootfs/
@@ -45,6 +45,6 @@ set -e
 ecryptfs_crypt=$(echo $LXC_ROOTFS_PATH | sed 's/rootfs$/rootfs.crypt/')
 sigfile=$(echo $LXC_CONFIG_FILE | sed 's/config$/sig/')
 
-sig=`cat $sigfile`
+sig=$(cat $sigfile)
 mount -n -t ecryptfs -o ecryptfs_cipher=aes,ecryptfs_key_bytes=16,ecryptfs_passthrough=n,ecryptfs_enable_filename_crypto=n,ecryptfs_sig=${sig},sig=${sig},verbosity=0 $ecryptfs_crypt $LXC_ROOTFS_PATH
 exit 0

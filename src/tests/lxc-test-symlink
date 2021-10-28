@@ -9,9 +9,9 @@ set -ex
 #
 # This is a regression test for symbolic links
 
-dirname=`mktemp -d`
-fname=`mktemp`
-fname2=`mktemp`
+dirname=$(mktemp -d)
+fname=$(mktemp)
+fname2=$(mktemp)
 
 lxcpath=/var/lib/lxcsym1
 
