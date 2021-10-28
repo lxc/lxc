@@ -29,7 +29,7 @@ usage() {
 # Wrap the dhclient command with "aa-exec -p unconfined" if AppArmor is enabled.
 dhclient() {
     bin="/sbin/dhclient"
-    if [ -d "/sys/kernel/security/apparmor" ] && which aa-exec >/dev/null; then
+    if [ -d "/sys/kernel/security/apparmor" ] && command -v aa-exec >/dev/null; then
         bin="aa-exec -p unconfined ${bin}"
     fi
     echo $bin

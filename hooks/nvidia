@@ -45,7 +45,7 @@ else
 fi
 
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
-if ! which nvidia-container-cli >/dev/null; then
+if ! command -v nvidia-container-cli >/dev/null; then
     echo "ERROR: Missing tool nvidia-container-cli, see https://github.com/NVIDIA/libnvidia-container" >&2
     exit 1
 fi
