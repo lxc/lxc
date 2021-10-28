@@ -23,7 +23,7 @@
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
 
-BUSYBOX_EXE=`which busybox`
+BUSYBOX_EXE=$(command -v busybox)
 
 # Make sure the usual locations are in PATH
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
