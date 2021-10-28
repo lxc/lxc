@@ -35,7 +35,7 @@ if ! grep -q overlay /proc/filesystems; then
 fi
 
 cleanup() {
-	for i in `seq 1 20`; do
+	for i in $(seq 1 20); do
 		lxc-destroy -n snapdeptest$i > /dev/null 2>&1 || true
 	done
 	lxc-destroy -n snapdeptest > /dev/null 2>&1 || true
@@ -43,7 +43,7 @@ cleanup() {
 
 verify_deps() {
 	n=$1
-	m=`wc -l /var/lib/lxc/snapdeptest/lxc_snapshots | awk '{ print $1 }'`
+	m=$(wc -l /var/lib/lxc/snapdeptest/lxc_snapshots | awk '{ print $1 }')
 	[ $((n*2)) -eq $m ]
 }
 
@@ -60,7 +60,7 @@ if [ $fail -eq 0 ]; then
 	false
 fi
 
-for i in `seq 2 20`; do
+for i in $(seq 2 20); do
 	lxc-copy -s -n snapdeptest -N snapdeptest$i
 done
 
@@ -74,7 +74,7 @@ lxc-destroy -n snapdeptest20
 
 verify_deps 18
 
-for i in `seq 2 19`; do
+for i in $(seq 2 19); do
 	lxc-destroy -n snapdeptest$i
 done
 

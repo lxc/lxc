@@ -55,8 +55,8 @@ sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = proc:mixed sys:mixed" >> $config
 
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 0 ]
@@ -75,7 +75,7 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
+pid=$(lxc-info -n lxc-test-automount -p -H)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]
@@ -98,8 +98,8 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup:ro proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]
@@ -122,8 +122,8 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup:rw proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]
@@ -149,8 +149,8 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup-full:mixed  proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]
@@ -174,8 +174,8 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup-full:ro proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]
@@ -198,8 +198,8 @@ echo "Starting phase $PHASE"
 sed -i '/lxc.mount.auto/d' $config
 echo "lxc.mount.auto = cgroup-full:rw proc:mixed sys:mixed" >> $config
 lxc-start -n lxc-test-automount
-pid=`lxc-info -n lxc-test-automount -p -H`
-cg=`awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup`
+pid=$(lxc-info -n lxc-test-automount -p -H)
+cg=$(awk -F: '/freezer/ { print $3 }' /proc/$pid/cgroup)
 notfound=0
 stat /proc/$pid/root/sys/fs/cgroup/freezer || notfound=1
 [ $notfound -ne 1 ]

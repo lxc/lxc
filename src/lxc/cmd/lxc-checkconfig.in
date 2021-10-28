@@ -70,7 +70,7 @@ echo "LXC version $(lxc-start --version)"
 
 if [ ! -f $CONFIG ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
-    KVER="`uname -r`"
+    KVER="$(uname -r)"
     HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
     BOOT_CONFIG="/boot/config-$KVER"
     [ -f "${HEADERS_CONFIG}" ] && CONFIG=${HEADERS_CONFIG}
@@ -166,32 +166,32 @@ print_cgroups() {
   awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
 }
 
-CGROUP_V1_MNTS=`print_cgroups cgroup /proc/self/mounts`
+CGROUP_V1_MNTS=$(print_cgroups cgroup /proc/self/mounts)
 echo
 echo "Cgroup v1 mount points: "
 echo "$CGROUP_V1_MNTS"
 echo
 
-CGROUP_V2_MNTS=`print_cgroups cgroup2 /proc/self/mounts`
+CGROUP_V2_MNTS=$(print_cgroups cgroup2 /proc/self/mounts)
 echo "Cgroup v2 mount points: "
 echo "$CGROUP_V2_MNTS"
 echo
 
-CGROUP_SYSTEMD_MNTPT=`echo "$CGROUP_V1_MNTS" | grep "/systemd"`
+CGROUP_SYSTEMD_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/systemd")
 if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
     echo -n "Cgroup v1 systemd controller: "
     $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
     echo
 fi
 
-CGROUP_FREEZER_MNTPT=`echo "$CGROUP_V1_MNTS" | grep "/freezer"`
+CGROUP_FREEZER_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/freezer")
 if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
     echo -n "Cgroup v1 freezer controller: "
     $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
     echo
 fi
 
-CGROUP_MNT_PATH=`echo "$CGROUP_V1_MNTS" | head -n 1`
+CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
 if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
     echo -n "Cgroup v1 clone_children flag: " &&
     $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL

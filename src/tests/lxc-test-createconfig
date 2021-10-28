@@ -23,7 +23,7 @@
 
 set -e
 
-s=`mktemp -d /tmp/lxctest-XXXXXX`
+s=$(mktemp -d /tmp/lxctest-XXXXXX)
 f="$s/in.conf"
 
 cleanup() {

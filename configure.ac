@@ -84,7 +84,7 @@ AC_SUBST([LIBTOOL_DEPS])
 AC_MSG_CHECKING([host distribution])
 AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, redhatenterpriseserver, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva, pardus, sparclinux, altlinux.]))
 if type lsb_release >/dev/null 2>&1 && test "z$with_distro" = "z"; then
-	with_distro=`lsb_release -is`
+	with_distro=$(lsb_release -is)
 fi
 if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/redhat-release,with_distro="redhat")
@@ -105,7 +105,7 @@ if test "z$with_distro" = "z"; then
 	AC_CHECK_FILE(/etc/altlinux-release,with_distro="altlinux")
 	AC_CHECK_FILE(/etc/pld-release,with_distro="pld")
 fi
-with_distro=`echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]'`
+with_distro=$(echo ${with_distro} | tr '[[:upper:]]' '[[:lower:]]')
 
 if test "z$with_distro" = "zforsparc"; then
 	with_distro="sparclinux"

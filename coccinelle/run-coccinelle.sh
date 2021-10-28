@@ -18,7 +18,7 @@ fi
 
 for SCRIPT in ${@-$top/coccinelle/*.cocci} ; do
         echo "--x-- Processing $SCRIPT --x--"
-        TMPFILE=`mktemp`
+        TMPFILE=$(mktemp)
         echo "+ spatch --sp-file $SCRIPT $args ..."
         parallel --halt now,fail=1 --keep-order --noswap --max-args=20 \
                  spatch --sp-file $SCRIPT $args ::: $files \

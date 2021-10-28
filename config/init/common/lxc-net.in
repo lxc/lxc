@@ -52,7 +52,7 @@ _ifdown() {
 }
 
 _ifup() {
-    MASK=`_netmask2cidr ${LXC_NETMASK}`
+    MASK=$(_netmask2cidr ${LXC_NETMASK})
     CIDR_ADDR="${LXC_ADDR}/${MASK}"
     ip addr add ${CIDR_ADDR} broadcast + dev ${LXC_BRIDGE}
     ip link set dev ${LXC_BRIDGE} address $LXC_BRIDGE_MAC
@@ -234,7 +234,7 @@ stop() {
             stop_iptables
         fi
 
-        pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
+        pid=$(cat "${varrun}"/dnsmasq.pid 2>/dev/null) && kill -9 $pid
         rm -f "${varrun}"/dnsmasq.pid
         # if $LXC_BRIDGE has attached interfaces, don't destroy the bridge
         ls /sys/class/net/${LXC_BRIDGE}/brif/* > /dev/null 2>&1 || ip link delete ${LXC_BRIDGE}
