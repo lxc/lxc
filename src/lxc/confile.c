@@ -1105,13 +1105,13 @@ static int set_config_seccomp_profile(const char *key, const char *value,
 static int set_config_execute_cmd(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_path_item(&lxc_conf->execute_cmd, value);
+	return set_config_string_item(&lxc_conf->execute_cmd, value);
 }
 
 static int set_config_init_cmd(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_path_item(&lxc_conf->init_cmd, value);
+	return set_config_string_item(&lxc_conf->init_cmd, value);
 }
 
 static int set_config_init_cwd(const char *key, const char *value,
