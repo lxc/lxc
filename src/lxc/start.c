@@ -629,7 +629,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	TRACE("Mainloop is ready");
 
 	ret = lxc_mainloop(&descr, -1);
-	close_prot_errno_disarm(descr.epfd);
+	if (descr.type == LXC_MAINLOOP_EPOLL)
+		close_prot_errno_disarm(descr.epfd);
 	if (ret < 0 || !handler->init_died)
 		goto out_mainloop_console;
 
