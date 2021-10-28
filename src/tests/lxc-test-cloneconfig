@@ -23,15 +23,15 @@
 
 set -e
 
-s=`mktemp -d /tmp/lxctest-XXXXXX`
+s=$(mktemp -d /tmp/lxctest-XXXXXX)
 
 DONE=0
 
 verify_unchanged_number() {
 	key=$1
 	desc=$2
-	n1=`grep ^$key $CONTAINER_PATH/config | wc -l`
-	n2=`grep ^$key $CONTAINER2_PATH/config | wc -l`
+	n1=$(grep ^$key $CONTAINER_PATH/config | wc -l)
+	n2=$(grep ^$key $CONTAINER2_PATH/config | wc -l)
 	if [ $n1 -ne $n2 ]; then
 		echo "Test $testnum failed"
 		echo "unequal number of $desc"
@@ -54,7 +54,7 @@ verify_numnics() {
 verify_hwaddr() {
 	verify_unchanged_number lxc.net.0.hwaddr "hwaddr defs"
 	grep ^lxc.net.0.hwaddr $CONTAINER_PATH/config | while read line; do
-		addr=`echo $line | awk -F= { print $2 }`
+		addr=$(echo $line | awk -F= { print $2 })
 		echo "looking for $addr in $CONTAINER2_PATH/config"
 		if grep -q $addr $CONTAINER2_PATH/config; then
 			echo "Test $testnum failed"

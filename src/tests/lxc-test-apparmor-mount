@@ -54,9 +54,9 @@ run_cmd() {
 
 DONE=0
 MOUNTSR=/sys/kernel/security/apparmor/features/mount
-dnam=`mktemp -d`
-logfile=`mktemp`
-cname=`basename $dnam`
+dnam=$(mktemp -d)
+logfile=$(mktemp)
+cname=$(basename $dnam)
 cleanup() {
 	run_cmd lxc-destroy -f -n $cname || true
 	umount -l $MOUNTSR || true
@@ -153,8 +153,8 @@ run_cmd lxc-create -t busybox -n $cname
 echo "test default confined container"
 run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
-pid=`run_cmd lxc-info -p -H -n $cname`
-profile=`cat /proc/$pid/attr/current`
+pid=$(run_cmd lxc-info -p -H -n $cname)
+profile=$(cat /proc/$pid/attr/current)
 if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
@@ -166,8 +166,8 @@ echo "test regular unconfined container"
 echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
-pid=`run_cmd lxc-info -p -H -n $cname`
-profile=`cat /proc/$pid/attr/current`
+pid=$(run_cmd lxc-info -p -H -n $cname)
+profile=$(cat /proc/$pid/attr/current)
 if [ "x$profile" != "xunconfined" ]; then
 	echo "FAIL: unconfined container was in profile $profile"
 	exit 1
@@ -182,7 +182,7 @@ echo "test default confined container"
 sed -i '/apparmor.profile/d' $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d || true
 sleep 3
-pid=`run_cmd lxc-info -p -H -n $cname` || true
+pid=$(run_cmd lxc-info -p -H -n $cname) || true
 if [ -n "$pid" -a "$pid" != "-1" ]; then
 	echo "FAIL: confined container started without mount restrictions"
 	echo "pid was $pid"
@@ -193,12 +193,12 @@ echo "test regular unconfined container"
 echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
-pid=`run_cmd lxc-info -p -H -n $cname`
+pid=$(run_cmd lxc-info -p -H -n $cname)
 if [ "$pid" = "-1" ]; then
 	echo "FAIL: unconfined container failed to start without mount restrictions"
 	exit 1
 fi
-profile=`cat /proc/$pid/attr/current`
+profile=$(cat /proc/$pid/attr/current)
 if [ "x$profile" != "xunconfined" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1
@@ -211,12 +211,12 @@ sed -i '/apparmor.profile/d' $HDIR/.local/share/lxc/$cname/config
 echo "lxc.apparmor.allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
-pid=`run_cmd lxc-info -p -H -n $cname`
+pid=$(run_cmd lxc-info -p -H -n $cname)
 if [ "$pid" = "-1" ]; then
 	echo "FAIL: excepted container failed to start without mount restrictions"
 	exit 1
 fi
-profile=`cat /proc/$pid/attr/current`
+profile=$(cat /proc/$pid/attr/current)
 if [ "x$profile" != "x${default_profile}" ]; then
 	echo "FAIL: confined container was in profile $profile"
 	exit 1

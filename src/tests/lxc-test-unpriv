@@ -162,7 +162,7 @@ run_cmd lxc-create -t busybox -n c1 -l trace -o "${UNPRIV_LOG}"
 
 # Make sure we can start it - twice
 
-for count in `seq 1 2`; do
+for count in $(seq 1 2); do
     run_cmd lxc-start -n c1 -d -l trace -o "${UNPRIV_LOG}"
 
     p1=$(run_cmd lxc-info -n c1 -p -H -l trace -o "${UNPRIV_LOG}")

@@ -3,7 +3,7 @@
 set -eux
 set -o pipefail
 
-TMP_DIR=`mktemp -d`
+TMP_DIR=$(mktemp -d)
 export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:strict_string_checks=1}
 export UBSAN_OPTIONS=${UBSAN_OPTIONS:-print_stacktrace=1:print_summary=1:halt_on_error=1}
 
