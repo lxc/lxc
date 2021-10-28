@@ -68,7 +68,7 @@ in_userns() {
 }
 
 get_ldconfig() {
-    which "ldconfig.real" || which "ldconfig"
+    command -v "ldconfig.real" || command -v "ldconfig"
     return $?
 }
 
