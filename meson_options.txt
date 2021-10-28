@@ -36,3 +36,6 @@ option('user-network-conf', type : 'string', value : 'lxc/lxc-usernet',
 
 option('user-network-db', type : 'string', value : 'lxc/nics',
        description : 'user network database')
+
+option('io-uring-event-loop', type : 'boolean', value: 'false',
+       description : 'enable io-uring based event loop')

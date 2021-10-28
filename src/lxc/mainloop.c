@@ -515,8 +515,10 @@ void lxc_mainloop_close(struct lxc_async_descr *descr)
 
 	if (descr->type == LXC_MAINLOOP_IO_URING) {
 #if HAVE_LIBURING
-		io_uring_queue_exit(descr->ring);
-		munmap(descr->ring, sizeof(struct io_uring));
+		if (descr->ring) {
+			io_uring_queue_exit(descr->ring);
+			munmap(descr->ring, sizeof(struct io_uring));
+		}
 #else
 		ERROR("Unsupported io_uring mainloop");
 #endif
