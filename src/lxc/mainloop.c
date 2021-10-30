@@ -108,7 +108,7 @@ static inline int __io_uring_open(struct lxc_async_descr *descr)
 	return ret_errno(ENOSYS);
 }
 
-#else
+#else /* !HAVE_LIBURING */
 
 static inline int __io_uring_open(struct lxc_async_descr *descr)
 {
@@ -315,7 +315,7 @@ static int __lxc_mainloop_io_uring(struct lxc_async_descr *descr, int timeout_ms
 			return error_ret(0, "Closing because there are no more handlers");
 	}
 }
-#endif
+#endif /* HAVE_LIBURING */
 
 static int __lxc_mainloop_epoll(struct lxc_async_descr *descr, int timeout_ms)
 {
