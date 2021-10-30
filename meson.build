@@ -282,7 +282,8 @@ endforeach
 
 if wants_io_uring == true
 	liburing = dependency('liburing')
-	conf.set10('HAVE_LIBURING', liburing.found())
+	have = cc.get_define('IORING_POLL_ADD_MULTI', prefix : '#include <liburing.h>', dependencies: liburing)
+	conf.set10('HAVE_LIBURING', have)
 endif
 
 sh = find_program('sh')
