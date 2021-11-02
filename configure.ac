@@ -697,7 +697,7 @@ AM_COND_IF([ENABLE_LIBURING],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount openat2 close_range statvfs mount_setattr])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount openat2 close_range statvfs mount_setattr sigdescr_np])
 AC_CHECK_TYPES([__aligned_u64], [], [], [[#include <linux/types.h>]])
 AC_CHECK_TYPES([struct mount_attr], [], [], [[#include <linux/mount.h>]])
 AC_CHECK_TYPES([struct open_how], [], [], [[#include <linux/openat2.h>]])
