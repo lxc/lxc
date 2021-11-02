@@ -2098,19 +2098,20 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	 * In any case, treat it as a 'halt'.
 	 */
 	if (WIFSIGNALED(status)) {
-		switch(WTERMSIG(status)) {
+		int signal_nr = WTERMSIG(status);
+		switch(signal_nr) {
 		case SIGINT: /* halt */
-			DEBUG("Container \"%s\" is halting", name);
+			DEBUG("%s(%d) - Container \"%s\" is halting", signal_name(signal_nr), signal_nr, name);
 			break;
 		case SIGHUP: /* reboot */
-			DEBUG("Container \"%s\" is rebooting", name);
+			DEBUG("%s(%d) - Container \"%s\" is rebooting", signal_name(signal_nr), signal_nr, name);
 			handler->conf->reboot = REBOOT_REQ;
 			break;
 		case SIGSYS: /* seccomp */
-			DEBUG("Container \"%s\" violated its seccomp policy", name);
+			DEBUG("%s(%d) - Container \"%s\" violated its seccomp policy", signal_name(signal_nr), signal_nr, name);
 			break;
 		default:
-			DEBUG("Unknown exit status for container \"%s\" init %d", name, WTERMSIG(status));
+			DEBUG("%s(%d) - Container \"%s\" init exited", signal_name(signal_nr), signal_nr, name);
 			break;
 		}
 	}
