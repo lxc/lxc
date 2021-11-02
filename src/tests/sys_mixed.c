@@ -18,8 +18,6 @@
 
 #include "config.h"
 
-#define __STDC_FORMAT_MACROS
-
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
