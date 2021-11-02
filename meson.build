@@ -24,6 +24,7 @@ conf.set('PROJECT_VERSION',    meson.project_version(),
          description : 'Numerical project version (used where a simple number is expected)')
 conf.set('PACKAGE_VERSION',    meson.project_version())
 conf.set('_GNU_SOURCE', true)
+conf.set('_FILE_OFFSET_BITS', 64)
 conf.set('__STDC_FORMAT_MACROS', true)
 
 version_data = configuration_data()
