@@ -3,9 +3,6 @@
 #ifndef __LXC_UTILS_H
 #define __LXC_UTILS_H
 
-/* Properly support loop devices on 32bit systems. */
-#define _FILE_OFFSET_BITS 64
-
 #include <errno.h>
 #include <linux/loop.h>
 #include <linux/types.h>
