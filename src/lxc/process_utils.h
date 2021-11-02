@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -285,5 +286,17 @@ static inline pid_t lxc_raw_gettid(void)
 
 __hidden extern int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
 					      unsigned int flags);
+
+static inline const char *signal_name(int sig)
+{
+	const char *s;
+
+#if HAVE_SIGDESCR_NP
+	s = sigdescr_np(sig);
+#else
+	s = "UNSUPPORTED";
+#endif
+	return s ?: "INVALID_SIGNAL_NUMBER";
+}
 
 #endif /* __LXC_PROCESS_UTILS_H */

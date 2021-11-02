@@ -266,6 +266,7 @@ foreach ident : [
         ['setmntent',         	'''#include <stdio.h>
 				   #include <mntent.h>'''],
         ['setns',             	'''#include <sched.h>'''],
+        ['sigdescr_np',	      	'''#include <string.h>'''],
         ['signalfd',	      	'''#include <sys/signalfd.h>'''],
         ['statx',             	'''#include <sys/types.h>
 				   #include <sys/stat.h>
@@ -467,6 +468,7 @@ foreach tuple : [
         ['sethostname'],
         ['setmntent'],
         ['setns'],
+        ['sigdescr_np'],
         ['signalfd'],
         ['statx'],
         ['strlcat'],
