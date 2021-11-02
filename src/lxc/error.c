@@ -8,6 +8,7 @@
 
 #include "error.h"
 #include "log.h"
+#include "process_utils.h"
 
 lxc_log_define(error, lxc);
 
@@ -28,12 +29,12 @@ int lxc_error_set_and_log(int pid, int status)
 		ret = WEXITSTATUS(status);
 		if (ret)
 			INFO("Child <%d> ended on error (%d)", pid, ret);
-	}
-
-	if (WIFSIGNALED(status)) {
-		int signal = WTERMSIG(status);
-		INFO("Child <%d> ended on signal (%d)", pid, signal);
-		ret = 128 + signal;
+	} else if (WIFSIGNALED(status)) {
+		int signal_nr = WTERMSIG(status);
+		INFO("Child <%d> ended on signal %s(%d)", pid, signal_name(signal_nr), signal_nr);
+		ret = 128 + signal_nr;
+	} else {
+		ERROR("Invalid exit status (%d)", status);
 	}
 
 	return ret;
