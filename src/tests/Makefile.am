@@ -1357,6 +1357,168 @@ lxc_test_capabilities_SOURCES += ../include/prlimit.c ../include/prlimit.h
 endif
 endif
 
+lxc_test_sysctls_SOURCES = sysctls.c \
+			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/cgroups/cgfsng.c \
+			  ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
+			  ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
+			  ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
+			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			  ../lxc/conf.c ../lxc/conf.h \
+			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/error.c ../lxc/error.h \
+			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+			  ../lxc/initutils.c ../lxc/initutils.h \
+			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/lxclock.c ../lxc/lxclock.h \
+			  ../lxc/mainloop.c ../lxc/mainloop.h \
+			  ../lxc/monitor.c ../lxc/monitor.h \
+			  ../lxc/mount_utils.c ../lxc/mount_utils.h \
+			  ../lxc/namespace.c ../lxc/namespace.h \
+			  ../lxc/network.c ../lxc/network.h \
+			  ../lxc/nl.c ../lxc/nl.h \
+			  ../lxc/parse.c ../lxc/parse.h \
+			  ../lxc/process_utils.c ../lxc/process_utils.h \
+			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			  ../lxc/start.c ../lxc/start.h \
+			  ../lxc/state.c ../lxc/state.h \
+			  ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			  ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			  ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			  ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			  ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			  ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			  ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			  ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			  ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			  ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			  ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
+			  ../lxc/sync.c ../lxc/sync.h \
+			  ../lxc/string_utils.c ../lxc/string_utils.h \
+			  ../lxc/terminal.c ../lxc/terminal.h \
+			  ../lxc/utils.c ../lxc/utils.h \
+			  ../lxc/uuid.c ../lxc/uuid.h \
+			  $(LSM_SOURCES)
+if ENABLE_SECCOMP
+lxc_test_sysctls_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_sysctls_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_sysctls_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_sysctls_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_sysctls_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_sysctls_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+			    ../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_sysctls_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_sysctls_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
+lxc_test_proc_pid_SOURCES = proc_pid.c \
+			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/cgroups/cgfsng.c \
+			  ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
+			  ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
+			  ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
+			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			  ../lxc/conf.c ../lxc/conf.h \
+			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/error.c ../lxc/error.h \
+			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+			  ../lxc/initutils.c ../lxc/initutils.h \
+			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/lxclock.c ../lxc/lxclock.h \
+			  ../lxc/mainloop.c ../lxc/mainloop.h \
+			  ../lxc/monitor.c ../lxc/monitor.h \
+			  ../lxc/mount_utils.c ../lxc/mount_utils.h \
+			  ../lxc/namespace.c ../lxc/namespace.h \
+			  ../lxc/network.c ../lxc/network.h \
+			  ../lxc/nl.c ../lxc/nl.h \
+			  ../lxc/parse.c ../lxc/parse.h \
+			  ../lxc/process_utils.c ../lxc/process_utils.h \
+			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			  ../lxc/start.c ../lxc/start.h \
+			  ../lxc/state.c ../lxc/state.h \
+			  ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			  ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			  ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			  ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			  ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			  ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			  ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			  ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			  ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			  ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			  ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
+			  ../lxc/sync.c ../lxc/sync.h \
+			  ../lxc/string_utils.c ../lxc/string_utils.h \
+			  ../lxc/terminal.c ../lxc/terminal.h \
+			  ../lxc/utils.c ../lxc/utils.h \
+			  ../lxc/uuid.c ../lxc/uuid.h \
+			  $(LSM_SOURCES)
+if ENABLE_SECCOMP
+lxc_test_proc_pid_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
+if !HAVE_STRCHRNUL
+lxc_test_proc_pid_SOURCES += ../include/strchrnul.c ../include/strchrnul.h
+endif
+
+if !HAVE_STRLCPY
+lxc_test_proc_pid_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+lxc_test_proc_pid_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_OPENPTY
+lxc_test_proc_pid_SOURCES += ../include/openpty.c ../include/openpty.h
+endif
+
+if IS_BIONIC
+lxc_test_proc_pid_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+			     ../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_GETGRGID_R
+lxc_test_proc_pid_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
+endif
+
+if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
+lxc_test_proc_pid_SOURCES += ../include/prlimit.c ../include/prlimit.h
+endif
+endif
+
 AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	     -DLXCPATH=\"$(LXCPATH)\" \
 	     -DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
@@ -1416,6 +1578,7 @@ bin_PROGRAMS = lxc-test-api-reboot \
 	       lxc-test-may-control \
 	       lxc-test-mount-injection \
 	       lxc-test-parse-config-file \
+	       lxc-test-proc-pid \
 	       lxc-test-raw-clone \
 	       lxc-test-reboot \
 	       lxc-test-rootfs-options \
@@ -1426,6 +1589,7 @@ bin_PROGRAMS = lxc-test-api-reboot \
 	       lxc-test-snapshot \
 	       lxc-test-startone \
 	       lxc-test-state-server \
+	       lxc-test-sysctls \
 	       lxc-test-sys-mixed \
 	       lxc-test-utils
 
@@ -1527,6 +1691,7 @@ EXTRA_DIST = arch_parse.c \
 	     may_control.c \
 	     mount_injection.c \
 	     parse_config_file.c \
+	     proc_pid.c \
 	     rootfs_options.c \
 	     saveconfig.c \
 	     shortlived.c \
@@ -1535,6 +1700,7 @@ EXTRA_DIST = arch_parse.c \
 	     startone.c \
 	     state_server.c \
 	     share_ns.c \
+	     sysctls.c \
 	     sys_mixed.c
 
 clean-local:

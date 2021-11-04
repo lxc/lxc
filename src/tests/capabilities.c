@@ -85,8 +85,7 @@ static int capabilities_deny(void *payload)
 
 static int run(int (*test)(void *), bool allow)
 {
-	__do_close int fd_log = -EBADF;
-	int fret = -1;
+	int fd_log = -EBADF, fret = -1;
 	lxc_attach_options_t attach_options = LXC_ATTACH_OPTIONS_DEFAULT;
 	int ret;
 	pid_t pid;

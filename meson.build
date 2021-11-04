@@ -284,8 +284,10 @@ endforeach
 
 if wants_io_uring == true
 	liburing = dependency('liburing')
-	have = cc.get_define('IORING_POLL_ADD_MULTI', prefix : '#include <liburing.h>', dependencies: liburing)
-	conf.set10('HAVE_LIBURING', have)
+	if cc.has_function('io_uring_prep_poll_add', prefix : '#include <liburing.h>', dependencies: liburing) == false
+		error('liburing version does not support IORING_POLL_ADD_MULTI')
+	endif
+	conf.set10('HAVE_LIBURING', true)
 endif
 
 sh = find_program('sh')
