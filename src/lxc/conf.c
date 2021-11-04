@@ -3305,8 +3305,11 @@ int setup_sysctl_parameters(struct lxc_conf *conf)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to setup sysctl parameters %s to %s",
 					       sysctl->key, sysctl->value);
+
+		TRACE("Setting %s to %s", filename, sysctl->value);
 	}
 
+	TRACE("Setup /proc/sys settings");
 	return 0;
 }
 
@@ -3334,6 +3337,8 @@ int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to setup proc filesystem %s to %s",
 					       proc->filename, proc->value);
+
+		TRACE("Setting %s to %s", filename, proc->value);
 	}
 
 	TRACE("Setup /proc/%d settings", pid);
