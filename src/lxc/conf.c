@@ -3288,7 +3288,7 @@ int setup_sysctl_parameters(struct lxc_conf *conf)
 	char filename[PATH_MAX] = {0};
 	struct lxc_sysctl *sysctl, *nsysctl;
 
-	if (!list_empty(&conf->sysctls))
+	if (list_empty(&conf->sysctls))
 		return 0;
 
 	list_for_each_entry_safe(sysctl, nsysctl, &conf->sysctls, head) {
@@ -3317,7 +3317,7 @@ int setup_proc_filesystem(struct lxc_conf *conf, pid_t pid)
 	char filename[PATH_MAX] = {0};
 	struct lxc_proc *proc;
 
-	if (!list_empty(&conf->procs))
+	if (list_empty(&conf->procs))
 		return 0;
 
 	list_for_each_entry(proc, &conf->procs, head) {
