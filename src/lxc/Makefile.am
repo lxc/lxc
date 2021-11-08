@@ -2631,7 +2631,7 @@ endif
 
 if ENABLE_PAM
 if HAVE_PAM
-pam_LTLIBRARIES = pam_cgfs.la
+exec_pam_LTLIBRARIES = pam_cgfs.la
 
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
 		      file_utils.c file_utils.h \
@@ -2661,7 +2661,7 @@ pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) \
 endif
 endif
 
-install-exec-local: install-libLTLIBRARIES
+install-exec-hook:
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
 	mv $(shell readlink -f $(DESTDIR)$(libdir)/liblxc.so) $(DESTDIR)$(libdir)/liblxc.so.@LXC_ABI@
@@ -2669,10 +2669,15 @@ install-exec-local: install-libLTLIBRARIES
 	cd $(DESTDIR)$(libdir); \
 	ln -sf liblxc.so.@LXC_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)); \
 	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) liblxc.so
-
+if ENABLE_PAM
+if HAVE_PAM
+	$(RM) "$(DESTDIR)$(exec_pamdir)/pam_cgfs.la"
+	$(RM) "$(DESTDIR)$(exec_pamdir)/pam_cgfs.a"
+endif
+endif
 if ENABLE_COMMANDS
-install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
+
 if ENABLE_BASH
 install-data-local:
 	cd $(DESTDIR)$(bashcompdir); \
@@ -2693,10 +2698,6 @@ endif
 
 if ENABLE_PAM
 if HAVE_PAM
-	$(RM) $(DESTDIR)$(pamdir)/pam_cgfs.so*
-
-install-data-hook: install-pamLTLIBRARIES
-	$(RM) "$(DESTDIR)$(pamdir)/pam_cgfs.la"
-	$(RM) "$(DESTDIR)$(pamdir)/pam_cgfs.a"
+	$(RM) $(DESTDIR)$(exec_pamdir)/pam_cgfs.so*
 endif
 endif

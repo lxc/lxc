@@ -636,19 +636,19 @@ AM_COND_IF([ENABLE_PAM],
 		[pamdir],
 		[AS_HELP_STRING([--with-pamdir=PATH],[Specify the directory where PAM modules are stored,
 							or "none" if PAM modules are not to be built])],
-		[pamdir=$withval],
+		[exec_pamdir=$withval],
 		[
 			if test "${prefix}" = "/usr"; then
-				pamdir="/lib${libdir##*/lib}/security"
+				exec_pamdir="/lib${libdir##*/lib}/security"
 			else
-				pamdir="\$(libdir)/security"
+				exec_pamdir="\$(libdir)/security"
 			fi
 		]
 	)])
 
-AM_CONDITIONAL([HAVE_PAM], [test x"$pamdir" != "xnone"])
+AM_CONDITIONAL([HAVE_PAM], [test x"$exec_pamdir" != "xnone"])
 AM_COND_IF([ENABLE_PAM],
-	[if test "z$pamdir" != "znone"; then
+	[if test "z$exec_pamdir" != "znone"; then
 		AC_ARG_VAR([PAM_CFLAGS], [C compiler flags for pam])
 		AC_ARG_VAR([PAM_LIBS], [linker flags for pam])
 		AC_CHECK_LIB(
@@ -659,7 +659,7 @@ AM_COND_IF([ENABLE_PAM],
 			])
 
 		AC_SUBST(PAM_LIBS)
-		AC_SUBST([pamdir])
+		AC_SUBST([exec_pamdir])
 	fi])
 
 # Some systems lack PR_CAPBSET_DROP definition => HAVE_DECL_PR_CAPBSET_DROP
@@ -1130,7 +1130,7 @@ Security features:
 
 PAM:
  - PAM module: $enable_pam
- - cgroup PAM module: $pamdir
+ - cgroup PAM module: $exec_pamdir
 
 Documentation:
  - examples: $enable_examples
