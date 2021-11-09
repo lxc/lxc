@@ -21,6 +21,10 @@
 
 #include "compiler.h"
 
+#if HAVE_LIBURING
+#include <liburing.h>
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -34,6 +38,27 @@
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE
 #define __S_ISTYPE(mode, mask) (((mode)&S_IFMT) == (mask))
+#endif
+
+/*
+ * POLL_ADD flags. Note that since sqe->poll_events is the flag space, the
+ * command flags for POLL_ADD are stored in sqe->len.
+ *
+ * IORING_POLL_ADD_MULTI	Multishot poll. Sets IORING_CQE_F_MORE if
+ *				the poll handler will continue to report
+ *				CQEs on behalf of the same SQE.
+ */
+#ifndef IORING_POLL_ADD_MULTI
+#define IORING_POLL_ADD_MULTI (1U << 0)
+#endif
+
+/*
+ * cqe->flags
+ *
+ * IORING_CQE_F_MORE	If set, parent SQE will generate more CQE entries
+ */
+#ifndef IORING_CQE_F_MORE
+#define IORING_CQE_F_MORE (1U << 1)
 #endif
 
 /* capabilities */
