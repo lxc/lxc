@@ -15,6 +15,10 @@
 #include "macro.h"
 #include "mainloop.h"
 
+#if HAVE_LIBURING
+#include <liburing.h>
+#endif
+
 lxc_log_define(mainloop, lxc);
 
 #define CANCEL_RECEIVED (1 << 0)
