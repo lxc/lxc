@@ -551,7 +551,7 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 
 	remove_self();
 
-	pid = vfork();
+	pid = fork();
 	if (pid < 0)
 		exit(EXIT_FAILURE);
 
