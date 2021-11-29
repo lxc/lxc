@@ -2608,12 +2608,6 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	int fd, lret;
 	bool ret = false, need_disklock = false;
 
-	if (!alt_file)
-		alt_file = c->configfile;
-
-	if (!alt_file)
-		return false;
-
 	/* If we haven't yet loaded a config, load the stock config. */
 	if (!c->lxc_conf) {
 		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
@@ -2625,7 +2619,13 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 		}
 	}
 
-	if (!create_container_dir(c))
+	if (!alt_file) {
+		alt_file = c->configfile;
+		if (!create_container_dir(c))
+			return false;
+	}
+
+	if (!alt_file)
 		return false;
 
 	/* If we're writing to the container's config file, take the disk lock.
