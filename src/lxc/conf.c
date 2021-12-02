@@ -710,7 +710,7 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_RO,     "sysfs",                                          "%r/sys",                     "sysfs", MS_RDONLY,                                       NULL, false },
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "sysfs",                                          "%r/sys",                     "sysfs", MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC,          NULL, false },
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "%r/sys/devices/virtual/net",                     "%r/sys/devices/virtual/net",  NULL,   MS_BIND,                                         NULL, false },
-		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  NULL,                                             "%r/sys/devices/virtual/net",  NULL,   MS_REMOUNT|MS_NOSUID|MS_NODEV|MS_NOEXEC,         NULL, false },
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  NULL,                                             "%r/sys/devices/virtual/net",  NULL,   MS_REMOUNT|MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL, false },
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, false }
 	};
 	struct lxc_conf *conf = handler->conf;
