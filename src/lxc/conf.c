@@ -708,9 +708,11 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		{ LXC_AUTO_PROC_MASK, LXC_AUTO_PROC_RW,    "proc",                                           "%r/proc",                    "proc",  MS_NODEV|MS_NOEXEC|MS_NOSUID,                    NULL, false },
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_RW,     "sysfs",                                          "%r/sys",                     "sysfs", 0,                                               NULL, false },
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_RO,     "sysfs",                                          "%r/sys",                     "sysfs", MS_RDONLY,                                       NULL, false },
+		/* /proc/sys is used as a temporary staging directory for the read-write sysfs mount and unmounted after binding net */
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "sysfs",                                          "%r/proc/sys",                "sysfs", MS_NOSUID|MS_NODEV|MS_NOEXEC,                    NULL, false },
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "sysfs",                                          "%r/sys",                     "sysfs", MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC,          NULL, false },
-		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "%r/sys/devices/virtual/net",                     "%r/sys/devices/virtual/net",  NULL,   MS_BIND,                                         NULL, false },
-		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  NULL,                                             "%r/sys/devices/virtual/net",  NULL,   MS_REMOUNT|MS_NOSUID|MS_NODEV|MS_NOEXEC,         NULL, false },
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "%r/proc/sys/devices/virtual/net",                "%r/sys/devices/virtual/net", NULL,    MS_BIND,                                         NULL, false },
+		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  "%r/proc/sys",                                    NULL,                         NULL,    0,                                               NULL, false },
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, false }
 	};
 	struct lxc_conf *conf = handler->conf;
@@ -778,11 +780,18 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 				return syserror_set(-ENOMEM, "Failed to create source path");
 		}
 
-		if (!default_mounts[i].destination)
-			return syserror_set(-EINVAL, "BUG: auto mounts destination %d was NULL", i);
-
 		if (!has_cap_net_admin && default_mounts[i].requires_cap_net_admin) {
 			TRACE("Container does not have CAP_NET_ADMIN. Skipping \"%s\" mount", default_mounts[i].source ?: "(null)");
+			continue;
+		}
+
+		if (!default_mounts[i].destination) {
+			ret = umount2(source, MNT_DETACH);
+			if (ret < 0)
+				return log_error_errno(-1, errno,
+						       "Failed to unmount \"%s\"",
+						       source);
+			TRACE("Unmounted automount \"%s\"", source);
 			continue;
 		}
 
