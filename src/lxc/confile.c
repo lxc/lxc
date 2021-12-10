@@ -1204,7 +1204,7 @@ static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 static int set_config_seccomp_notify_cookie(const char *key, const char *value,
 					    struct lxc_conf *lxc_conf, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	return set_config_string_item(&lxc_conf->seccomp.notifier.cookie, value);
 #else
 	return ret_errno(ENOSYS);
@@ -1214,7 +1214,7 @@ static int set_config_seccomp_notify_cookie(const char *key, const char *value,
 static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 					   struct lxc_conf *lxc_conf, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	const char *offset;
 
 	if (lxc_config_value_empty(value))
@@ -4399,7 +4399,7 @@ static int get_config_seccomp_allow_nesting(const char *key, char *retv,
 static int get_config_seccomp_notify_cookie(const char *key, char *retv, int inlen,
 					    struct lxc_conf *c, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	return lxc_get_conf_str(retv, inlen, c->seccomp.notifier.cookie);
 #else
 	return ret_errno(ENOSYS);
@@ -4409,7 +4409,7 @@ static int get_config_seccomp_notify_cookie(const char *key, char *retv, int inl
 static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inlen,
 					   struct lxc_conf *c, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	return lxc_get_conf_str(retv, inlen,
 				(c->seccomp.notifier.proxy_addr.sun_path[0]) == '/'
 				    ? &c->seccomp.notifier.proxy_addr.sun_path[0]
@@ -5142,7 +5142,7 @@ static inline int clr_config_seccomp_allow_nesting(const char *key,
 static inline int clr_config_seccomp_notify_cookie(const char *key,
 						   struct lxc_conf *c, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	free_disarm(c->seccomp.notifier.cookie);
 	return 0;
 #else
@@ -5153,7 +5153,7 @@ static inline int clr_config_seccomp_notify_cookie(const char *key,
 static inline int clr_config_seccomp_notify_proxy(const char *key,
 						   struct lxc_conf *c, void *data)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	memset(&c->seccomp.notifier.proxy_addr, 0,
 	       sizeof(c->seccomp.notifier.proxy_addr));
 	return 0;

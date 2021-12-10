@@ -6,10 +6,12 @@
 #include "config.h"
 
 #include <errno.h>
+
 #ifdef HAVE_SECCOMP
 #include <linux/seccomp.h>
 #include <seccomp.h>
 #endif
+
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -59,8 +61,6 @@ struct seccomp_notify {
 	struct seccomp_notif_resp *rsp_buf;
 	char *cookie;
 };
-
-#define HAVE_SECCOMP_NOTIFY 1
 
 #endif /* HAVE_DECL_SECCOMP_NOTIFY_FD */
 

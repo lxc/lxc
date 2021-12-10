@@ -701,7 +701,7 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 
 int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	bool stopped = false;
 	int fd;
 	ssize_t ret;
@@ -732,7 +732,7 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 						  struct lxc_handler *handler,
 						  struct lxc_async_descr *descr)
 {
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EBADF,
 	};
@@ -1543,7 +1543,7 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 					/* unused */ unsigned int flags)
 {
 
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	bool stopped = false;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd;
@@ -1568,7 +1568,7 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 {
 	struct lxc_cmd_rsp rsp = {0};
 
-#ifdef HAVE_SECCOMP_NOTIFY
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	int ret;
 	__do_close int recv_fd = -EBADF;
 
