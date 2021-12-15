@@ -1149,6 +1149,21 @@ bool lxc_config_item_is_supported(const char *key);
  */
 bool lxc_has_api_extension(const char *extension);
 
+/*!
+ * \brief This is an API version of the lxc-usernsexec binary
+ *
+ * \param argc The number of arguments (as you would pass to lxc-usernsexec)
+ * \param argv The argument values (as you would pass to lxc-usernsexec)
+ * \param[out] status The exit status of the task.
+ *
+ * \return returns < 0 indicates a parsing error in arguments, 0 is success in
+ * running the task (but does not indicate that the task exited successfully,
+ * see status above for that), and > 0 is a failure to run the container or
+ * command somehow.
+ *
+ */
+extern int lxc_usernsexec(int argc, char *argv[], int *status);
+
 #ifdef  __cplusplus
 }
 #endif

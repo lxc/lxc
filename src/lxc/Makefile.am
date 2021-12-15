@@ -164,6 +164,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    syscall_numbers.h \
 		    syscall_wrappers.h \
 		    terminal.c terminal.h \
+		    usernsexec.c \
 		    utils.c utils.h \
 		    uuid.c uuid.h \
 		    version.h \
