@@ -66,7 +66,13 @@ is_probed() {
     fi
 }
 
-echo "LXC version $(lxc-start --version)"
+# Fallback to using 'lxc info' to parse LXC version (for lxd compatability)
+if [ -x lxc-start ]; then
+  LXCVER="$(lxc-start --version)"
+elif [ -x lxc ]; then
+  LXCVER="$(lxc info | awk '$1 ~ /driver_version/ {print $2}')"
+fi
+echo "LXC version ${LXCVER-not found}"
 
 if [ ! -f $CONFIG ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
