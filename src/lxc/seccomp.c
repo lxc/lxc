@@ -1373,6 +1373,7 @@ int seccomp_notify_cleanup_handler(int fd, void *data)
 	 * seccomp notify handler through the command socket (e.g. for attach)
 	 * and so we won't touch the container's config.
 	 */
+	close(fd);
 #endif
 	return 0;
 }
