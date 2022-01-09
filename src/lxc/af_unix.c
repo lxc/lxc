@@ -516,7 +516,7 @@ int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 	ret = connect(fd, (struct sockaddr *)addr,
 		      offsetof(struct sockaddr_un, sun_path) + len);
 	if (ret < 0)
-		return syserror("Failed to bind new AF_UNIX socket");
+		return syserror("Failed to connect AF_UNIX socket");
 
 	return move_fd(fd);
 }
