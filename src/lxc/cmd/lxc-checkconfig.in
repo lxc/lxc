@@ -230,10 +230,12 @@ echo
 echo -n "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
 echo
 echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
-echo
-echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
-echo
-echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+if ( [ $KVER_MAJOR -gt 3 ] && [ $KVER_MINOR -gt 6 ] ) && [ $KVER_MAJOR -lt 5 ] ; then
+	echo
+	echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
+	echo
+	echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+fi
 echo
 echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
 echo
