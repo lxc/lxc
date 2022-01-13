@@ -327,8 +327,15 @@ static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
 {
 	__u32 idx;
 
-	if (!ops || !ops->hierarchies)
+	if (!ops)
 		return ret_errno(ENOENT);
+
+	/* Always let the client now what cgroup layout we're dealing with. */
+	ctx->layout = ops->cgroup_layout;
+
+	/* No writable cgroup hierarchies. */
+	if (!ops->hierarchies)
+		return 0;
 
 	for (idx = 0; ops->hierarchies[idx]; idx++) {
 		if (idx >= CGROUP_CTX_MAX_FD)
@@ -336,12 +343,8 @@ static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
 
 		ctx->fd[idx] = ops->hierarchies[idx]->dfd_con;
 	}
-
-	if (idx == 0)
-		return ret_errno(ENOENT);
-
 	ctx->fd_len = idx;
-	ctx->layout = ops->cgroup_layout;
+
 	if (ops->unified && ops->unified->dfd_con > 0)
 		ctx->utilities = ops->unified->utilities;
 
