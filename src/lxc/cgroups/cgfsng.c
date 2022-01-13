@@ -3116,10 +3116,14 @@ static const char *stable_order(const char *controllers)
 	return unprefix(controllers);
 }
 
+#define CGFSNG_LAYOUT_LEGACY	BIT(0)
+#define CGFSNG_LAYOUT_UNIFIED	BIT(1)
+
 static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				bool unprivileged)
 {
 	__do_free char *cgroup_info = NULL;
+	unsigned int layout_mask = 0;
 	char *it;
 
 	/*
@@ -3147,6 +3151,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			char *unified_mnt;
 
 			type = UNIFIED_HIERARCHY;
+			layout_mask |= CGFSNG_LAYOUT_UNIFIED;
 
 			current_cgroup = current_unified_cgroup(relative, line);
 			if (IS_ERR(current_cgroup))
@@ -3205,6 +3210,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			char *__controllers, *__current_cgroup;
 
 			type = LEGACY_HIERARCHY;
+			layout_mask |= CGFSNG_LAYOUT_UNIFIED;
 
 			__controllers = strchr(line, ':');
 			if (!__controllers)
@@ -3306,6 +3312,28 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			if (bpf_devices_cgroup_supported())
 				ops->unified->utilities |= DEVICES_CONTROLLER;
 			ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+		}
+	}
+
+	/*
+	 * If we still don't know the cgroup layout at this point it means we
+	 * have not found any writable cgroup hierarchies. Infer the layout
+	 * from the layout bitmask we created when parsing the cgroups.
+	 *
+	 * Keep the ordering in the switch otherwise the bistmask-based
+	 * matching won't work. 
+	 */
+	if (ops->cgroup_layout == CGROUP_LAYOUT_UNKNOWN) {
+		switch (layout_mask) {
+		case (CGFSNG_LAYOUT_LEGACY | CGFSNG_LAYOUT_UNIFIED):
+			ops->cgroup_layout = CGROUP_LAYOUT_HYBRID;
+			break;
+		case CGFSNG_LAYOUT_LEGACY:
+			ops->cgroup_layout = CGROUP_LAYOUT_LEGACY;
+			break;
+		case CGFSNG_LAYOUT_UNIFIED:
+			ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+			break;
 		}
 	}
 
@@ -3470,6 +3498,10 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	if (ret < 0)
 		return ret_errno(ENOSYS);
 
+	if (ctx->fd_len == 0)
+		return log_trace(0, "Container runs with unwritable %s cgroup layout",
+				 cgroup_layout_name(ctx->layout));
+
 	pidstr_len = strnprintf(pidstr, sizeof(pidstr), "%d", pid);
 	if (pidstr_len < 0)
 		return pidstr_len;
@@ -3486,9 +3518,6 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 		else
 			TRACE("Attached to cgroup fd %d", dfd_con);
 	}
-
-	if (idx == 0)
-		return syserror_set(-ENOENT, "Failed to attach to cgroups");
 
 	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->layout));
 	return 0;

@@ -211,7 +211,11 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		break;
 	case LXC_CMD_GET_CGROUP_CTX:
 		fds->fd_count_max = CGROUP_CTX_MAX_FD;
-		fds->flags |= UNIX_FDS_ACCEPT_LESS;
+		/* 
+		 * The container might run without any cgroup support at all,
+		 * i.e. no writable cgroup hierarchy was found.
+		 */
+		fds->flags |= UNIX_FDS_ACCEPT_LESS  | UNIX_FDS_ACCEPT_NONE ;
 		break;
 	default:
 		fds->fd_count_max = 0;
@@ -762,9 +766,14 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 		return sysdebug("Failed to process \"%s\"",
 				lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
 
-	if (cmd.rsp.ret < 0)
+	if (cmd.rsp.ret < 0) {
+		/* Container does not have any writable cgroups. */
+		if (ret_ctx->fd_len == 0)
+			return 0;
+
 		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
 				    lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
+	}
 
 	return 0;
 }
