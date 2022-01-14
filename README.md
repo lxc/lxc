@@ -169,7 +169,7 @@ versioning](http://semver.org/) scheme.
 
 Source for the latest released version can always be downloaded from
 
-- https://linuxcontainers.org/downloads/
+- https://linuxcontainers.org/lxc/downloads/
 
 You can browse the up to the minute source code and change history online
 
