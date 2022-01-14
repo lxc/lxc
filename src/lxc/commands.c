@@ -124,7 +124,7 @@ static ssize_t lxc_cmd_rsp_recv_fds(int fd_sock, struct unix_fds *fds,
 
 	ret = lxc_abstract_unix_recv_fds(fd_sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
-		return log_error(ret, "Failed to receive file descriptors");
+		return log_error(ret, "Failed to receive file descriptors for command \"%s\"", cur_cmdstr);
 
 	/*
 	 * If we end up here with fewer or more file descriptors the caller
@@ -133,16 +133,16 @@ static ssize_t lxc_cmd_rsp_recv_fds(int fd_sock, struct unix_fds *fds,
 	 */
 
 	if (fds->flags & UNIX_FDS_RECEIVED_EXACT)
-		return log_debug(ret, "Received exact number of file descriptors %u == %u",
-				 fds->fd_count_max, fds->fd_count_ret);
+		return log_debug(ret, "Received exact number of file descriptors %u == %u for command \"%s\"",
+				 fds->fd_count_max, fds->fd_count_ret, cur_cmdstr);
 
 	if (fds->flags & UNIX_FDS_RECEIVED_LESS)
-		return log_debug(ret, "Received less file descriptors %u < %u",
-				 fds->fd_count_ret, fds->fd_count_max);
+		return log_debug(ret, "Received less file descriptors %u < %u for command \"%s\"",
+				 fds->fd_count_ret, fds->fd_count_max, cur_cmdstr);
 
 	if (fds->flags & UNIX_FDS_RECEIVED_MORE)
-		return log_debug(ret, "Received more file descriptors (excessive fds were automatically closed) %u > %u",
-				 fds->fd_count_ret, fds->fd_count_max);
+		return log_debug(ret, "Received more file descriptors (excessive fds were automatically closed) %u > %u for command \"%s\"",
+				 fds->fd_count_ret, fds->fd_count_max, cur_cmdstr);
 
 	DEBUG("Command \"%s\" received response", cur_cmdstr);
 	return ret;
@@ -211,7 +211,11 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		break;
 	case LXC_CMD_GET_CGROUP_CTX:
 		fds->fd_count_max = CGROUP_CTX_MAX_FD;
-		fds->flags |= UNIX_FDS_ACCEPT_LESS;
+		/* 
+		 * The container might run without any cgroup support at all,
+		 * i.e. no writable cgroup hierarchy was found.
+		 */
+		fds->flags |= UNIX_FDS_ACCEPT_LESS  | UNIX_FDS_ACCEPT_NONE ;
 		break;
 	default:
 		fds->fd_count_max = 0;
@@ -762,9 +766,14 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 		return sysdebug("Failed to process \"%s\"",
 				lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
 
-	if (cmd.rsp.ret < 0)
+	if (cmd.rsp.ret < 0) {
+		/* Container does not have any writable cgroups. */
+		if (ret_ctx->fd_len == 0)
+			return 0;
+
 		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
 				    lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
+	}
 
 	return 0;
 }
