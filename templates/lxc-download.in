@@ -147,7 +147,13 @@ gpg_setup() {
   done
 
   if [ -z "${success}" ]; then
-    echo "ERROR: Unable to fetch GPG key from keyserver"
+    echo "ERROR: Unable to fetch GPG key from keyserver" >&2
+    TMP="$(basename "${DOWNLOAD_KEYSERVER}")"
+    if which dig > /dev/null \
+      && [ "$(dig "$TMP" +short)" == "" ] ; then
+      echo "$TMP is not a valid domain" >&2
+    fi
+    echo "try replacing /usr/share/lxc/templates/lxc-download with https://raw.githubusercontent.com/lxc/lxc/master/templates/lxc-download.in" >&2
     exit 1
   fi
 
