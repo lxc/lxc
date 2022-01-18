@@ -5568,15 +5568,8 @@ on_error:
 	if (pid < 0)
 		return log_error(-1, "Failed to create child process");
 
-	ret = lxc_wait_for_pid_status(pid);
-	if (ret < 0)
-		return syserror("Failed to wait on child process %d", pid);
-	if (WIFSIGNALED(ret))
-		return log_error(-1, "Child process %d terminated by signal %ld", pid, WTERMSIG(ret));
-	if (!WIFEXITED(ret))
-		return log_error(-1, "Child did not termiate correctly");
-	if (WEXITSTATUS(ret))
-		return log_error(-1, "Child terminated with error %ld", WEXITSTATUS(ret));
+	if (!wait_exited(pid))
+		return -1;
 
 	return 0;
 }

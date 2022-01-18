@@ -1777,7 +1777,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	int partial_fd;
 	mode_t mask;
 	pid_t pid;
-	bool ret = false, rootfs_managed = true;
+	bool bret = false, rootfs_managed = true;
 
 	if (!c)
 		return false;
@@ -1785,7 +1785,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (t) {
 		path_template = get_template_path(t);
 		if (!path_template)
-			return syserror_set(ENOENT, "Template \"%s\" not found", t);
+			return log_error(false, "Template \"%s\" not found", t);
 	}
 
 	/* If a template is passed in, and the rootfs already is defined in the
@@ -1794,15 +1794,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	 */
 	if (do_lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
 	    access(c->lxc_conf->rootfs.path, F_OK) == 0 && path_template)
-		return syserror_set(EEXIST, "Container \"%s\" already exists in \"%s\"", c->name, c->config_path);
+		return log_error(false, "Container \"%s\" already exists in \"%s\"",
+				 c->name, c->config_path);
 
 	if (!c->lxc_conf &&
 	    !do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config")))
-		return syserror_set(EINVAL, "Failed to load default configuration file %s",
-				    lxc_global_config_value("lxc.default_config"));
+		return log_error(false, "Failed to load default configuration file %s",
+				 lxc_global_config_value("lxc.default_config"));
 
 	if (!create_container_dir(c))
-		return syserror_set(EINVAL, "Failed to create container %s", c->name);
+		return log_error(false, "Failed to create container %s", c->name);
 
 	if (c->lxc_conf->rootfs.path)
 		rootfs_managed = false;
@@ -1817,13 +1818,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			ERROR("Failed to save initial config for \"%s\"", c->name);
 			goto out;
 		}
-		ret = true;
+
+		bret = true;
 		goto out;
 	}
 
 	/* Rootfs passed into configuration, but does not exist. */
-	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
+	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0) {
+		ERROR("The rootfs \"%s\" does not exist",  c->lxc_conf->rootfs.path);
 		goto out;
+	}
 
 	if (do_lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !path_template) {
 		/* Rootfs already existed, user just wanted to save the loaded
@@ -1832,14 +1836,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		if (!c->save_config(c, NULL))
 			ERROR("Failed to save initial config for \"%s\"", c->name);
 
-		ret = true;
+		bret = true;
 		goto out;
 	}
 
 	/* Mark that this container is being created */
 	partial_fd = create_partial(c);
-	if (partial_fd < 0)
+	if (partial_fd < 0) {
+		SYSERROR("Failed to mark container as being partially created");
 		goto out;
+	}
 
 	/* No need to get disk lock bc we have the partial lock. */
 
@@ -1881,7 +1887,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		_exit(EXIT_SUCCESS);
 	}
 
-	if (wait_for_pid(pid) != 0)
+	if (!wait_exited(pid))
 		goto out_unlock;
 
 	/* Reload config to get the rootfs. */
@@ -1906,14 +1912,14 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		}
 	}
 
-	ret = load_config_locked(c, c->configfile);
+	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
 	umask(mask);
 	remove_partial(c, partial_fd);
 
 out:
-	if (!ret) {
+	if (!bret) {
 		bool reset_managed = c->lxc_conf->rootfs.managed;
 
 		/*
@@ -1926,7 +1932,7 @@ out:
 		c->lxc_conf->rootfs.managed = reset_managed;
 	}
 
-	return ret;
+	return bret;
 }
 
 static bool lxcapi_create(struct lxc_container *c, const char *t,

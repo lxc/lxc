@@ -81,6 +81,7 @@ static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
 __hidden extern int wait_for_pid(pid_t pid);
 __hidden extern int lxc_wait_for_pid_status(pid_t pid);
 __hidden extern int wait_for_pidfd(int pidfd);
+__hidden extern bool wait_exited(pid_t pid);
 
 #if HAVE_OPENSSL
 __hidden extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
