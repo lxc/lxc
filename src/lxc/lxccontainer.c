@@ -2605,28 +2605,26 @@ WRAP_API_3(int, lxcapi_get_keys, const char *, char *, int)
 
 static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
-	int fd, lret;
-	bool ret = false, need_disklock = false;
+	__do_close int fd_config = -EBADF;
+	int lret = -1;
+	bool bret = false, need_disklock = false;
 
 	if (!alt_file)
 		alt_file = c->configfile;
 
 	if (!alt_file)
-		return false;
+		return log_error(false, "No config file found");
 
 	/* If we haven't yet loaded a config, load the stock config. */
 	if (!c->lxc_conf) {
 		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s "
-			      "while saving %s",
-			      lxc_global_config_value("lxc.default_config"),
-			      c->name);
-			return false;
+			return log_error(false, "Error loading default configuration file %s while saving %s",
+					 lxc_global_config_value("lxc.default_config"), c->name);
 		}
 	}
 
 	if (!create_container_dir(c))
-		return false;
+		return log_error(false, "Failed to create container directory");
 
 	/* If we're writing to the container's config file, take the disk lock.
 	 * Otherwise just take the memlock to protect the struct lxc_container
@@ -2640,19 +2638,23 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	else
 		lret = container_mem_lock(c);
 	if (lret)
-		return false;
+		return log_error(false, "Failed to acquire lock");
 
-	fd = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-		  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (fd < 0)
+	fd_config = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (fd_config < 0) {
+		SYSERROR("Failed to open config file \"%s\"", alt_file);
 		goto on_error;
+	}
 
-	lret = write_config(fd, c->lxc_conf);
-	close(fd);
-	if (lret < 0)
+	lret = write_config(fd_config, c->lxc_conf);
+	if (lret < 0) {
+		SYSERROR("Failed to write config file \"%s\"", alt_file);
 		goto on_error;
+	}
 
-	ret = true;
+	bret = true;
+	TRACE("Saved config file \"%s\"", alt_file);
 
 on_error:
 	if (need_disklock)
@@ -2660,7 +2662,7 @@ on_error:
 	else
 		container_mem_unlock(c);
 
-	return ret;
+	return bret;
 }
 
 WRAP_API_1(bool, lxcapi_save_config, const char *)
