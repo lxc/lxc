@@ -5505,11 +5505,20 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 		close_prot_errno_disarm(sock_fds[0]);
 
-		if (!lxc_switch_uid_gid(0, 0))
+		if (!lxc_drop_groups() && errno != EPERM)
 			_exit(EXIT_FAILURE);
 
-		if (!lxc_drop_groups())
+		ret = setresgid(0, 0, 0);
+		if (ret < 0) {
+			SYSERROR("Failed to setresgid(0, 0, 0)");
 			_exit(EXIT_FAILURE);
+		}
+
+		ret = setresuid(0, 0, 0);
+		if (ret < 0) {
+			SYSERROR("Failed to setresuid(0, 0, 0)");
+			_exit(EXIT_FAILURE);
+		}
 
 		ret = fchown(target_fd, 0, st.st_gid);
 		if (ret) {
