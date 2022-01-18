@@ -70,6 +70,7 @@ trap cleanup EXIT SIGHUP SIGINT SIGTERM
 deluser usernic-user || true
 useradd usernic-user
 sudo mkdir -p /home/usernic-user
+sudo chmod 0711 /home/usernic-user
 sudo chown usernic-user: /home/usernic-user
 usermod -v 910000-919999 -w 910000-919999 usernic-user
 
