@@ -33,37 +33,21 @@ DOWNLOAD_DIST=
 DOWNLOAD_FLUSH_CACHE="false"
 DOWNLOAD_FORCE_CACHE="false"
 DOWNLOAD_INTERACTIVE="false"
-DOWNLOAD_KEYID="0xE7FB0CAEC8173D669066514CBAEFF88C22F6E216"
 DOWNLOAD_LIST_IMAGES="false"
 DOWNLOAD_MODE="system"
-DOWNLOAD_READY_GPG="false"
 DOWNLOAD_RELEASE=
 DOWNLOAD_SERVER="images.linuxcontainers.org"
-DOWNLOAD_SHOW_GPG_WARNING="true"
-DOWNLOAD_SHOW_HTTP_WARNING="true"
 DOWNLOAD_TARGET="system"
 DOWNLOAD_URL=
 DOWNLOAD_USE_CACHE="false"
-DOWNLOAD_VALIDATE="true"
 DOWNLOAD_VARIANT="default"
 DOWNLOAD_TEMP=
-DOWNLOAD_STANDARD_RESOLVER="false"
 
 LXC_MAPPED_GID=
 LXC_MAPPED_UID=
 LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
-
-if [ -z "${DOWNLOAD_KEYSERVER:-}" ]; then
-  DOWNLOAD_KEYSERVER="hkp://keyserver.ubuntu.com"
-
-  # Deal with GPG over http proxy
-  if [ -n "${http_proxy:-}" ]; then
-    DOWNLOAD_KEYSERVER="hkp://keyserver.ubuntu.com:80"
-    DOWNLOAD_GPG_PROXY="--keyserver-options http-proxy=\"${http_proxy}\""
-  fi
-fi
 
 # Make sure the usual locations are in PATH
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -87,85 +71,12 @@ wget_wrapper() {
 
 download_file() {
   if ! wget_wrapper --user-agent="lxc/@PACKAGE_VERSION@ compat:${DOWNLOAD_COMPAT_LEVEL}" -T 30 -q "https://${DOWNLOAD_SERVER}/$1" -O "$2" >/dev/null 2>&1; then
-    if ! wget_wrapper --user-agent="lxc/@PACKAGE_VERSION@ compat:${DOWNLOAD_COMPAT_LEVEL}" -T 30 -q "http://${DOWNLOAD_SERVER}/$1" -O "$2" >/dev/null 2>&1; then
-      if [ "$3" = "noexit" ]; then
-        return 1
-      else
-        echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
-        exit 1
-      fi
-    elif [ "${DOWNLOAD_SHOW_HTTP_WARNING}" = "true" ]; then
-      DOWNLOAD_SHOW_HTTP_WARNING="false"
-      echo "WARNING: Failed to download the file over HTTPs" 1>&2
-      echo "         The file was instead download over HTTP " 1>&2
-      echo "A server replay attack may be possible!" 1>&2
-    fi
-  fi
-}
-
-download_sig() {
-  if ! download_file "$1" "$2" noexit; then
-    if [ "${DOWNLOAD_VALIDATE}" = "true" ]; then
-      if [ "$3" = "normal" ]; then
-        echo "ERROR: Failed to download http://${DOWNLOAD_SERVER}/$1" 1>&2
-        exit 1
-      else
-        return 1
-      fi
+    if [ "$3" = "noexit" ]; then
+      return 1
     else
-      return 0
+      echo "ERROR: Failed to download https://${DOWNLOAD_SERVER}/$1" 1>&2
+      exit 1
     fi
-  fi
-}
-
-gpg_setup() {
-  if [ "${DOWNLOAD_VALIDATE}" = "false" ]; then
-    return
-  fi
-
-  if [ "${DOWNLOAD_READY_GPG}" = "true" ]; then
-    return
-  fi
-
-  echo "Setting up the GPG keyring"
-
-  mkdir -p "${DOWNLOAD_TEMP}/gpg"
-  chmod 700 "${DOWNLOAD_TEMP}/gpg"
-
-  if [ "${DOWNLOAD_STANDARD_RESOLVER}" = "true" ]; then
-    echo "standard-resolver" > "${DOWNLOAD_TEMP}/gpg/dirmngr.conf"
-  fi
-  export GNUPGHOME="${DOWNLOAD_TEMP}/gpg"
-
-  success=
-  for _ in $(seq 3); do
-    if gpg --keyserver "${DOWNLOAD_KEYSERVER}" ${DOWNLOAD_GPG_PROXY:-} \
-      --recv-keys "${DOWNLOAD_KEYID}" >/dev/null 2>&1; then
-      success=1
-      break
-    fi
-  done
-
-  if [ -z "${success}" ]; then
-    echo "ERROR: Unable to fetch GPG key from keyserver"
-    exit 1
-  fi
-
-  DOWNLOAD_READY_GPG="true"
-}
-
-gpg_validate() {
-  if [ "${DOWNLOAD_VALIDATE}" = "false" ]; then
-    if [ "${DOWNLOAD_SHOW_GPG_WARNING}" = "true" ]; then
-      echo "WARNING: Running without gpg validation!" 1>&2
-    fi
-    DOWNLOAD_SHOW_GPG_WARNING="false"
-    return 0
-  fi
-
-  if ! gpg --verify "$1" >/dev/null 2>&1; then
-    echo "ERROR: Invalid signature for $1" 1>&2
-    exit 1
   fi
 }
 
@@ -222,12 +133,8 @@ Required arguments:
 Optional arguments:
 [ --variant <variant> ]: Variant of the image (default: "default")
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
-[ --keyid <keyid> ]: GPG keyid (default: 0x...)
-[ --keyserver <keyserver> ]: GPG keyserver to use. Environment variable: DOWNLOAD_KEYSERVER
-[ --no-validate ]: Disable GPG validation (not recommended)
 [ --flush-cache ]: Flush the local copy (if present)
 [ --force-cache ]: Force the use of the local copy even if expired
-[ --standard-resolver ]: Force the use of the standard resolver
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -236,16 +143,12 @@ LXC internal arguments (do not pass manually!):
 [ --mapped-uid <map> ]: A uid map (user namespaces)
 [ --mapped-gid <map> ]: A gid map (user namespaces)
 
-Environment Variables:
-DOWNLOAD_KEYSERVER : The URL of the key server to use, instead of the default.
-                     Can be further overridden by using optional argument --keyserver
-
 EOF
   return 0
 }
 
 if ! options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
-server:,keyid:,keyserver:,no-validate,flush-cache,force-cache,name:,path:,\
+server:,flush-cache,force-cache,name:,path:,\
 rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
   usage
   exit 1
@@ -261,12 +164,8 @@ while :; do
     -a|--arch)     DOWNLOAD_ARCH="$2"; shift 2;;
     --variant)     DOWNLOAD_VARIANT="$2"; shift 2;;
     --server)      DOWNLOAD_SERVER="$2"; shift 2;;
-    --keyid)       DOWNLOAD_KEYID="$2"; shift 2;;
-    --keyserver)   DOWNLOAD_KEYSERVER="$2"; shift 2;;
-    --no-validate) DOWNLOAD_VALIDATE="false"; shift 1;;
     --flush-cache) DOWNLOAD_FLUSH_CACHE="true"; shift 1;;
     --force-cache) DOWNLOAD_FORCE_CACHE="true"; shift 1;;
-    --standard-resolver) STANDARD_RESOLVER="true"; shift 1;;
     --name)        LXC_NAME="$2"; shift 2;;
     --path)        LXC_PATH="$2"; shift 2;;
     --rootfs)      LXC_ROOTFS="$2"; shift 2;;
@@ -283,15 +182,6 @@ for bin in tar xz wget; do
     exit 1
   fi
 done
-
-# Check for GPG
-if [ "${DOWNLOAD_VALIDATE}" = "true" ]; then
-  if ! command -V gpg >/dev/null 2>&1; then
-    echo "ERROR: Missing recommended tool: gpg" 1>&2
-    echo "You can workaround this by using --no-validate" 1>&2
-    exit 1
-  fi
-fi
 
 # Check that we have all variables we need
 if [ -z "${LXC_NAME}" ] || [ -z "${LXC_PATH}" ] || [ -z "${LXC_ROOTFS}" ]; then
@@ -340,20 +230,13 @@ fi
 
 # Simply list images
 if [ "${DOWNLOAD_LIST_IMAGES}" = "true" ] || [ "${DOWNLOAD_INTERACTIVE}" = "true" ]; then
-  # Initialize GPG
-  gpg_setup
-
   # Grab the index
   DOWNLOAD_INDEX_PATH="/meta/1.0/index-${DOWNLOAD_MODE}"
 
   echo "Downloading the image index"
-  if ! download_file "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}" "${DOWNLOAD_TEMP}/index" noexit ||
-     ! download_sig "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc" "${DOWNLOAD_TEMP}/index.asc" noexit; then
+  if ! download_file "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}" "${DOWNLOAD_TEMP}/index" noexit; then
     download_file "${DOWNLOAD_INDEX_PATH}" "${DOWNLOAD_TEMP}/index" normal
-    download_sig "${DOWNLOAD_INDEX_PATH}.asc" "${DOWNLOAD_TEMP}/index.asc" normal
   fi
-
-  gpg_validate "${DOWNLOAD_TEMP}/index.asc"
 
   # Parse it
   echo ""
@@ -429,20 +312,13 @@ fi
 
 # Download what's needed
 if [ "${DOWNLOAD_USE_CACHE}" = "false" ]; then
-  # Initialize GPG
-  gpg_setup
-
   # Grab the index
   DOWNLOAD_INDEX_PATH="/meta/1.0/index-${DOWNLOAD_MODE}"
 
   echo "Downloading the image index"
-  if ! download_file "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}" "${DOWNLOAD_TEMP}/index" noexit ||
-     ! download_sig "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}.asc" "${DOWNLOAD_TEMP}/index.asc" noexit; then
+  if ! download_file "${DOWNLOAD_INDEX_PATH}.${DOWNLOAD_COMPAT_LEVEL}" "${DOWNLOAD_TEMP}/index" noexit; then
     download_file "${DOWNLOAD_INDEX_PATH}" "${DOWNLOAD_TEMP}/index" normal
-    download_sig "${DOWNLOAD_INDEX_PATH}.asc" "${DOWNLOAD_TEMP}/index.asc" normal
   fi
-
-  gpg_validate "${DOWNLOAD_TEMP}/index.asc"
 
   # Parse it
   while IFS=';' read -r f1 f2 f3 f4 f5 f6; do
@@ -474,13 +350,9 @@ if [ "${DOWNLOAD_USE_CACHE}" = "false" ]; then
     # Download the actual files
     echo "Downloading the rootfs"
     download_file "${DOWNLOAD_URL}/rootfs.tar.xz" "${DOWNLOAD_TEMP}/rootfs.tar.xz" normal
-    download_sig "${DOWNLOAD_URL}/rootfs.tar.xz.asc" "${DOWNLOAD_TEMP}/rootfs.tar.xz.asc" normal
-    gpg_validate "${DOWNLOAD_TEMP}/rootfs.tar.xz.asc"
 
     echo "Downloading the metadata"
     download_file "${DOWNLOAD_URL}/meta.tar.xz" "${DOWNLOAD_TEMP}/meta.tar.xz" normal
-    download_sig "$DOWNLOAD_URL/meta.tar.xz.asc" "${DOWNLOAD_TEMP}/meta.tar.xz.asc" normal
-    gpg_validate "${DOWNLOAD_TEMP}/meta.tar.xz.asc"
 
     if [ -d "${LXC_CACHE_PATH}" ]; then
       rm -Rf "${LXC_CACHE_PATH}"
