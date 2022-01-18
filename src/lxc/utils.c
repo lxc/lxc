@@ -329,6 +329,24 @@ again:
 	return status;
 }
 
+bool wait_exited(pid_t pid)
+{
+	int status;
+
+	status = lxc_wait_for_pid_status(pid);
+	if (status < 0)
+		return log_error(false, "Failed to reap on child process %d", pid);
+	if (WIFSIGNALED(status))
+		return log_error(false, "Child process %d terminated by signal %d", pid, WTERMSIG(status));
+	if (!WIFEXITED(status))
+		return log_error(false, "Child did not termiate correctly");
+	if (WEXITSTATUS(status))
+		return log_error(false, "Child terminated with error %d", WEXITSTATUS(status));
+
+	TRACE("Reaped child process %d", pid);
+	return true;
+}
+
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 
