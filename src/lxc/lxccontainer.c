@@ -173,38 +173,41 @@ static int ongoing_create(struct lxc_container *c)
 static int create_partial(struct lxc_container *c)
 {
 	__do_free char *path = NULL;
-	int fd, ret;
+	__do_close int fd_partial = -EBADF;
+	int ret;
 	size_t len;
 	struct flock lk = {0};
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
 	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_PARTIAL_FNAME) + 1;
-	path = must_realloc(NULL, len);
+	path = malloc(len);
+	if (!path)
+		return ret_errno(ENOMEM);
+
 	ret = strnprintf(path, len, "%s/%s/%s", c->config_path, c->name, LXC_PARTIAL_FNAME);
 	if (ret < 0)
-		return -1;
+		return -errno;
 
-	fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0000);
-	if (fd < 0)
-		return -1;
+	fd_partial = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0000);
+	if (fd_partial < 0)
+		return syserror("Failed to create \"%s\" to mark container as partially created", path);
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
 
-	ret = fcntl(fd, F_OFD_SETLKW, &lk);
+	ret = fcntl(fd_partial, F_OFD_SETLKW, &lk);
 	if (ret < 0) {
 		if (errno == EINVAL) {
-			ret = flock(fd, LOCK_EX);
+			ret = flock(fd_partial, LOCK_EX);
 			if (ret == 0)
-				return fd;
+				return move_fd(fd_partial);
 		}
 
-		SYSERROR("Failed to lock partial file %s", path);
-		close(fd);
-		return -1;
+		return syserror("Failed to lock partial file %s", path);
 	}
 
-	return fd;
+	TRACE("Created \"%s\" to mark container as partially created", path);
+	return move_fd(fd_partial);
 }
 
 static void remove_partial(struct lxc_container *c, int fd)
@@ -1840,7 +1843,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	/* Mark that this container is being created */
+	/* Mark that this container as being created */
 	partial_fd = create_partial(c);
 	if (partial_fd < 0) {
 		SYSERROR("Failed to mark container as being partially created");
