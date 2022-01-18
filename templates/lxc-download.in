@@ -147,7 +147,16 @@ gpg_setup() {
   done
 
   if [ -z "${success}" ]; then
-    echo "ERROR: Unable to fetch GPG key from keyserver"
+    {
+      echo "ERROR: Unable to fetch GPG key from keyserver"
+      TMP="$(basename "${DOWNLOAD_KEYSERVER}")"
+      if ! getent hosts "$TMP" > /dev/null ; then
+        echo "Unable to resolve GPG keyserver at: $TMP"
+        echo "This may indicate a network issue"
+      fi
+      echo "You can override the keyserver using: export DOWNLOAD_KEYSERVER=hkp://SOME-SERVER"
+      echo "Upstream LXC is avalable from https://github.com/lxc/lxc#building-lxc"
+    } >&2
     exit 1
   fi
 
