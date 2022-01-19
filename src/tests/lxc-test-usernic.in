@@ -124,6 +124,11 @@ run_cmd "lxc-start -n b1 -d"
 p1=$(run_cmd "lxc-info -n b1 -p -H")
 
 lxcpath=/home/usernic-user/.local/share/lxc
+mkdir -p $lxcpath
+chmod 0775 /home/usernic-user/.local
+chmod 0775 /home/usernic-user/.local/share
+chmod 0755 /home/usernic-user/.local/share/lxc
+
 lxcname=b1
 
 # Assign one veth, should fail as no allowed entries yet

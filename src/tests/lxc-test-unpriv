@@ -23,6 +23,8 @@
 
 # This test assumes an Ubuntu host
 
+set -x
+
 if [ $(id -u) -ne 0 ]; then
 	echo "ERROR: Must run as root."
 	exit 1
@@ -69,6 +71,22 @@ UNPRIV_LOG=$(mktemp --dry-run)
 cleanup() {
 	cd /
 
+	cat /proc/self/status || true
+	cat /proc/self/attr/current || true
+	uname -a || true
+	id -a || true
+	findmnt || true
+	dmesg || true
+	stat -c "%A %a %u:%g %N" /
+	stat -c "%A %a %u:%g %N" /home
+	stat -c "%A %a %u:%g %N" $HDIR
+	stat -c "%A %a %u:%g %N" $HDIR/.local
+	stat -c "%A %a %u:%g %N" $HDIR/.local/share
+	stat -c "%A %a %u:%g %N" $HDIR/.local/share/lxc
+	stat -c "%A %a %u:%g %N" $HDIR/.local/share/lxc/*
+	stat --file-system $HDIR/.local/share/lxc  || true
+	stat --file-system $HDIR/.local/share/lxc/* || true
+
 	if [ $DONE -eq 0 ]; then
 		cat "${UNPRIV_LOG}"
 	fi
@@ -112,6 +130,13 @@ useradd $TUSER
 
 mkdir -p $HDIR
 chmod 0711 $HDIR
+
+LXCPATH=$HDIR/.local/share/lxc
+mkdir -p $LXCPATH
+chmod 0775 $HDIR/.local
+chmod 0775 $HDIR/.local/share
+chmod 0755 $HDIR/.local/share/lxc
+
 echo "$TUSER veth lxcbr0 2" >> /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 

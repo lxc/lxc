@@ -101,6 +101,13 @@ useradd $TUSER
 
 mkdir -p $HDIR
 chmod 0711 $HDIR
+
+LXCPATH=$HDIR/.local/share/lxc
+mkdir -p $LXCPATH
+chmod 0775 $HDIR/.local
+chmod 0775 $HDIR/.local/share
+chmod 0755 $HDIR/.local/share/lxc
+
 echo "$TUSER veth lxcbr0 2" >> /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
