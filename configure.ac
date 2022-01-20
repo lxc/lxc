@@ -500,7 +500,9 @@ if test "x$enable_fuzzers" = "xyes"; then
 		CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 			-DRUN_ON_OSS_FUZZ=1])
 	fi
-else
+fi
+
+if test "x$enable_fuzzers" = "xno" -a "x$enable_sanitizers" = "xno"; then
 	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[-flto=thin])
 fi
 AC_SUBST(AM_CFLAGS)
@@ -774,9 +776,6 @@ AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]
 # Check for some libraries
 AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])
-
-# See if we support thread-local storage.
-LXC_CHECK_TLS
 
 # Hardening flags
 CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \

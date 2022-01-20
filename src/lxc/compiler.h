@@ -5,8 +5,14 @@
 
 #include "config.h"
 
-#include <stdbool.h>
+#include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <linux/types.h>
+#include <stdbool.h>
+#include <sys/param.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
 
 #ifndef thread_local
 #if __STDC_VERSION__ >= 201112L &&    \

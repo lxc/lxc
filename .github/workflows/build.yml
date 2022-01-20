@@ -30,6 +30,14 @@ jobs:
         run: |
           ${CC} --version
 
+      - name: Kernel version
+        run: |
+          uname -a
+
+      - name: Mount table
+        run: |
+          findmnt
+
       - name: Build
         env:
           CC: ${{ matrix.compiler }}

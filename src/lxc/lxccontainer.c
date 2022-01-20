@@ -170,41 +170,32 @@ static int ongoing_create(struct lxc_container *c)
 	return LXC_CREATE_INCOMPLETE;
 }
 
-static int create_partial(struct lxc_container *c)
+static int create_partial(int fd_rootfs, struct lxc_container *c)
 {
-	__do_free char *path = NULL;
-	int fd, ret;
-	size_t len;
+	__do_close int fd_partial = -EBADF;
+	int ret;
 	struct flock lk = {0};
 
-	/* $lxcpath + '/' + $name + '/partial' + \0 */
-	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_PARTIAL_FNAME) + 1;
-	path = must_realloc(NULL, len);
-	ret = strnprintf(path, len, "%s/%s/%s", c->config_path, c->name, LXC_PARTIAL_FNAME);
-	if (ret < 0)
-		return -1;
-
-	fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0000);
-	if (fd < 0)
-		return -1;
+	fd_partial = openat(fd_rootfs, LXC_PARTIAL_FNAME, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0000);
+	if (fd_partial < 0)
+		return syserror("errno(%d) - Failed to create \"%d/" LXC_PARTIAL_FNAME "\" to mark container as partially created", errno, fd_rootfs);
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
 
-	ret = fcntl(fd, F_OFD_SETLKW, &lk);
+	ret = fcntl(fd_partial, F_OFD_SETLKW, &lk);
 	if (ret < 0) {
 		if (errno == EINVAL) {
-			ret = flock(fd, LOCK_EX);
+			ret = flock(fd_partial, LOCK_EX);
 			if (ret == 0)
-				return fd;
+				return move_fd(fd_partial);
 		}
 
-		SYSERROR("Failed to lock partial file %s", path);
-		close(fd);
-		return -1;
+		return syserror("Failed to lock partial file \"%d/" LXC_PARTIAL_FNAME"\"", fd_rootfs);
 	}
 
-	return fd;
+	TRACE("Created \"%d/" LXC_PARTIAL_FNAME "\" to mark container as partially created", fd_rootfs);
+	return move_fd(fd_partial);
 }
 
 static void remove_partial(struct lxc_container *c, int fd)
@@ -452,7 +443,26 @@ static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3)	\
 	return ret;							\
 }
 
-#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)				\
+#define WRAP_API_5(rettype, fnname, t1, t2, t3, t4, t5)			\
+static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
+		      t4 a4, t5 a5)					\
+{									\
+	rettype ret;							\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
+	ret = do_##fnname(c, a1, a2, a3, a4, a5);			\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
+	return ret;							\
+}
+
+#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)		\
 static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
 						t4 a4, t5 a5, t6 a6)	\
 {									\
@@ -1203,32 +1213,31 @@ WRAP_API(bool, lxcapi_stop)
 
 static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 {
-	int lasterr;
+	__do_close int fd_rootfs = -EBADF;
 	int ret = -1;
 
 	mode_t mask = umask(0002);
 	ret = mkdir(path, 0770);
-	lasterr = errno;
 	umask(mask);
-	errno = lasterr;
-	if (ret) {
-		if (errno != EEXIST)
-			return -1;
+	if (ret < 0 && errno != EEXIST)
+		return -errno;
 
-		ret = 0;
-	}
+	fd_rootfs = open_at(-EBADF, path, O_DIRECTORY | O_CLOEXEC, PROTECT_LOOKUP_ABSOLUTE_WITH_SYMLINKS, 0);
+	if (fd_rootfs < 0)
+		return syserror("Failed to open container directory \"%d(%s)\"", fd_rootfs, path);
 
-	if (!list_empty(&conf->id_map)) {
-		ret = chown_mapped_root(path, conf);
-		if (ret < 0)
-			ret = -1;
-	}
+	if (list_empty(&conf->id_map))
+		return move_fd(fd_rootfs);
 
-	return ret;
+	ret = userns_exec_mapped_root(NULL, fd_rootfs, conf);
+	if (ret < 0)
+		return syserror_ret(-1, "Failed to chown rootfs \"%s\"", path);
+
+	return move_fd(fd_rootfs);
 }
 
 /* Create the standard expected container dir. */
-static bool create_container_dir(struct lxc_container *c)
+static int create_container_dir(struct lxc_container *c)
 {
 	__do_free char *s = NULL;
 	int ret;
@@ -1237,13 +1246,13 @@ static bool create_container_dir(struct lxc_container *c)
 	len = strlen(c->config_path) + strlen(c->name) + 2;
 	s = malloc(len);
 	if (!s)
-		return false;
+		return ret_errno(ENOMEM);
 
 	ret = strnprintf(s, len, "%s/%s", c->config_path, c->name);
 	if (ret < 0)
-		return false;
+		return -errno;
 
-	return do_create_container_dir(s, c->lxc_conf) == 0;
+	return do_create_container_dir(s, c->lxc_conf);
 }
 
 /* do_storage_create: thin wrapper around storage_create(). Like
@@ -1769,15 +1778,16 @@ static void lxcapi_clear_config(struct lxc_container *c)
  * @argv: the arguments to pass to the template, terminated by NULL.  If no
  * arguments, you can just pass NULL.
  */
-static bool do_lxcapi_create(struct lxc_container *c, const char *t,
-			     const char *bdevtype, struct bdev_specs *specs,
-			     int flags, char *const argv[])
+static bool __lxcapi_create(struct lxc_container *c, const char *t,
+			    const char *bdevtype, struct bdev_specs *specs,
+			    int flags, char *const argv[])
 {
+	__do_close int fd_rootfs = -EBADF;
 	__do_free char *path_template = NULL;
 	int partial_fd;
 	mode_t mask;
 	pid_t pid;
-	bool ret = false, rootfs_managed = true;
+	bool bret = false, rootfs_managed = true;
 
 	if (!c)
 		return false;
@@ -1785,7 +1795,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (t) {
 		path_template = get_template_path(t);
 		if (!path_template)
-			return syserror_set(ENOENT, "Template \"%s\" not found", t);
+			return log_error(false, "Template \"%s\" not found", t);
 	}
 
 	/* If a template is passed in, and the rootfs already is defined in the
@@ -1794,15 +1804,17 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	 */
 	if (do_lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
 	    access(c->lxc_conf->rootfs.path, F_OK) == 0 && path_template)
-		return syserror_set(EEXIST, "Container \"%s\" already exists in \"%s\"", c->name, c->config_path);
+		return log_error(false, "Container \"%s\" already exists in \"%s\"",
+				 c->name, c->config_path);
 
 	if (!c->lxc_conf &&
 	    !do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config")))
-		return syserror_set(EINVAL, "Failed to load default configuration file %s",
-				    lxc_global_config_value("lxc.default_config"));
+		return log_error(false, "Failed to load default configuration file %s",
+				 lxc_global_config_value("lxc.default_config"));
 
-	if (!create_container_dir(c))
-		return syserror_set(EINVAL, "Failed to create container %s", c->name);
+	fd_rootfs = create_container_dir(c);
+	if (fd_rootfs < 0)
+		return log_error(false, "Failed to create container %s", c->name);
 
 	if (c->lxc_conf->rootfs.path)
 		rootfs_managed = false;
@@ -1817,13 +1829,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			ERROR("Failed to save initial config for \"%s\"", c->name);
 			goto out;
 		}
-		ret = true;
+
+		bret = true;
 		goto out;
 	}
 
 	/* Rootfs passed into configuration, but does not exist. */
-	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
+	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0) {
+		ERROR("The rootfs \"%s\" does not exist",  c->lxc_conf->rootfs.path);
 		goto out;
+	}
 
 	if (do_lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !path_template) {
 		/* Rootfs already existed, user just wanted to save the loaded
@@ -1832,14 +1847,16 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		if (!c->save_config(c, NULL))
 			ERROR("Failed to save initial config for \"%s\"", c->name);
 
-		ret = true;
+		bret = true;
 		goto out;
 	}
 
-	/* Mark that this container is being created */
-	partial_fd = create_partial(c);
-	if (partial_fd < 0)
+	/* Mark that this container as being created */
+	partial_fd = create_partial(fd_rootfs, c);
+	if (partial_fd < 0) {
+		SYSERROR("Failed to mark container as being partially created");
 		goto out;
+	}
 
 	/* No need to get disk lock bc we have the partial lock. */
 
@@ -1881,7 +1898,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		_exit(EXIT_SUCCESS);
 	}
 
-	if (wait_for_pid(pid) != 0)
+	if (!wait_exited(pid))
 		goto out_unlock;
 
 	/* Reload config to get the rootfs. */
@@ -1906,14 +1923,14 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		}
 	}
 
-	ret = load_config_locked(c, c->configfile);
+	bret = load_config_locked(c, c->configfile);
 
 out_unlock:
 	umask(mask);
 	remove_partial(c, partial_fd);
 
 out:
-	if (!ret) {
+	if (!bret) {
 		bool reset_managed = c->lxc_conf->rootfs.managed;
 
 		/*
@@ -1926,21 +1943,18 @@ out:
 		c->lxc_conf->rootfs.managed = reset_managed;
 	}
 
-	return ret;
+	return bret;
 }
 
-static bool lxcapi_create(struct lxc_container *c, const char *t,
-			  const char *bdevtype, struct bdev_specs *specs,
-			  int flags, char *const argv[])
+static bool do_lxcapi_create(struct lxc_container *c, const char *t,
+			     const char *bdevtype, struct bdev_specs *specs,
+			     int flags, char *const argv[])
 {
-	bool ret;
-
-	current_config = c ? c->lxc_conf : NULL;
-
-	ret = do_lxcapi_create(c, t, bdevtype, specs, flags, argv);
-	current_config = NULL;
-	return ret;
+	return __lxcapi_create(c, t, bdevtype, specs, flags, argv);
 }
+
+WRAP_API_5(bool, lxcapi_create, const char *, const char *,
+	   struct bdev_specs *, int, char *const *)
 
 static bool do_lxcapi_reboot(struct lxc_container *c)
 {
@@ -2169,7 +2183,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	bret = do_lxcapi_create(c, t, bdevtype, specs, flags, args);
+	bret = __lxcapi_create(c, t, bdevtype, specs, flags, args);
 
 out:
 	free(args);
@@ -2605,28 +2619,27 @@ WRAP_API_3(int, lxcapi_get_keys, const char *, char *, int)
 
 static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
-	int fd, lret;
-	bool ret = false, need_disklock = false;
+	__do_close int fd_config = -EBADF, fd_rootfs = -EBADF;
+	int lret = -1;
+	bool bret = false, need_disklock = false;
 
 	if (!alt_file)
 		alt_file = c->configfile;
 
 	if (!alt_file)
-		return false;
+		return log_error(false, "No config file found");
 
 	/* If we haven't yet loaded a config, load the stock config. */
 	if (!c->lxc_conf) {
 		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s "
-			      "while saving %s",
-			      lxc_global_config_value("lxc.default_config"),
-			      c->name);
-			return false;
+			return log_error(false, "Error loading default configuration file %s while saving %s",
+					 lxc_global_config_value("lxc.default_config"), c->name);
 		}
 	}
 
-	if (!create_container_dir(c))
-		return false;
+	fd_rootfs = create_container_dir(c);
+	if (fd_rootfs < 0)
+		return log_error(false, "Failed to create container directory");
 
 	/* If we're writing to the container's config file, take the disk lock.
 	 * Otherwise just take the memlock to protect the struct lxc_container
@@ -2640,19 +2653,23 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	else
 		lret = container_mem_lock(c);
 	if (lret)
-		return false;
+		return log_error(false, "Failed to acquire lock");
 
-	fd = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-		  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (fd < 0)
+	fd_config = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (fd_config < 0) {
+		SYSERROR("Failed to open config file \"%s\"", alt_file);
 		goto on_error;
+	}
 
-	lret = write_config(fd, c->lxc_conf);
-	close(fd);
-	if (lret < 0)
+	lret = write_config(fd_config, c->lxc_conf);
+	if (lret < 0) {
+		SYSERROR("Failed to write config file \"%s\"", alt_file);
 		goto on_error;
+	}
 
-	ret = true;
+	bret = true;
+	TRACE("Saved config file \"%s\"", alt_file);
 
 on_error:
 	if (need_disklock)
@@ -2660,7 +2677,7 @@ on_error:
 	else
 		container_mem_unlock(c);
 
-	return ret;
+	return bret;
 }
 
 WRAP_API_1(bool, lxcapi_save_config, const char *)
@@ -3742,17 +3759,18 @@ only rootfs gets converted (copied/snapshotted) on clone.
 
 static int create_file_dirname(char *path, struct lxc_conf *conf)
 {
-	char *p = strrchr(path, '/');
-	int ret = -1;
+	__do_close int fd_rootfs = -EBADF;
+	char *p;
 
+	p = strrchr(path, '/');
 	if (!p)
 		return -1;
 
 	*p = '\0';
-	ret = do_create_container_dir(path, conf);
+	fd_rootfs = do_create_container_dir(path, conf);
 	*p = '/';
 
-	return ret;
+	return fd_rootfs >= 0;
 }
 
 static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char *newname,

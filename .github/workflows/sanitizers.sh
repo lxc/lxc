@@ -18,9 +18,43 @@ apt-get install --yes --no-install-recommends \
     libpam0g-dev libseccomp-dev libselinux1-dev libtool linux-libc-dev \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
-    wget xz-utils
+    wget xz-utils systemd-coredump
+apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
-ARGS="--enable-sanitizers --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined"
+ARGS="--enable-sanitizers \
+	--prefix=/usr/ \
+	--disable-no-undefined \
+	--build=x86_64-linux-gnu \
+	--includedir=\${prefix}/include \
+	--mandir=\${prefix}/share/man \
+	--infodir=\${prefix}/share/info \
+	--sysconfdir=/etc \
+	--localstatedir=/var \
+	--disable-silent-rules \
+	--libdir=\${prefix}/lib/x86_64-linux-gnu \
+	--libexecdir=\${prefix}/lib/x86_64-linux-gnu \
+	--disable-maintainer-mode \
+	--disable-dependency-tracking \
+	--libdir=\${prefix}/lib/x86_64-linux-gnu \
+	--libexecdir=\${prefix}/lib/x86_64-linux-gnu \
+	--with-rootfs-path=\${prefix}/lib/x86_64-linux-gnu/lxc \
+	--enable-doc \
+	--disable-rpath \
+	--with-distro=ubuntu \
+	--enable-commands \
+	--enable-pam \
+	--enable-tests \
+	--enable-memfd-rexec \
+	--disable-static-binaries \
+	--enable-static \
+	--enable-silent-rules \
+	--enable-apparmor \
+	--enable-capabilities \
+	--enable-seccomp \
+	--enable-selinux \
+	--disable-liburing \
+	--enable-werror"
+
 case "$CC" in clang*)
 	ARGS="$ARGS --enable-fuzzers"
 esac
