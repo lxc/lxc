@@ -19,6 +19,7 @@ apt-get install --yes --no-install-recommends \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
     wget xz-utils
+apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 ARGS="--enable-sanitizers --enable-tests --prefix=/usr/ --sysconfdir=/etc/ --localstatedir=/var/ --disable-no-undefined"
 case "$CC" in clang*)
