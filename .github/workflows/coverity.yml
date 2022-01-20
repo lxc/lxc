@@ -24,6 +24,20 @@ jobs:
           sudo apt-get install -qq gcc clang
           sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev docbook2x
 
+      - name: Compiler version
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          ${CC} --version
+
+      - name: Kernel version
+        run: |
+          uname -a
+
+      - name: Mount table
+        run: |
+          findmnt
+
       - name: Run coverity
         run: |
           # Configure
