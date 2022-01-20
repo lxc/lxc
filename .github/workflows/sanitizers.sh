@@ -18,7 +18,7 @@ apt-get install --yes --no-install-recommends \
     libpam0g-dev libseccomp-dev libselinux1-dev libtool linux-libc-dev \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
-    wget xz-utils
+    wget xz-utils systemd-coredump
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 ARGS="--enable-sanitizers \
