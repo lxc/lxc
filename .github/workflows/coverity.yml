@@ -38,6 +38,13 @@ jobs:
         run: |
           findmnt
 
+      - name: Hardening options
+        run: |
+          sudo cat /proc/sys/fs/protected_fifos
+          sudo cat /proc/sys/fs/protected_hardlinks
+          sudo cat /proc/sys/fs/protected_symlinks
+          sudo cat /proc/sys/fs/protected_regular
+
       - name: Run coverity
         run: |
           # Configure
