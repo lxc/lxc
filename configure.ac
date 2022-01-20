@@ -500,7 +500,9 @@ if test "x$enable_fuzzers" = "xyes"; then
 		CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[ \
 			-DRUN_ON_OSS_FUZZ=1])
 	fi
-else
+fi
+
+if test "x$enable_fuzzers" = "xno" -a "x$enable_sanitizers" = "xno"; then
 	CC_CHECK_FLAGS_APPEND([AM_CFLAGS],[CFLAGS],[-flto=thin])
 fi
 AC_SUBST(AM_CFLAGS)
