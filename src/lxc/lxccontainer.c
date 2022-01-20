@@ -443,7 +443,26 @@ static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3)	\
 	return ret;							\
 }
 
-#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)				\
+#define WRAP_API_5(rettype, fnname, t1, t2, t3, t4, t5)			\
+static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
+		      t4 a4, t5 a5)					\
+{									\
+	rettype ret;							\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
+	ret = do_##fnname(c, a1, a2, a3, a4, a5);			\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
+	return ret;							\
+}
+
+#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)		\
 static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
 						t4 a4, t5 a5, t6 a6)	\
 {									\
@@ -1759,9 +1778,9 @@ static void lxcapi_clear_config(struct lxc_container *c)
  * @argv: the arguments to pass to the template, terminated by NULL.  If no
  * arguments, you can just pass NULL.
  */
-static bool do_lxcapi_create(struct lxc_container *c, const char *t,
-			     const char *bdevtype, struct bdev_specs *specs,
-			     int flags, char *const argv[])
+static bool __lxcapi_create(struct lxc_container *c, const char *t,
+			    const char *bdevtype, struct bdev_specs *specs,
+			    int flags, char *const argv[])
 {
 	__do_close int fd_rootfs = -EBADF;
 	__do_free char *path_template = NULL;
@@ -1927,18 +1946,15 @@ out:
 	return bret;
 }
 
-static bool lxcapi_create(struct lxc_container *c, const char *t,
-			  const char *bdevtype, struct bdev_specs *specs,
-			  int flags, char *const argv[])
+static bool do_lxcapi_create(struct lxc_container *c, const char *t,
+			     const char *bdevtype, struct bdev_specs *specs,
+			     int flags, char *const argv[])
 {
-	bool ret;
-
-	current_config = c ? c->lxc_conf : NULL;
-
-	ret = do_lxcapi_create(c, t, bdevtype, specs, flags, argv);
-	current_config = NULL;
-	return ret;
+	return __lxcapi_create(c, t, bdevtype, specs, flags, argv);
 }
+
+WRAP_API_5(bool, lxcapi_create, const char *, const char *,
+	   struct bdev_specs *, int, char *const *)
 
 static bool do_lxcapi_reboot(struct lxc_container *c)
 {
@@ -2167,7 +2183,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 		goto out;
 	}
 
-	bret = do_lxcapi_create(c, t, bdevtype, specs, flags, args);
+	bret = __lxcapi_create(c, t, bdevtype, specs, flags, args);
 
 out:
 	free(args);
