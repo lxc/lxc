@@ -73,6 +73,13 @@ sudo mkdir -p /home/usernic-user
 sudo chown usernic-user: /home/usernic-user
 usermod -v 910000-919999 -w 910000-919999 usernic-user
 
+HDIR=/home/usernic-user
+chmod 755 $HDIR
+mkdir -p $HDIR/.local/share/lxc
+chmod 755 $HDIR/.local
+chmod 755 $HDIR/.local/share
+chmod 755 $HDIR/.local/share/lxc
+
 mkdir -p /home/usernic-user/.config/lxc/
 cat > /home/usernic-user/.config/lxc/default.conf << EOF
 lxc.net.0.type = empty

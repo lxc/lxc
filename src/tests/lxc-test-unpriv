@@ -111,6 +111,11 @@ id $TUSER &> /dev/null && deluser -q --remove-home $TUSER
 useradd $TUSER
 
 mkdir -p $HDIR
+chmod 755 $HDIR
+mkdir -p $HDIR/.local/share/lxc
+chmod 755 $HDIR/.local
+chmod 755 $HDIR/.local/share
+chmod 755 $HDIR/.local/share/lxc
 echo "$TUSER veth lxcbr0 2" >> /etc/lxc/lxc-usernet
 sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 

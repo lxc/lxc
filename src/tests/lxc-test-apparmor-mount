@@ -95,6 +95,11 @@ command -v newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" 
 # create a test user
 TUSER=lxcunpriv
 HDIR=/home/$TUSER
+chmod 755 $HDIR
+mkdir -p $HDIR/.local/share/lxc
+chmod 755 $HDIR/.local
+chmod 755 $HDIR/.local/share
+chmod 755 $HDIR/.local/share/lxc
 
 deluser $TUSER && rm -Rf $HDIR || true
 useradd $TUSER
