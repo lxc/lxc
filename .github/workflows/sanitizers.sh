@@ -82,5 +82,8 @@ systemctl daemon-reload
 systemctl restart apparmor
 systemctl restart lxc-net
 
+# Undo default ACLs from Github
+setfacl -b -R /home
+
 git clone --depth=1 https://github.com/lxc/lxc-ci
 timeout 30m bash -x lxc-ci/deps/lxc-exercise
