@@ -15,6 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Compiler version
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          ${CC} --version
+
+      - name: Kernel version
+        run: |
+          uname -a
+
+      - name: Mount table
+        run: |
+          findmnt
+
       - name: Build
         run: |
           sudo CC=${{ matrix.compiler }} CXX=${{ matrix.compiler }}++ .github/workflows/sanitizers.sh
