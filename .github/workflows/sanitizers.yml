@@ -38,4 +38,6 @@ jobs:
 
       - name: Build
         run: |
+          echo 1 | sudo tee -a /proc/sys/fs/protected_regular || true
+          sudo chmod -R 755 /home
           sudo CC=${{ matrix.compiler }} CXX=${{ matrix.compiler }}++ .github/workflows/sanitizers.sh
