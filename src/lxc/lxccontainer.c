@@ -1222,7 +1222,7 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 	if (ret < 0 && errno != EEXIST)
 		return -errno;
 
-	fd_rootfs = open_at(-EBADF, path, O_DIRECTORY | O_CLOEXEC, PROTECT_LOOKUP_ABSOLUTE_WITH_SYMLINKS, 0);
+	fd_rootfs = open_at(-EBADF, path, O_DIRECTORY | O_CLOEXEC, PROTECT_LOOKUP_ABSOLUTE_XDEV_SYMLINKS, 0);
 	if (fd_rootfs < 0)
 		return syserror("Failed to open container directory \"%d(%s)\"", fd_rootfs, path);
 
