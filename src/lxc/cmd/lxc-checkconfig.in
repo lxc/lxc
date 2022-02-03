@@ -111,7 +111,8 @@ KVER_MINOR=$($CAT $CONFIG | grep '^# Linux.*Kernel Configuration' | \
 fi
 
 if [ -z "${KVER_MAJOR}" ]; then
-    echo "WARNING: Unable to detect version from configuration, assuming latest\n"
+    echo "WARNING: Unable to detect version from configuration, assuming latest"
+    echo ""
     KVER_MAJOR="100"
     KVER_MINOR="0"
 fi
