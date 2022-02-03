@@ -1646,7 +1646,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <itemizedlist>
           <listitem>
 	    <para>
-	      A allowlist device rule
+	      A denylist device rule
               <programlisting>
 	        lxc.cgroup2.devices.deny = a
               </programlisting>
@@ -1659,7 +1659,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
           <listitem>
 	    <para>
-	      A denylist device rule
+	      An allowlist device rule
               <programlisting>
 	        lxc.cgroup2.devices.allow = a
               </programlisting>
@@ -1749,7 +1749,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           lxc.cgroup2.devices.deny = a
         </programlisting>
 	instead then the last line will cause LXC to reset the device list and
-	switch from a allowlist program to a denylist program.
+	switch from an allowlist program to a denylist program.
       </para>
       <variablelist>
         <varlistentry>
