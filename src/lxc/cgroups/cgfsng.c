@@ -727,6 +727,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 		 * it will be automatically zapped if we return early.
 		 */
 		dfd_cur = dfd_final;
+		TRACE("Opened%s cgroup %s as %d", !ret ? " newly created" : "", cur, dfd_cur);
 	}
 
 	/* The final cgroup must be succesfully creatd by us. */
@@ -3174,6 +3175,12 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				SYSTRACE("Unified cgroup not mounted");
 				continue;
 			}
+
+			if (!fhas_fs_type(dfd_mnt, CGROUP2_SUPER_MAGIC)) {
+				SYSTRACE("Opened file descriptor %d is not a cgroup2 mountpoint", dfd_mnt);
+				continue;
+			}
+
 			dfd = dfd_mnt;
 
 			if (!is_empty_string(current_cgroup)) {
@@ -3239,6 +3246,12 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				SYSTRACE("%s not mounted", controllers);
 				continue;
 			}
+
+			if (!fhas_fs_type(dfd_mnt, CGROUP_SUPER_MAGIC)) {
+				SYSTRACE("Opened file descriptor %d is not a cgroup mountpoint", dfd_mnt);
+				continue;
+			}
+
 			dfd = dfd_mnt;
 
 			if (!abspath(__current_cgroup))
