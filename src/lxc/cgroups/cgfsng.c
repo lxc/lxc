@@ -727,6 +727,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 		 * it will be automatically zapped if we return early.
 		 */
 		dfd_cur = dfd_final;
+		TRACE("Opened%s cgroup %s as %d", !ret ? " newly created" : "", cur, dfd_cur);
 	}
 
 	/* The final cgroup must be succesfully creatd by us. */
