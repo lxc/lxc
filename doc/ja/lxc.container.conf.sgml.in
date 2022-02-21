@@ -2204,7 +2204,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              A allowlist device rule
+              A denylist device rule
               <programlisting>
                 lxc.cgroup2.devices.deny = a
               </programlisting>
@@ -2213,7 +2213,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               must be added via the <option>lxc.cgroup2.devices.allow</option>
               key. This is referred to as a "allowlist" device program.
               -->
-              許可リスト（allowlist）のデバイスルール
+              拒否リスト（denylist）のデバイスルール
               <programlisting>
                 lxc.cgroup2.devices.deny = a
               </programlisting>
@@ -2225,7 +2225,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              A denylist device rule
+              An allowlist device rule
               <programlisting>
                 lxc.cgroup2.devices.allow = a
               </programlisting>
@@ -2234,7 +2234,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               must be added via <option>lxc.cgroup2.devices.deny</option> key.
               This is referred to as a "denylist" device program.
               -->
-              拒否リスト（denylist）のデバイスルール
+              許可リスト（allowlist）のデバイスルール
               <programlisting>
                 lxc.cgroup2.devices.allow = a
               </programlisting>
@@ -2355,7 +2355,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </programlisting>
         <!--
         instead then the last line will cause LXC to reset the device list and
-        switch from a allowlist program to a denylist program.
+        switch from an allowlist program to a denylist program.
           -->
         前の例と違って最後の行によって、LXC はデバイスリストをリセットし、許可リスト（allowlist）から拒否リスト（denylist）にプログラムを変更してしまいます。
       </para>
