@@ -29,6 +29,9 @@ struct lxc_terminal_info {
 
 	/* whether the terminal is currently used */
 	int busy;
+
+	/* the number of the terminal */
+	int pty_nr;
 };
 
 struct lxc_terminal_state {

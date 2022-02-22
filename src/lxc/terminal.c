@@ -1371,6 +1371,7 @@ void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 	terminal->ptx = -EBADF;
 	terminal->pty = -EBADF;
 	terminal->busy = -1;
+	terminal->pty_nr = -1;
 }
 
 void lxc_terminal_init(struct lxc_terminal *terminal)

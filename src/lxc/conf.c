@@ -1089,17 +1089,20 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 		return -ENOMEM;
 
 	for (size_t i = 0; i < conf->ttys.max; i++) {
-		int pty_nr = -1;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = lxc_devpts_terminal(conf->devpts_fd, &tty->ptx,
-					  &tty->pty, &pty_nr, false);
+					  &tty->pty, &tty->pty_nr, false);
 		if (ret < 0) {
 			conf->ttys.max = i;
 			return syserror_set(-ENOTTY, "Failed to create tty %zu", i);
 		}
+		ret = strnprintf(tty->name, sizeof(tty->name), "pts/%d", tty->pty_nr);
+		if (ret < 0)
+			return syserror("Failed to create tty %zu", i);
+
 		DEBUG("Created tty with ptx fd %d and pty fd %d and index %d",
-		      tty->ptx, tty->pty, pty_nr);
+		      tty->ptx, tty->pty, tty->pty_nr);
 		tty->busy = -1;
 	}
 
@@ -1180,6 +1183,7 @@ static int lxc_create_ttys(struct lxc_handler *handler)
 			SYSERROR("Failed to set \"container_ttys=%s\"", conf->ttys.tty_names);
 			goto on_error;
 		}
+		TRACE("Set \"container_ttys=%s\"", conf->ttys.tty_names);
 	}
 
 	return 0;
@@ -4163,6 +4167,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	for (size_t i = 0; i < ttys_max; i++) {
 		terminal_info = &info_new->tty[i];
 		terminal_info->busy = -1;
+		terminal_info->pty_nr = -1;
 		terminal_info->ptx = -EBADF;
 		terminal_info->pty = -EBADF;
 	}
