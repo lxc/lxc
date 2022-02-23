@@ -2144,7 +2144,7 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 }
 
 static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
-				     int unified_fd, int *sk_fd)
+				     int unified_fd, int *sk_fd, bool unprivileged)
 {
 	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
 	int target_fds[2];
@@ -2153,37 +2153,66 @@ static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
 	/* Create leaf cgroup. */
 	ret = mkdirat(unified_fd, ".lxc", 0755);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
+		return syserror("Failed to create leaf cgroup \".lxc\"");
 
-	target_fd0 = open_at(unified_fd, ".lxc/cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
-	if (target_fd0 < 0)
-		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
-	target_fds[0] = target_fd0;
+	if (unprivileged) {
+		target_fd0 = open_at(unified_fd, ".lxc/cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+		if (target_fd0 < 0)
+			return syserror("Failed to open \".lxc/cgroup.procs\"");
+		target_fds[0] = target_fd0;
 
-	target_fd1 = open_at(unified_fd, "cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
-	if (target_fd1 < 0)
-		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
-	target_fds[1] = target_fd1;
+		target_fd1 = open_at(unified_fd, "cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+		if (target_fd1 < 0)
+			return syserror("Failed to open \".lxc/cgroup.procs\"");
+		target_fds[1] = target_fd1;
 
-	ret = lxc_abstract_unix_send_fds(sk, target_fds, 2, NULL, 0);
-	if (ret <= 0)
-		return log_error_errno(-errno, errno, "Failed to send \".lxc/cgroup.procs\" fds %d and %d",
-				       target_fd0, target_fd1);
+		ret = lxc_abstract_unix_send_fds(sk, target_fds, 2, NULL, 0);
+		if (ret <= 0)
+			return syserror("Failed to send \".lxc/cgroup.procs\" fds %d and %d",
+					target_fd0, target_fd1);
 
-	return log_debug(0, "Sent target cgroup fds %d and %d", target_fd0, target_fd1);
+		TRACE("Sent cgroup file descriptors %d and %d", target_fd0, target_fd1);
+	} else {
+		ret = lxc_abstract_unix_send_credential(sk, NULL, 0);
+		if (ret < 0)
+			return syserror("Failed to inform parent that we are done setting up mounts");
+
+		TRACE("Informed parent process that cgroup has been created");
+	}
+
+	return 0;
 }
 
 static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
-					int *sk_fd, pid_t pid)
+					int unified_fd, int *sk_fd, pid_t pid,
+					bool unprivileged)
 {
 	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
 	size_t pidstr_len;
 	ssize_t ret;
 
-	ret = lxc_abstract_unix_recv_two_fds(sk, &target_fd0, &target_fd1);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
+	if (unprivileged) {
+		ret = lxc_abstract_unix_recv_two_fds(sk, &target_fd0, &target_fd1);
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
+	} else {
+		ret = lxc_abstract_unix_rcv_credential(sk, NULL, 0);
+		if (ret < 0)
+			return syserror("Failed to receive notification from parent process");
+
+		TRACE("Child process informed us that cgroup has been created");
+
+		target_fd0 = open_at(unified_fd, ".lxc/cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+		if (target_fd0 < 0)
+			return syserror("Failed to open \".lxc/cgroup.procs\"");
+
+		target_fd1 = open_at(unified_fd, "cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+		if (target_fd1 < 0)
+			return syserror("Failed to open \".lxc/cgroup.procs\"");
+
+		TRACE("Opened target cgroup file descriptors %d and %d", target_fd0, target_fd1);
+	}
 
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 
@@ -2195,8 +2224,7 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	if (ret > 0 && (size_t)ret == pidstr_len)
 		return log_debug(0, "Moved process into target cgroup via fd %d", target_fd1);
 
-	return log_debug_errno(-1, errno, "Failed to move process into target cgroup via fd %d and %d",
-			       target_fd0, target_fd1);
+	return syserror("Failed to move process into target cgroup via fd %d and %d", target_fd0, target_fd1);
 }
 
 struct userns_exec_unified_attach_data {
@@ -2204,6 +2232,7 @@ struct userns_exec_unified_attach_data {
 	int unified_fd;
 	int sk_pair[2];
 	pid_t pid;
+	bool unprivileged;
 };
 
 static int cgroup_unified_attach_child_wrapper(void *data)
@@ -2216,7 +2245,7 @@ static int cgroup_unified_attach_child_wrapper(void *data)
 
 	close_prot_errno_disarm(args->sk_pair[0]);
 	return cgroup_attach_create_leaf(args->conf, args->unified_fd,
-					 &args->sk_pair[1]);
+					 &args->sk_pair[1], args->unprivileged);
 }
 
 static int cgroup_unified_attach_parent_wrapper(void *data)
@@ -2228,8 +2257,9 @@ static int cgroup_unified_attach_parent_wrapper(void *data)
 		return ret_errno(EINVAL);
 
 	close_prot_errno_disarm(args->sk_pair[1]);
-	return cgroup_attach_move_into_leaf(args->conf, &args->sk_pair[0],
-					    args->pid);
+	return cgroup_attach_move_into_leaf(args->conf, args->unified_fd,
+					    &args->sk_pair[0], args->pid,
+					    args->unprivileged);
 }
 
 /* Technically, we're always at a delegation boundary here (This is especially
@@ -2276,6 +2306,7 @@ static int __cg_unified_attach(const struct hierarchy *h,
 			.conf		= conf,
 			.unified_fd	= unified_fd,
 			.pid		= pid,
+			.unprivileged	= am_guest_unpriv(),
 		};
 
 		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
@@ -3480,6 +3511,7 @@ static int __unified_attach_fd(const struct lxc_conf *conf, int fd_unified, pid_
 			.conf		= conf,
 			.unified_fd	= fd_unified,
 			.pid		= pid,
+			.unprivileged	= am_guest_unpriv(),
 		};
 
 		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
