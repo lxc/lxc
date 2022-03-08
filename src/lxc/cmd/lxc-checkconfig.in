@@ -58,6 +58,9 @@ has_cgroup_ns() {
 }
 
 is_probed() {
+    if [ ! -f /proc/modules ]; then
+        return
+    fi
     lsmod | grep $1 > /dev/null
     if [ $? -eq 0 ]; then
         echo -n ", loaded"
