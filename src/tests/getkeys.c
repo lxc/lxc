@@ -29,7 +29,7 @@
 #include <sys/wait.h>
 #include <lxc/lxccontainer.h>
 
-#include "lxc/state.h"
+#include "state.h"
 
 #define MYNAME "lxctest1"
 

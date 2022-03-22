@@ -30,7 +30,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "lxc/state.h"
+#include "state.h"
 #include "lxctest.h"
 #include "utils.h"
 
