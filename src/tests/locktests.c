@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#include "lxc/lxclock.h"
+#include "lxclock.h"
 #include "config.h"
 #include <unistd.h>
 #include <signal.h>

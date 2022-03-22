@@ -61,6 +61,7 @@ lxcpathprefix = get_option('config-path')
 rootfsmount = get_option('rootfs-mount-dir')
 runtimepath = join_paths(prefixdir, get_option('runtime-path'))
 wants_io_uring = get_option('io-uring-event-loop')
+want_tests = get_option('tests')
 
 conf.set_quoted('BINDIR',			bindir)
 conf.set_quoted('DATADIR',			datadir)
@@ -427,6 +428,9 @@ subdir('hooks')
 
 template_scripts = []
 subdir('templates')
+
+test_programs = []
+subdir('src/tests')
 
 cmd_programs = []
 subdir('src/lxc/cmd')

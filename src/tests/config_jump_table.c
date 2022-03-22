@@ -33,7 +33,7 @@
 #include <string.h>
 
 #include "confile.h"
-#include "lxc/state.h"
+#include "state.h"
 #include "lxctest.h"
 
 int main(int argc, char *argv[])

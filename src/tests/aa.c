@@ -21,7 +21,7 @@
 
 /* Test apparmor rules */
 #include <lxc/lxccontainer.h>
-#include "lxc/utils.h"
+#include "utils.h"
 
 #include <fcntl.h>
 #include <unistd.h>
