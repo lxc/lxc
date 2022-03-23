@@ -252,33 +252,6 @@ test_programs += executable(
 		build_by_default: want_tests != false)
 
 test_programs += executable(
-                'lxc-test-fuzz-lxc-cgroup-init',
-		files('fuzz-lxc-cgroup-init.c',
-		      'dummy.cxx') + tests_common_sources,
-		link_args : ['-static'],
-                include_directories : tests_liblxc_includes,
-		install: false,
-		build_by_default: want_tests != false)
-
-test_programs += executable(
-                'lxc-test-fuzz-lxc-config-read',
-		files('fuzz-lxc-config-read.c',
-		      'dummy.cxx') + tests_common_sources,
-		link_args : ['-static'],
-                include_directories : tests_liblxc_includes,
-		install: false,
-		build_by_default: want_tests != false)
-
-test_programs += executable(
-                'lxc-test-fuzz-lxc-define-load',
-		files('fuzz-lxc-define-load.c',
-		      'dummy.cxx') + tests_common_sources,
-		link_args : ['-static'],
-                include_directories : tests_liblxc_includes,
-		install: false,
-		build_by_default: want_tests != false)
-
-test_programs += executable(
                 'lxc-test-get-item',
 		files('get_item.c') + tests_common_sources,
                 include_directories : tests_liblxc_includes,
@@ -309,3 +282,253 @@ test_programs += executable(
 		dependencies : liblxc_dep,
 		install: false,
 		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-lxc-test-utils',
+		files('lxc-test-utils.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-lxc-raw-clone',
+		files('lxc_raw_clone.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-lxcpath',
+		files('lxcpath.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-may-control',
+		files('may_control.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-mount-injection',
+		files('mount_injection.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-parse-config-file',
+		files('parse_config_file.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-personality',
+		files('personality.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-proc-pid',
+		files('proc_pid.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-reboot',
+		files('reboot.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-rootfs-options',
+		files('rootfs_options.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-rootfs-overmounted',
+		files('rootfs_overmounted.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-saveconfig',
+		files('saveconfig.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-share-ns',
+		files('share_ns.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-shortlived',
+		files('shortlived.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-shutdowntest',
+		files('shutdowntest.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-snapshot',
+		files('snapshot.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-startone',
+		files('startone.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-state-server',
+		files('state_server.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-sys-mixed',
+		files('sys_mixed.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += executable(
+                'lxc-test-sysctls',
+		files('sysctls.c') + tests_common_sources,
+                include_directories : tests_liblxc_includes,
+		dependencies : liblxc_dep,
+		install: false,
+		build_by_default: want_tests != false)
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-apparmor-generated',
+                        output : 'lxc-test-apparmor-generated')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-apparmor-mount',
+                        output : 'lxc-test-apparmor-mount')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-automount',
+                        output : 'lxc-test-automount')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-autostart',
+                        output : 'lxc-test-autostart')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-checkpoint-restore',
+                        output : 'lxc-test-checkpoint-restore')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-cloneconfig',
+                        output : 'lxc-test-cloneconfig')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-createconfig',
+                        output : 'lxc-test-createconfig')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-exit-code',
+                        output : 'lxc-test-exit-code')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-fuzzers',
+                        output : 'lxc-test-fuzzers')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-lxc-attach',
+                        output : 'lxc-test-lxc-attach')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-no-new-privs',
+                        output : 'lxc-test-no-new-privs')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-procsys',
+                        output : 'lxc-test-procsys')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-rootfs',
+                        output : 'lxc-test-rootfs')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-snapdeps',
+                        output : 'lxc-test-snapdeps')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-symlink',
+                        output : 'lxc-test-symlink')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-unpriv',
+                        output : 'lxc-test-unpriv')
+
+test_programs += configure_file(
+			configuration : conf,
+                        input : 'lxc-test-usernic.in',
+                        output : 'lxc-test-usernic')
+
+test_programs += configure_file(
+			configuration : dummy_config_data,
+                        input : 'lxc-test-usernsexec',
+                        output : 'lxc-test-usernsexec')
