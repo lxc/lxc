@@ -254,13 +254,13 @@ void test_lxc_safe_uint(void)
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("-123", &n)));
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRIu64, (uint64_t)UINT_MAX);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_uint(numstr, &n)) && n == UINT_MAX);
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRIu64, (uint64_t)UINT_MAX + 1);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_uint(numstr, &n)));
@@ -287,25 +287,25 @@ void test_lxc_safe_int(void)
 	char numstr[INTTYPE_TO_STRLEN(uint64_t)];
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRIu64, (uint64_t)INT_MAX);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MAX);
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRIu64, (uint64_t)INT_MAX + 1);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRId64, (int64_t)INT_MIN);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MIN);
 
 	ret = snprintf(numstr, sizeof(numstr), "%" PRId64, (int64_t)INT_MIN - 1);
-	if (ret < 0 || ret >= sizeof(numstr))
+	if (ret < 0 || (size_t)ret >= sizeof(numstr))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
@@ -551,7 +551,7 @@ void test_task_blocks_signal(void)
 
 		sigemptyset(&mask);
 
-		for (i = 0; i < (sizeof(signals) / sizeof(signals[0])); i++) {
+		for (i = 0; (size_t)i < (sizeof(signals) / sizeof(signals[0])); i++) {
 			ret = sigaddset(&mask, signals[i]);
 			if (ret < 0)
 				_exit(EXIT_FAILURE);
@@ -563,7 +563,7 @@ void test_task_blocks_signal(void)
 			_exit(EXIT_FAILURE);
 		}
 
-		for (i = 0; i < (sizeof(signals) / sizeof(signals[0])); i++) {
+		for (i = 0; (size_t)i < (sizeof(signals) / sizeof(signals[0])); i++) {
 			if (!task_blocks_signal(getpid(), signals[i])) {
 				lxc_error("Failed to detect blocked signal "
 					  "(idx = %d, signal number = %d)\n",

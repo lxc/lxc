@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 
 		lxc_debug("Starting namespace sharing test iteration %d\n", j);
 
-		for (i = 0; i < nthreads; i++) {
+		for (i = 0; (size_t)i < nthreads; i++) {
 			memset(&args[i], 0, sizeof(struct thread_args));
 			memset(&threads[i], 0, sizeof(pthread_t));
 
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
 				goto on_error_stop;
 		}
 
-		for (i = 0; i < nthreads; i++) {
+		for (i = 0; (size_t)i < nthreads; i++) {
 			ret = pthread_join(threads[i], NULL);
 			if (ret != 0)
 				goto on_error_stop;

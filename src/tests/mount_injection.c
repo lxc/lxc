@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <lxc/lxccontainer.h>
-#include <lxc/list.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -32,6 +31,7 @@
 
 #include "config.h"
 #include "lxctest.h"
+#include "list.h"
 #include "utils.h"
 
 #define NAME "mount_injection_test-"

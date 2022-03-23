@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-#include "lxc/lxc.h"
+#include "lxc.h"
 
 #define MYNAME "snapxxx1"
 #define MYNAME2 "snapxxx3"

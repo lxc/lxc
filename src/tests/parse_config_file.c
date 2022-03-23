@@ -33,7 +33,7 @@
 
 #include "conf.h"
 #include "confile_utils.h"
-#include "lxc/state.h"
+#include "state.h"
 #include "lxctest.h"
 #include "utils.h"
 
