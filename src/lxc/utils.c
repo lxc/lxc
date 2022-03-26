@@ -218,6 +218,9 @@ int mkdir_p(const char *dir, mode_t mode)
 	const char *tmp = dir;
 	const char *orig = dir;
 
+	if (access(dir, F_OK) != -1)
+		return 0;
+
 	do {
 		__do_free char *makeme = NULL;
 		int ret;
