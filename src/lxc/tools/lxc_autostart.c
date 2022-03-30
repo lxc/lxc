@@ -282,6 +282,11 @@ static int cmporder(const void *p1, const void *p2)
 	return (c1_order - c2_order);
 }
 
+static int cmporder_reverse(const void *p1, const void *p2)
+{
+	return -1 * cmporder(p1, p2);
+}
+
 static int toss_list(struct lxc_list *c_groups_list)
 {
 	struct lxc_list *it, *next;
@@ -332,7 +337,8 @@ int main(int argc, char *argv[])
 	if (!my_args.all)
 		c_groups_lists = calloc( count, sizeof( struct lxc_list * ) );
 
-	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
+	qsort(&containers[0], count, sizeof(struct lxc_container *),
+	      (my_args.shutdown || my_args.hardstop) ? cmporder_reverse : cmporder);
 
 	if (cmd_groups_list && my_args.all)
 		ERROR("Specifying -a (all) with -g (groups) doesn't make sense. All option overrides");
