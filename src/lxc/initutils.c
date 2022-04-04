@@ -59,16 +59,15 @@ const char *lxc_global_config_value(const char *option_name)
 	/* placed in the thread local storage pool for non-bionic targets */
 	static thread_local const char *values[sizeof(options) / sizeof(options[0])] = {0};
 
-	/* user_config_path is freed as soon as it is used */
-	char *user_config_path = NULL;
+	__do_free char *user_config_path = NULL;
 
 	/*
 	 * The following variables are freed at bottom unconditionally.
 	 * So NULL the value if it is to be returned to the caller
 	 */
-	char *user_default_config_path = NULL;
-	char *user_lxc_path = NULL;
-	char *user_cgroup_pattern = NULL;
+	__do_free char *user_default_config_path = NULL;
+	__do_free char *user_lxc_path = NULL;
+	__do_free char *user_cgroup_pattern = NULL;
 
 	if (geteuid() > 0) {
 		const char *user_home = getenv("HOME");
@@ -100,24 +99,15 @@ const char *lxc_global_config_value(const char *option_name)
 			break;
 	}
 	if (!(*ptr)[0]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
 		errno = EINVAL;
 		return NULL;
 	}
 
 	if (values[i]) {
-		free(user_config_path);
-		free(user_default_config_path);
-		free(user_lxc_path);
-		free(user_cgroup_pattern);
 		return values[i];
 	}
 
 	fin = fopen_cloexec(user_config_path, "r");
-	free(user_config_path);
 	if (fin) {
 		__do_free char *line = NULL;
 		size_t len = 0;
@@ -197,10 +187,6 @@ const char *lxc_global_config_value(const char *option_name)
 out:
 	if (fin)
 		fclose(fin);
-
-	free(user_cgroup_pattern);
-	free(user_default_config_path);
-	free(user_lxc_path);
 
 	return values[i];
 }
