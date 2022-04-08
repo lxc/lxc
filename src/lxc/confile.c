@@ -3050,6 +3050,7 @@ static int parse_line(char *buffer, void *data)
 	bool empty_line;
 	struct lxc_config_t *config;
 	int ret;
+	size_t len;
 	char *dup = buffer;
 	struct parse_line_conf *plc = data;
 
@@ -3101,15 +3102,12 @@ static int parse_line(char *buffer, void *data)
 	value += lxc_char_left_gc(value, strlen(value));
 	value[lxc_char_right_gc(value, strlen(value))] = '\0';
 
-	if (*value == '\'' || *value == '\"') {
-		size_t len;
+	if (*value == '\'' || *value == '\"')
+		value++;
 
-		len = strlen(value);
-		if (len > 1 && value[len - 1] == *value) {
-			value[len - 1] = '\0';
-			value++;
-		}
-	}
+	len = strlen(value);
+	if (len > 1 && (value[len - 1] == '\'' || value[len - 1] == '\"'))
+		value[len - 1] = '\0';
 
 	config = lxc_get_config(key);
 	return config->set(key, value, plc->conf, NULL);
