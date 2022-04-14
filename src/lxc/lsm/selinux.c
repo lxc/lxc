@@ -34,7 +34,7 @@ static char *selinux_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
 	char *label;
 
-	if (getpidcon_raw(pid, &label) < 0)
+	if (getpidcon(pid, &label) < 0)
 		return log_error_errno(NULL, errno, "failed to get SELinux context for pid %d", pid);
 
 	return label;
@@ -92,9 +92,13 @@ static int selinux_process_label_set(struct lsm_ops *ops, const char *inlabel,
 		return 0;
 
 	if (on_exec)
-		ret = setexeccon_raw((char *)label);
+		ret = setexeccon((char *)label);
 	else
-		ret = setcon_raw((char *)label);
+#if IS_BIONIC
+		ret = selinux_android_setcon((char *)label);
+#else
+		ret = setcon((char *)label);
+#endif
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to set SELinux%s context to \"%s\"",
 				       on_exec ? " exec" : "", label);
@@ -112,7 +116,7 @@ static int selinux_process_label_set(struct lsm_ops *ops, const char *inlabel,
  */
 static int selinux_keyring_label_set(struct lsm_ops *ops, const char *label)
 {
-	return setkeycreatecon_raw(label);
+	return setkeycreatecon(label);
 }
 
 static int selinux_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath)

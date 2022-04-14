@@ -320,12 +320,12 @@ AC_ARG_ENABLE([selinux],
 	[enable_selinux=$enableval], [enable_selinux=auto])
 
 if test "x$enable_selinux" = xauto; then
-	AC_CHECK_LIB([selinux],[setexeccon_raw],[enable_selinux=yes],[enable_selinux=no])
+	AC_CHECK_LIB([selinux],[setexeccon],[enable_selinux=yes],[enable_selinux=no])
 fi
 AM_CONDITIONAL([ENABLE_SELINUX], [test "x$enable_selinux" = "xyes"])
 AM_COND_IF([ENABLE_SELINUX],
 	[AC_CHECK_HEADER([selinux/selinux.h],[],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
-	AC_CHECK_LIB([selinux], [setexeccon_raw],[true],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
+	AC_CHECK_LIB([selinux], [setexeccon],[true],[AC_MSG_ERROR([You must install the SELinux development package in order to compile lxc])])
 	AC_SUBST([SELINUX_LIBS], [-lselinux])])
 
 # Seccomp syscall filter
