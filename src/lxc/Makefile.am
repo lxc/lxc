@@ -269,6 +269,7 @@ liblxc_la_CFLAGS = -fPIC \
 
 liblxc_la_LDFLAGS = -pthread \
 		    -Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) \
+		    $(SYSTEMD_LIBS) \
 		    -version-info @LXC_ABI_MAJOR@
 
 if ENABLE_NO_UNDEFINED
@@ -340,7 +341,8 @@ LDADD = liblxc.la \
 	@SECCOMP_LIBS@ \
 	@SELINUX_LIBS@ \
 	@DLOG_LIBS@ \
-	@LIBURING_LIBS@
+	@LIBURING_LIBS@ \
+	@SYSTEMD_LIBS@
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \

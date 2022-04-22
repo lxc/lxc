@@ -679,6 +679,11 @@ AC_CHECK_HEADER([ifaddrs.h],
 	AC_DEFINE(HAVE_IFADDRS_H, 1, [Have ifaddrs.h]),
 	AM_CONDITIONAL(HAVE_IFADDRS_H, false))
 
+PKG_CHECK_MODULES([SYSTEMD], [libsystemd], [with_systemd=yes], [with_systemd=no])
+AC_CHECK_HEADERS([systemd/sd-bus.h systemd/sd-event.h],
+	AC_DEFINE(WITH_SYSTEMD, 1, [Build with systemd dbus api]),
+	[])
+
 AC_ARG_ENABLE([liburing],
 	[AS_HELP_STRING([--enable-liburing], [enable liburing support [default=auto]])],
 	[enable_liburing=$enableval], [enable_liburing=auto])

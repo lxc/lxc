@@ -4831,6 +4831,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->cgroup_meta.container_dir);
 	free(conf->cgroup_meta.namespace_dir);
 	free(conf->cgroup_meta.controllers);
+	free(conf->cgroup_meta.systemd_scope);
 	free(conf->shmount.path_host);
 	free(conf->shmount.path_cont);
 	free(conf);
