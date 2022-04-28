@@ -332,14 +332,6 @@ test_programs += executable(
 		build_by_default: want_tests != false)
 
 test_programs += executable(
-                'lxc-test-personality',
-		files('personality.c') + tests_common_sources,
-                include_directories : tests_liblxc_includes,
-		dependencies : liblxc_dep,
-		install: false,
-		build_by_default: want_tests != false)
-
-test_programs += executable(
                 'lxc-test-proc-pid',
 		files('proc_pid.c') + tests_common_sources,
                 include_directories : tests_liblxc_includes,
@@ -358,14 +350,6 @@ test_programs += executable(
 test_programs += executable(
                 'lxc-test-rootfs-options',
 		files('rootfs_options.c') + tests_common_sources,
-                include_directories : tests_liblxc_includes,
-		dependencies : liblxc_dep,
-		install: false,
-		build_by_default: want_tests != false)
-
-test_programs += executable(
-                'lxc-test-rootfs-overmounted',
-		files('rootfs_overmounted.c') + tests_common_sources,
                 include_directories : tests_liblxc_includes,
 		dependencies : liblxc_dep,
 		install: false,
