@@ -182,12 +182,16 @@ endif
 
 ## Time EPOCH.
 sh = find_program('sh')
+date = find_program('date')
 git = find_program('git', required: false)
 time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"', check: true).stdout().strip()
 if time_epoch == '' and git.found() and run_command('test', '-e', '.git', check: false).returncode() == 0
     # If we're in a git repository, use the creation time of the latest git tag.
     latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: true).stdout().strip()
     time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
+else
+    # Fallback to current epoch
+    time_epoch = run_command(date, '+%s', check: true).stdout()
 endif
 time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
