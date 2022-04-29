@@ -183,11 +183,11 @@ endif
 ## Time EPOCH.
 sh = find_program('sh')
 git = find_program('git', required: false)
-time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"').stdout().strip()
-if time_epoch == '' and git.found() and run_command('test', '-e', '.git').returncode() == 0
+time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"', check: true).stdout().strip()
+if time_epoch == '' and git.found() and run_command('test', '-e', '.git', check: false).returncode() == 0
     # If we're in a git repository, use the creation time of the latest git tag.
-    latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags').stdout().strip()
-    time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag).stdout()
+    latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: true).stdout().strip()
+    time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
 endif
 time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
@@ -613,7 +613,7 @@ status = [
     'lxc user network database:	@0@'.format(lxc_user_network_db)]
 
 alt_time_epoch = run_command('date', '-Is', '-u', '-d',
-                             '@@0@'.format(time_epoch)).stdout().strip()
+                             '@@0@'.format(time_epoch), check: true).stdout().strip()
 status += [
     'time epoch:			@0@ (@1@)'.format(time_epoch, alt_time_epoch)]
 
