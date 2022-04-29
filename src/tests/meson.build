@@ -112,7 +112,7 @@ test_programs += executable(
     files('arch_parse.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -120,7 +120,7 @@ test_programs += executable(
     files('aa.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -128,7 +128,7 @@ test_programs += executable(
     files('api_reboot.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -136,7 +136,7 @@ test_programs += executable(
     files('attach.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -144,7 +144,7 @@ test_programs += executable(
     files('basic.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -152,7 +152,7 @@ test_programs += executable(
     files('capabilities.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -160,7 +160,7 @@ test_programs += executable(
     files('cgpath.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -168,7 +168,7 @@ test_programs += executable(
     files('clonetest.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -176,7 +176,7 @@ test_programs += executable(
     files('concurrent.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -184,7 +184,7 @@ test_programs += executable(
     files('config_jump_table.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -192,7 +192,7 @@ test_programs += executable(
     files('console.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -200,7 +200,7 @@ test_programs += executable(
     files('console_log.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -208,7 +208,7 @@ test_programs += executable(
     files('containertests.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -216,7 +216,7 @@ test_programs += executable(
     files('createtest.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -224,7 +224,7 @@ test_programs += executable(
     files('criu_check_feature.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -232,7 +232,7 @@ test_programs += executable(
     files('cve-2019-5736.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -240,7 +240,7 @@ test_programs += executable(
     files('destroytest.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -248,7 +248,7 @@ test_programs += executable(
     files('device_add_remove.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -256,7 +256,7 @@ test_programs += executable(
     files('get_item.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -264,7 +264,7 @@ test_programs += executable(
     files('getkeys.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -272,7 +272,7 @@ test_programs += executable(
     files('list.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -280,7 +280,7 @@ test_programs += executable(
     files('locktests.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -288,7 +288,7 @@ test_programs += executable(
     files('lxc-test-utils.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -296,7 +296,7 @@ test_programs += executable(
     files('lxc_raw_clone.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -304,7 +304,7 @@ test_programs += executable(
     files('lxcpath.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -312,7 +312,7 @@ test_programs += executable(
     files('may_control.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -320,7 +320,7 @@ test_programs += executable(
     files('mount_injection.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -328,7 +328,7 @@ test_programs += executable(
     files('parse_config_file.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -336,7 +336,7 @@ test_programs += executable(
     files('proc_pid.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -344,7 +344,7 @@ test_programs += executable(
     files('reboot.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -352,7 +352,7 @@ test_programs += executable(
     files('rootfs_options.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -360,7 +360,7 @@ test_programs += executable(
     files('saveconfig.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -368,7 +368,7 @@ test_programs += executable(
     files('share_ns.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -376,7 +376,7 @@ test_programs += executable(
     files('shortlived.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -384,7 +384,7 @@ test_programs += executable(
     files('shutdowntest.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -392,7 +392,7 @@ test_programs += executable(
     files('snapshot.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -400,7 +400,7 @@ test_programs += executable(
     files('startone.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -408,7 +408,7 @@ test_programs += executable(
     files('state_server.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -416,7 +416,7 @@ test_programs += executable(
     files('sys_mixed.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += executable(
@@ -424,7 +424,7 @@ test_programs += executable(
     files('sysctls.c') + tests_common_sources,
     include_directories: tests_liblxc_includes,
     dependencies: liblxc_dep,
-    install: false,
+    install: want_tests,
     build_by_default: want_tests != false)
 
 test_programs += configure_file(
