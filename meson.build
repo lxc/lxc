@@ -29,7 +29,7 @@ version_data.set('LXC_VERSION_MICRO', '7')
 version_data.set('LXC_ABI', '4.0.7')
 version_data.set('LXC_DEVEL', '1')
 version_data.set('LXC_VERSION', '4.0.7-devel')
-liblxc_version = '4.0.0'
+liblxc_version = '1.7.0'
 
 # Configuration options.
 conf = configuration_data()
