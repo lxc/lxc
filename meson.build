@@ -615,7 +615,6 @@ pkg_config_file = pkgconfig.generate(liblxc,
     url: 'http://linuxcontainers.org',
     libraries: '-lutil -lpthread -ldl',
     libraries_private: pkgconfig_libs,
-    install_dir: join_paths(libdir, 'pkgconfig')
 )
 
 # Empty dirs.
