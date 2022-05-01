@@ -57,6 +57,7 @@ rootfsmount = get_option('rootfs-mount-dir')
 user_network_db_opt = get_option('user-network-db')
 user_network_conf_opt = get_option('user-network-conf')
 
+bashcompletiondir = join_paths('/', 'usr', 'share', 'bash-completion', 'completions')
 bindir = join_paths(prefixdir, get_option('bindir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
 docdir = join_paths(prefixdir, get_option('docdir'))
@@ -598,6 +599,7 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
+subdir('config/bash')
 subdir('doc/rootfs')
 subdir('hooks')
 subdir('src/lxc/cmd')
