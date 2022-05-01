@@ -11,7 +11,7 @@ hook_programs += executable(
     hooks_unmount_namespace_sources,
     include_directories: hooks_include_directories,
     install: true,
-    install_dir: lxchookdir)
+    install_dir: join_paths(lxclibexec, 'hooks'))
 
 hook_programs = configure_file(
     configuration: dummy_config_data,
