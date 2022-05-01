@@ -598,6 +598,7 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
+subdir('doc/rootfs')
 subdir('hooks')
 subdir('src/lxc/cmd')
 subdir('src/lxc/tools')
