@@ -16,7 +16,7 @@ project(
         'c_std=gnu11',
         'warning_level=2',
     ],
-    meson_version: '>= 0.50')
+    meson_version: '>= 0.60')
 
 cc = meson.get_compiler('c')
 pkgconfig = import('pkgconfig')
@@ -615,6 +615,10 @@ pkg_config_file = pkgconfig.generate(liblxc,
     libraries_private: pkgconfig_libs,
     install_dir: join_paths(libdir, 'pkgconfig')
 )
+
+# Empty dirs.
+install_emptydir(join_paths(localstatedir, 'cache', 'lxc'))
+install_emptydir(join_paths(localstatedir, 'lib', 'lxc'))
 
 # Build overview.
 status = [
