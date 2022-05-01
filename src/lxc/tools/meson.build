@@ -109,6 +109,9 @@ tools_common_sources = files(
     '../log.h',
     '../log.c') + include_sources + netns_ifaddrs_sources
 
+tools_lxc_attach_sources = files(
+    'lxc_attach.c') + tools_common_sources
+
 tools_lxc_autostart_sources = files(
     'lxc_autostart.c') + tools_common_sources
 
@@ -171,6 +174,13 @@ tools_lxc_unshare_sources = files(
 
 tools_lxc_wait_sources = files(
     'lxc_wait.c') + tools_common_sources
+
+public_programs += executable(
+    'lxc-attach',
+    tools_lxc_attach_sources,
+    include_directories: tools_liblxc_includes,
+    dependencies: liblxc_dep,
+    install: true)
 
 public_programs += executable(
     'lxc-autostart',
