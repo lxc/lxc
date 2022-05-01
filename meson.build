@@ -16,10 +16,11 @@ project(
         'c_std=gnu11',
         'warning_level=2',
     ],
-    meson_version: '>= 0.48')
+    meson_version: '>= 0.50')
 
 cc = meson.get_compiler('c')
 pkgconfig = import('pkgconfig')
+pkgconfig_libs = []
 
 # Version.
 version_data = configuration_data()
@@ -205,6 +206,8 @@ threads = dependency('threads')
 libseccomp = dependency('libseccomp')
 conf.set10('HAVE_SECCOMP', libseccomp.found())
 if libseccomp.found()
+    pkgconfig_libs += '-lseccomp'
+
     if libseccomp.version().version_compare('>=2.5.0')
         # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
         conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
@@ -241,6 +244,9 @@ endif
 ## SELinux.
 libselinux = dependency('libselinux', required: false)
 conf.set10('HAVE_SELINUX', libselinux.found())
+if libselinux.found()
+    pkgconfig_libs += '-lselinux'
+endif
 
 ## AppArmor.
 libapparmor = dependency('libapparmor', required: false)
@@ -249,6 +255,9 @@ conf.set10('HAVE_APPARMOR', libapparmor.found())
 ## OpenSSL.
 libopenssl = dependency('openssl', required: false)
 conf.set10('HAVE_OPENSSL', libopenssl.found())
+if libopenssl.found()
+    pkgconfig_libs += '-lssl -lcrypto'
+endif
 
 ## Libcap..
 libcap = dependency('libcap', required: false)
@@ -257,6 +266,9 @@ if not libcap.found()
     libcap = cc.find_library('cap', required: false)
 endif
 conf.set10('HAVE_LIBCAP', libcap.found())
+if libcap.found()
+    pkgconfig_libs += '-lcap'
+endif
 
 libcap_static = dependency('libcap', required: false, static: true)
 if not libcap_static.found()
@@ -264,6 +276,14 @@ if not libcap_static.found()
     libcap_static = cc.find_library('cap', required: false, static: true)
 endif
 conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+
+## PAM.
+pam = cc.find_library('pam',
+    has_headers: 'security/pam_modules.h')
+conf.set10('HAVE_PAM', pam.found())
+if pam.found()
+    pkgconfig_libs += '-lpam'
+endif
 
 ## Others.
 have = cc.has_function('strchrnul', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
@@ -584,6 +604,16 @@ subdir('src/lxc/tools')
 subdir('src/lxc/tools/include')
 subdir('src/tests')
 subdir('templates')
+
+# Pkg-config.
+pkg_config_file = pkgconfig.generate(liblxc,
+    description: 'linux container tools',
+    version: version_data.get('LXC_VERSION'),
+    url: 'http://linuxcontainers.org',
+    libraries: '-lutil -lpthread -ldl',
+    libraries_private: pkgconfig_libs,
+    install_dir: join_paths(libdir, 'pkgconfig')
+)
 
 # Build overview.
 status = [
