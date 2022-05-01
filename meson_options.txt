@@ -13,7 +13,7 @@ option('init-script', type : 'combo',
 option('apparmor-cache-dir', type : 'string', value : 'cache/lxc/apparmor',
        description : 'the AppArmor cache directory')
 
-option('rootfs-mount-dir', type : 'string', value : 'lib/x86_64-linux-gnu/lxc',
+option('rootfs-mount-dir', type : 'string', value : 'lib/x86_64-linux-gnu/lxc/rootfs',
        description : 'the rootfs mount directory')
 
 option('cgroup-pattern', type : 'string', value : '',

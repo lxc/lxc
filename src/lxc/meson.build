@@ -1,9 +1,28 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
+liblxcfs_attach_file = configure_file(
+    configuration: dummy_config_data,
+    input: 'attach_options.h',
+    output: 'attach_options.h',
+    install: true,
+    install_dir: lxcinclude
+)
+
+liblxcfs_header_file = configure_file(
+    configuration: dummy_config_data,
+    input: 'lxccontainer.h',
+    output: 'lxccontainer.h',
+    install: true,
+    install_dir: lxcinclude
+)
+
 liblxcfs_version_file = configure_file(
     configuration: version_data,
     input: 'version.h.in',
-    output: 'version.h')
+    output: 'version.h',
+    install: true,
+    install_dir: lxcinclude
+)
 
 liblxc_sources = files(
     'cgroups/cgfsng.c',
