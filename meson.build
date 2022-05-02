@@ -16,7 +16,7 @@ project(
         'c_std=gnu11',
         'warning_level=2',
     ],
-    meson_version: '>= 0.60')
+    meson_version: '>= 0.61')
 
 cc = meson.get_compiler('c')
 pkgconfig = import('pkgconfig')
