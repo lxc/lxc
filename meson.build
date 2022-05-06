@@ -594,6 +594,7 @@ liblxc_dep = declare_dependency(
 
 # Rest of sub-directories.
 subdir('config/bash')
+subdir('doc/examples')
 subdir('doc/rootfs')
 subdir('hooks')
 subdir('src/lxc/cmd')
