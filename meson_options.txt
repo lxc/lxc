@@ -1,41 +1,49 @@
 # -*- mode: meson -*-
 
-option('tests', type : 'boolean', value: 'false',
-       description : 'enable tests')
+# Main options
+option('cgroup-pattern', type: 'string', value: '',
+       description: 'CGroup pattern')
 
-option('runtime-path', type : 'string', value : '/run',
-       description : 'the runtime directory')
+option('examples', type: 'boolean', value: 'true',
+       description: 'build and install examples')
 
-option('init-script', type : 'combo',
-       choices : ['systemd', 'sysvinit', 'openrc', 'upstart'], value : 'systemd',
-       description : 'init script')
+option('init-script', type: 'combo',
+       choices: ['systemd', 'sysvinit', 'openrc', 'upstart'], value: 'systemd',
+       description: 'init script')
 
-option('apparmor-cache-dir', type : 'string', value : 'cache/lxc/apparmor',
-       description : 'the AppArmor cache directory')
+option('io-uring-event-loop', type: 'boolean', value: 'false',
+       description: 'Enable io-uring based event loop')
 
-option('rootfs-mount-dir', type : 'string', value : 'lib/x86_64-linux-gnu/lxc/rootfs',
-       description : 'the rootfs mount directory')
+option('man', type: 'boolean', value: 'true',
+       description: 'build and install manpages')
 
-option('cgroup-pattern', type : 'string', value : '',
-       description : 'the rootfs mount directory')
+option('tests', type: 'boolean', value: 'false',
+       description: 'build and install tests')
 
-option('log-path', type : 'string', value : 'log/lxc',
-       description : 'the rootfs mount directory')
+# Paths
+option('apparmor-cache-path', type: 'string', value: 'cache/lxc/apparmor',
+       description: 'AppArmor cache directory')
 
-option('config-path', type : 'string', value : 'lib/lxc',
-       description : 'the rootfs mount directory')
+option('data-path', type: 'string', value: 'lib/lxc',
+       description: 'Container storage directory')
 
-option('global-config', type : 'string', value : 'lxc/lxc.conf',
-       description : 'the rootfs mount directory')
+option('doc-path', type: 'string', value: 'doc/lxc',
+       description: 'Documentation directory')
 
-option('docdir', type : 'string',
-       description : 'documentation directory')
+option('global-config-path', type: 'string', value: 'lxc/lxc.conf',
+       description: 'Global configuration file path')
 
-option('user-network-conf', type : 'string', value : 'lxc/lxc-usernet',
-       description : 'user network interface configuration file')
+option('log-path', type: 'string', value: 'log/lxc',
+       description: 'Loging directory')
 
-option('user-network-db', type : 'string', value : 'lxc/nics',
-       description : 'user network database')
+option('rootfs-mount-path', type: 'string', value: 'lxc/rootfs',
+       description: 'Container rootfs mount directory')
 
-option('io-uring-event-loop', type : 'boolean', value: 'false',
-       description : 'enable io-uring based event loop')
+option('runtime-path', type: 'string', value: '/run',
+       description: 'Main runtime directory')
+
+option('usernet-config-path', type: 'string', value: 'lxc/lxc-usernet',
+       description: 'User network configuration file path')
+
+option('usernet-db-path', type: 'string', value: 'lxc/nics',
+       description: 'User network database file path')
