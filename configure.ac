@@ -899,7 +899,7 @@ AC_CONFIG_FILES([
 	config/apparmor/abstractions/start-container
 	config/selinux/Makefile
 	config/bash/Makefile
-	config/bash/lxc
+	config/bash/_lxc
 	config/init/Makefile
 	config/init/common/Makefile
 	config/init/common/lxc-containers
