@@ -599,6 +599,8 @@ liblxc_dep = declare_dependency(
 # Rest of sub-directories.
 subdir('config/bash')
 subdir('config/etc')
+subdir('config/init/common')
+subdir('config/init/systemd')
 subdir('config/selinux')
 subdir('config/templates')
 subdir('config/templates/common.conf.d')
