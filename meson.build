@@ -74,17 +74,17 @@ lxcdefaultconfig = join_paths(lxcconfdir, 'default.conf')
 lxcglobalconfig = join_paths(lxcconfdir, 'lxc.conf')
 lxcexamplesdir = join_paths(docdir, 'examples')
 lxchookbindir = join_paths(libexecdir, 'lxc/hooks')
-lxchookdir = join_paths(datadir, 'lxc/hooks')
 lxcinclude = join_paths(includedir, 'lxc')
 lxclibexec = join_paths(libexecdir, 'lxc')
 lxclogpath = join_paths(localstatedir, logpath)
 lxcpath = join_paths(localstatedir, lxcpathprefix)
 lxcrootfsmount = join_paths(libdir, rootfsmount)
-lxctemplateconfdir = join_paths(datadir, 'lxc/config')
-lxctemplateconfcommondir = join_paths(datadir, 'lxc/config/common.conf.d')
-lxcselinuxdir = join_paths(datadir, 'lxc/selinux')
-lxctemplateconfig = join_paths(datadir, 'lxc/config')
-lxctemplatedir = join_paths(datadir, 'lxc/templates')
+lxcdatadir = join_paths(datadir, 'lxc')
+lxchookdir = join_paths(lxcdatadir, 'hooks')
+lxcselinuxdir = join_paths(lxcdatadir, 'selinux')
+lxctemplateconfdir = join_paths(lxcdatadir, 'config')
+lxctemplateconfcommondir = join_paths(lxctemplateconfdir, 'common.conf.d')
+lxctemplatedir = join_paths(lxcdatadir, 'templates')
 lxc_user_network_conf = join_paths(sysconfdir, user_network_conf_opt)
 lxc_user_network_db = join_paths(runtimepath, user_network_db_opt)
 
@@ -108,7 +108,7 @@ conf.set_quoted('LXCHOOKDIR', lxchookdir)
 conf.set_quoted('LXCINITDIR', libexecdir)
 conf.set_quoted('LXCPATH', lxcpath)
 conf.set_quoted('LXCROOTFSMOUNT', lxcrootfsmount)
-conf.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfig)
+conf.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfdir)
 conf.set_quoted('LXCTEMPLATEDIR', lxctemplatedir)
 conf.set_quoted('LXC_USERNIC_CONF', lxc_user_network_conf)
 conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
@@ -654,7 +654,7 @@ status = [
     'lxc rootfs mount directory:	@0@'.format(lxcrootfsmount),
     'log path:			@0@'.format(lxclogpath),
     'lxc path:			@0@'.format(lxcpath),
-    'lxc template config:		@0@'.format(lxctemplateconfig),
+    'lxc template config:		@0@'.format(lxctemplateconfdir),
     'lxc template directory:	@0@'.format(lxctemplatedir),
     'lxc user network config:	@0@'.format(lxc_user_network_conf),
     'lxc user network database:	@0@'.format(lxc_user_network_db)]
