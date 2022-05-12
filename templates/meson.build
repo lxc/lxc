@@ -9,7 +9,7 @@ template_scripts = configure_file(
 
 template_config_data = configuration_data()
 template_config_data.set_quoted('LXCHOOKDIR', lxchookdir)
-template_config_data.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfig)
+template_config_data.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfdir)
 template_config_data.set_quoted('LOCALSTATEDIR', localstatedir)
 template_config_data.set_quoted('PACKAGE_VERSION', meson.project_version())
 
