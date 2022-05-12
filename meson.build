@@ -69,9 +69,10 @@ sbindir = join_paths(prefixdir, get_option('sbindir'))
 sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
 
 lxcapparmorcachedir = join_paths(localstatedir, apparmorcachedir)
-lxcdefaultconfig = join_paths(sysconfdir, 'lxc/default.conf')
+lxcconfdir = join_paths(sysconfdir, globalconfig)
+lxcdefaultconfig = join_paths(lxcconfdir, 'default.conf')
+lxcglobalconfig = join_paths(lxcconfdir, 'lxc.conf')
 lxcexamplesdir = join_paths(docdir, 'examples')
-lxcglobalconfig = join_paths(sysconfdir, globalconfig)
 lxchookbindir = join_paths(libexecdir, 'lxc/hooks')
 lxchookdir = join_paths(datadir, 'lxc/hooks')
 lxcinclude = join_paths(includedir, 'lxc')
@@ -594,6 +595,7 @@ liblxc_dep = declare_dependency(
 
 # Rest of sub-directories.
 subdir('config/bash')
+subdir('config/etc')
 subdir('doc/examples')
 subdir('doc/rootfs')
 subdir('hooks')

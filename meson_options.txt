@@ -30,8 +30,8 @@ option('data-path', type: 'string', value: 'lib/lxc',
 option('doc-path', type: 'string', value: 'doc/lxc',
        description: 'Documentation directory')
 
-option('global-config-path', type: 'string', value: 'lxc/lxc.conf',
-       description: 'Global configuration file path')
+option('global-config-path', type: 'string', value: 'lxc',
+       description: 'Global configuration directory')
 
 option('log-path', type: 'string', value: 'log/lxc',
        description: 'Loging directory')
