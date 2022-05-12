@@ -148,3 +148,10 @@ liblxc_static = static_library(
     include_directories: liblxc_includes,
     dependencies: [threads],
     c_args: '-fvisibility=default')
+
+lxc_functions = configure_file(
+    configuration: conf,
+    input: 'lxc.functions.in',
+    output: 'lxc.functions',
+    install: true,
+    install_dir: lxcdatadir)
