@@ -2682,7 +2682,7 @@ if ENABLE_BASH
 install-data-local:
 	cd $(DESTDIR)$(bashcompdir); \
 	for bin in $(bin_PROGRAMS) ; do \
-		ln -sf lxc $$bin ; \
+		ln -sf _lxc $$bin ; \
 	done
 endif
 endif

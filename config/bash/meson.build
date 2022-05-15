@@ -2,8 +2,8 @@
 
 bash_completion = configure_file(
     configuration: conf,
-    input: 'lxc.in',
-    output: 'lxc',
+    input: '_lxc.in',
+    output: '_lxc',
     install: true,
     install_dir: bashcompletiondir)
 
@@ -34,6 +34,6 @@ foreach cmd: [
     'lxc-wait',
 ]
     install_symlink(cmd,
-        pointing_to: 'lxc',
+        pointing_to: '_lxc',
         install_dir: bashcompletiondir)
 endforeach
