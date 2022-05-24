@@ -87,6 +87,7 @@ lxctemplateconfcommondir = join_paths(lxctemplateconfdir, 'common.conf.d')
 lxctemplatedir = join_paths(lxcdatadir, 'templates')
 lxc_user_network_conf = join_paths(sysconfdir, user_network_conf_opt)
 lxc_user_network_db = join_paths(runtimepath, user_network_db_opt)
+pam_security = join_paths(libdir, 'security')
 
 conf.set_quoted('BINDIR', bindir)
 conf.set_quoted('DATADIR', datadir)
@@ -117,6 +118,7 @@ conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
 cgrouppattern = get_option('cgroup-pattern')
 wants_io_uring = get_option('io-uring-event-loop')
 want_examples = get_option('examples')
+want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
 
@@ -279,8 +281,7 @@ endif
 conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 
 ## PAM.
-pam = cc.find_library('pam',
-    has_headers: 'security/pam_modules.h')
+pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
 conf.set10('HAVE_PAM', pam.found())
 pkgconfig_libs += pam
 
@@ -520,6 +521,7 @@ foreach tuple: [
     ['SELinux'],
     ['libcap'],
     ['static libcap'],
+    ['pam'],
     ['openssl'],
     ['liburing'],
 ]
@@ -567,6 +569,9 @@ liblxc_includes = [basic_includes, include_directories(
 # Early sub-directories.
 subdir('src/include')
 subdir('src/lxc')
+if want_pam_cgroup == true
+    subdir('src/lxc/pam')
+endif
 
 # Library.
 liblxc_dependencies = [

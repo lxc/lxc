@@ -39,10 +39,10 @@
 #include "strlcat.h"
 #endif
 
-#define pam_cgfs_debug_stream(stream, format, ...)                                \
-	do {                                                                   \
-		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
-			__func__, __VA_ARGS__);                                \
+#define pam_cgfs_debug_stream(stream, format, ...)                         \
+	do {                                                               \
+		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__, \
+			__func__, __VA_ARGS__);                            \
 	} while (false)
 
 #define pam_cgfs_error(format, ...) pam_cgfs_debug_stream(stderr, format, __VA_ARGS__)
@@ -50,7 +50,9 @@
 #ifdef DEBUG
 #define pam_cgfs_debug(format, ...) pam_cgfs_error(format, __VA_ARGS__)
 #else
-#define pam_cgfs_debug(format, ...)
+#define pam_cgfs_debug(format, ...) \
+	do {                     \
+	} while (false)
 #endif /* DEBUG */
 
 static enum cg_mount_mode {
@@ -1486,7 +1488,7 @@ static bool get_uid_gid(const char *user, uid_t *uid, gid_t *gid)
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
-	size_t bufsize;
+	ssize_t bufsize;
 	int ret;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
