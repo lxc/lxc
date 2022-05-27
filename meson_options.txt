@@ -17,6 +17,9 @@ option('io-uring-event-loop', type: 'boolean', value: 'false',
 option('man', type: 'boolean', value: 'true',
        description: 'build and install manpages')
 
+option('pam-cgroup', type: 'boolean', value: 'false',
+       description: 'build and install the pam cgroup module')
+
 option('tests', type: 'boolean', value: 'false',
        description: 'build and install tests')
 
@@ -47,6 +50,3 @@ option('usernet-config-path', type: 'string', value: 'lxc/lxc-usernet',
 
 option('usernet-db-path', type: 'string', value: 'lxc/nics',
        description: 'User network database file path')
-
-option('pam-cgroup', type: 'boolean', value: 'false',
-       description: 'build and install the pam cgroup module')
