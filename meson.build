@@ -121,6 +121,7 @@ want_examples = get_option('examples')
 want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
+want_tools = get_option('tools')
 
 conf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 

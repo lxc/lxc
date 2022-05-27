@@ -20,6 +20,9 @@ option('man', type: 'boolean', value: 'true',
 option('pam-cgroup', type: 'boolean', value: 'false',
        description: 'build and install the pam cgroup module')
 
+option('tools', type: 'boolean', value: 'true',
+       description: 'build and install tools')
+
 option('tests', type: 'boolean', value: 'false',
        description: 'build and install tests')
 
