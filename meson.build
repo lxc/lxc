@@ -569,9 +569,7 @@ liblxc_includes = [basic_includes, include_directories(
 # Early sub-directories.
 subdir('src/include')
 subdir('src/lxc')
-if want_pam_cgroup == true
-    subdir('src/lxc/pam')
-endif
+subdir('src/lxc/pam')
 
 # Library.
 liblxc_dependencies = [
