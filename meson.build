@@ -60,6 +60,7 @@ user_network_conf_opt = get_option('usernet-config-path')
 bashcompletiondir = join_paths('/', 'usr', 'share', 'bash-completion', 'completions')
 bindir = join_paths(prefixdir, get_option('bindir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
+mandir = join_paths(prefixdir, get_option('mandir'))
 docdir = join_paths(datadir, get_option('doc-path'))
 includedir = join_paths(prefixdir, get_option('includedir'))
 libdir = join_paths(prefixdir, get_option('libdir'))
@@ -121,6 +122,7 @@ want_examples = get_option('examples')
 want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
+want_tools = get_option('tools')
 
 conf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 
@@ -206,6 +208,7 @@ else
     # Fallback to current epoch
     time_epoch = run_command(date, '+%s', check: true).stdout()
 endif
+generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
 time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
 
@@ -569,9 +572,7 @@ liblxc_includes = [basic_includes, include_directories(
 # Early sub-directories.
 subdir('src/include')
 subdir('src/lxc')
-if want_pam_cgroup == true
-    subdir('src/lxc/pam')
-endif
+subdir('src/lxc/pam')
 
 # Library.
 liblxc_dependencies = [
@@ -610,6 +611,9 @@ subdir('config/selinux')
 subdir('config/templates')
 subdir('config/templates/common.conf.d')
 subdir('config/yum')
+subdir('doc')
+subdir('doc/ja')
+subdir('doc/ko')
 subdir('doc/examples')
 subdir('doc/rootfs')
 subdir('hooks')
