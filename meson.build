@@ -117,8 +117,8 @@ conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
 
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
-wants_io_uring = get_option('io-uring-event-loop')
 want_examples = get_option('examples')
+want_io_uring = get_option('io-uring-event-loop')
 want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
@@ -186,7 +186,7 @@ add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: '
 
 # Feature detection
 ## I/O uring.
-if wants_io_uring
+if want_io_uring
     liburing = dependency('liburing')
     if cc.has_function('io_uring_prep_poll_add', prefix: '#include <liburing.h>', dependencies: liburing) == false
         error('liburing version does not support IORING_POLL_ADD_MULTI')
@@ -598,7 +598,7 @@ liblxc_dependencies = [
     libapparmor,
 ]
 
-if wants_io_uring
+if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
