@@ -16,7 +16,7 @@ pam_cgfs_sources = files(
     '../string_utils.c',
     '../string_utils.h') + include_sources
 
-if want_pam_cgroup == true
+if want_pam_cgroup
     pam_cgfs = shared_module(
         'pam_cgfs',
         include_directories: pam_cgfs_includes,

@@ -186,7 +186,7 @@ add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: '
 
 # Feature detection
 ## I/O uring.
-if wants_io_uring == true
+if wants_io_uring
     liburing = dependency('liburing')
     if cc.has_function('io_uring_prep_poll_add', prefix: '#include <liburing.h>', dependencies: liburing) == false
         error('liburing version does not support IORING_POLL_ADD_MULTI')
@@ -211,6 +211,20 @@ endif
 generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
 time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
+
+## Manpages.
+sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: false)
+docbook2man = find_program('docbook2man', required: false)
+
+docconf = configuration_data()
+docconf.set('builddir', '.')
+docconf.set('LXC_GENERATE_DATE', generate_date)
+docconf.set('PACKAGE_VERSION', version_data.get('LXC_VERSION'))
+if sgml2man.found() and docbook2man.found() and sgml2man.full_path() == docbook2man.full_path()
+    docconf.set('docdtd', '"-//Davenport//DTD DocBook V3.0//EN"')
+else
+    docconf.set('docdtd', '"-//OASIS//DTD DocBook XML" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"')
+endif
 
 ## Threads.
 threads = dependency('threads')
@@ -584,7 +598,7 @@ liblxc_dependencies = [
     libapparmor,
 ]
 
-if wants_io_uring == true
+if wants_io_uring
     liblxc_dependencies += [liburing]
 endif
 
