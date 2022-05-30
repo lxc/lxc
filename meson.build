@@ -213,7 +213,7 @@ time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
 
 ## Manpages.
-sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: false)
+sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: want_mans)
 docbook2man = find_program('docbook2man', required: false)
 
 docconf = configuration_data()
