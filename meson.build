@@ -618,6 +618,9 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
+subdir('config/apparmor')
+subdir('config/apparmor/abstractions')
+subdir('config/apparmor/profiles')
 subdir('config/bash')
 subdir('config/etc')
 subdir('config/init/common')
