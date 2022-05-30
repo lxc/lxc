@@ -175,7 +175,7 @@ tools_lxc_unshare_sources = files(
 tools_lxc_wait_sources = files(
     'lxc_wait.c') + tools_common_sources
 
-if want_tools == true
+if want_tools
     public_programs += executable(
         'lxc-attach',
         tools_lxc_attach_sources,

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-if want_mans == true
+if want_mans
     PAGES = [
         ['lxc', '7'],
         ['lxc.conf', '5'],
@@ -12,7 +12,7 @@ if want_mans == true
         ['lxc-usernsexec', '1'],
     ]
 
-    if want_tools == true
+    if want_tools
         PAGES += [
             ['lxc-attach', '1'],
             ['lxc-autostart', '1'],
@@ -40,7 +40,7 @@ if want_mans == true
         ]
     endif
 
-    if want_pam_cgroup == true
+    if want_pam_cgroup
         PAGES += [
             ['pam_cgfs', '8'],
         ]
