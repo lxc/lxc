@@ -50,13 +50,6 @@ if want_mans
         input: 'see_also.sgml.in',
         output: 'see_also.sgml')
 
-    # Config
-    docconf = configuration_data()
-    docconf.set('docdtd', '"-//OASIS//DTD DocBook XML" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"')
-    docconf.set('builddir', '.')
-    docconf.set('LXC_GENERATE_DATE', generate_date)
-    docconf.set_quoted('PACKAGE_VERSION', meson.project_version())
-
     # Initial templating.
     foreach page : PAGES
         sgml = configure_file(
@@ -67,7 +60,7 @@ if want_mans
         configure_file(
             input: sgml,
             output: page[0] + '.' + page[1],
-            command: ['docbook2x-man', '--encoding=UTF-8', page[0] + '.sgml'],
+            command: [sgml2man, '--encoding=UTF-8', page[0] + '.sgml'],
             install: true,
             install_dir: join_paths(mandir, 'ko', 'man' + page[1]))
     endforeach
