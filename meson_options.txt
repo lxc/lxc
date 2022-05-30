@@ -7,9 +7,9 @@ option('cgroup-pattern', type: 'string', value: '',
 option('examples', type: 'boolean', value: 'true',
        description: 'build and install examples')
 
-option('init-script', type: 'combo',
-       choices: ['systemd', 'sysvinit', 'openrc', 'upstart'], value: 'systemd',
-       description: 'init script')
+option('init-script', type : 'array',
+       choices : ['systemd', 'sysvinit', 'upstart'], value : ['systemd'],
+       description : 'init script')
 
 option('io-uring-event-loop', type: 'boolean', value: 'false',
        description: 'Enable io-uring based event loop')
