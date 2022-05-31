@@ -117,8 +117,9 @@ conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
 
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
-wants_io_uring = get_option('io-uring-event-loop')
+init_script = get_option('init-script')
 want_examples = get_option('examples')
+want_io_uring = get_option('io-uring-event-loop')
 want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
@@ -186,7 +187,7 @@ add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: '
 
 # Feature detection
 ## I/O uring.
-if wants_io_uring
+if want_io_uring
     liburing = dependency('liburing')
     if cc.has_function('io_uring_prep_poll_add', prefix: '#include <liburing.h>', dependencies: liburing) == false
         error('liburing version does not support IORING_POLL_ADD_MULTI')
@@ -213,7 +214,7 @@ time_epoch = time_epoch.to_int()
 conf.set('TIME_EPOCH', time_epoch)
 
 ## Manpages.
-sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: false)
+sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: want_mans)
 docbook2man = find_program('docbook2man', required: false)
 
 docconf = configuration_data()
@@ -598,7 +599,7 @@ liblxc_dependencies = [
     libapparmor,
 ]
 
-if wants_io_uring
+if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
@@ -617,11 +618,17 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
+subdir('config/apparmor')
+subdir('config/apparmor/abstractions')
+subdir('config/apparmor/profiles')
 subdir('config/bash')
 subdir('config/etc')
 subdir('config/init/common')
 subdir('config/init/systemd')
+subdir('config/init/sysvinit')
+subdir('config/init/upstart')
 subdir('config/selinux')
+subdir('config/sysconfig')
 subdir('config/templates')
 subdir('config/templates/common.conf.d')
 subdir('config/yum')
