@@ -48,12 +48,12 @@ if want_mans
 
     # Common files.
     configure_file(
-        configuration: conf,
+        configuration: docconf,
         input: 'common_options.sgml.in',
         output: 'common_options.sgml')
 
     configure_file(
-        configuration: conf,
+        configuration: docconf,
         input: 'see_also.sgml.in',
         output: 'see_also.sgml')
 
