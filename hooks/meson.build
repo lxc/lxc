@@ -25,12 +25,8 @@ hook_programs = configure_file(
     output: 'dhclient-script')
 install_data(join_paths(project_build_root, 'hooks/dhclient-script'), install_dir: lxchookdir)
 
-dhclient_config_data = configuration_data()
-dhclient_config_data.set_quoted('LXCHOOKDIR', lxchookdir)
-dhclient_config_data.set_quoted('SYSCONFDIR', sysconfdir)
-
 hook_programs = configure_file(
-    configuration: dhclient_config_data,
+    configuration: conf,
     input: 'dhclient.in',
     output: 'dhclient')
 install_data(join_paths(project_build_root, 'hooks/dhclient'), install_dir: lxchookdir)
