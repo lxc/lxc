@@ -115,6 +115,18 @@ conf.set_quoted('LXCTEMPLATEDIR', lxctemplatedir)
 conf.set_quoted('LXC_USERNIC_CONF', lxc_user_network_conf)
 conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
 
+# Set sysconfdir
+fs = import('fs')
+if fs.is_dir('/etc/sysconfig')
+    distrosysconfdir = join_paths(sysconfdir, 'sysconfig')
+    conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
+elif fs.is_dir('/etc/default')
+    distrosysconfdir = join_paths(sysconfdir, 'default')
+    conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
+else
+    distrosysconfdir = ''
+endif
+
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
 init_script = get_option('init-script')
