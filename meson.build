@@ -676,6 +676,13 @@ pkg_config_file = pkgconfig.generate(liblxc,
 install_emptydir(join_paths(localstatedir, 'cache', 'lxc'))
 install_emptydir(join_paths(localstatedir, 'lib', 'lxc'))
 
+# RPM spec file.
+configure_file(
+    configuration: conf,
+    input: 'lxc.spec.in',
+    output: 'lxc.spec',
+    install: false)
+
 # Build overview.
 status = [
     '@0@ @1@'.format(meson.project_name(), meson.project_version()),
