@@ -159,14 +159,11 @@ cmd_lxc_checkconfig = configure_file(
     output: 'lxc-checkconfig')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-checkconfig'), install_dir: bindir)
 
-cmd_lxc_update_config_data = configuration_data()
 cmd_lxc_update_config = configure_file(
     configuration: dummy_config_data,
     input: 'lxc-update-config.in',
     output: 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir: bindir)
-
-cmd_lxc_update_config_data = configuration_data()
 
 cmd_programs += executable(
     'init.lxc.static',

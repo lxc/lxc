@@ -4,7 +4,7 @@
 project(
     'lxc',
     'c',
-    version: '4.0.0',
+    version: '4.0.0-devel',
     license: 'LGPLv2+',
     default_options: [
         'b_lto=true',
@@ -23,29 +23,18 @@ pkgconfig = import('pkgconfig')
 pkgconfig_libs = []
 
 # Version.
+liblxc_version = '1.7.0'
 version_data = configuration_data()
 version_data.set('LXC_VERSION_MAJOR', '4')
 version_data.set('LXC_VERSION_MINOR', '0')
-version_data.set('LXC_VERSION_MICRO', '7')
-version_data.set('LXC_ABI', '4.0.7')
+version_data.set('LXC_VERSION_MICRO', '0')
+version_data.set('LXC_ABI', liblxc_version)
 version_data.set('LXC_DEVEL', '1')
-version_data.set('LXC_VERSION', '4.0.7-devel')
-liblxc_version = '1.7.0'
-
-# Configuration options.
-conf = configuration_data()
-conf.set_quoted('PROJECT', meson.project_name())
-conf.set_quoted('PROJECT_URL', 'https://linuxcontainers.org/lxc/')
-conf.set_quoted('PROJECT_VERSION', meson.project_version())
-conf.set_quoted('PACKAGE_VERSION', meson.project_version())
-conf.set('_GNU_SOURCE', true)
-conf.set('_FILE_OFFSET_BITS', 64)
-conf.set('__STDC_FORMAT_MACROS', true)
-
-project_source_root = meson.current_source_dir()
-project_build_root = meson.current_build_dir()
+version_data.set('LXC_VERSION', meson.project_version())
 
 # Path handling.
+project_source_root = meson.current_source_dir()
+project_build_root = meson.current_build_dir()
 prefixdir = get_option('prefix')
 
 apparmorcachedir = get_option('apparmor-cache-path')
@@ -90,30 +79,52 @@ lxc_user_network_conf = join_paths(sysconfdir, user_network_conf_opt)
 lxc_user_network_db = join_paths(runtimepath, user_network_db_opt)
 pam_security = join_paths(libdir, 'security')
 
-conf.set_quoted('BINDIR', bindir)
-conf.set_quoted('DATADIR', datadir)
-conf.set_quoted('DOCDIR', docdir)
-conf.set_quoted('INCLUDEDIR', includedir)
-conf.set_quoted('LIBDIR', libdir)
-conf.set_quoted('LIBEXECDIR', libexecdir)
-conf.set_quoted('LOCALSTATEDIR', localstatedir)
-conf.set_quoted('RUNTIME_PATH', runtimepath)
-conf.set_quoted('SBINDIR', sbindir)
-conf.set_quoted('SYSCONFDIR', sysconfdir)
+# Configuration options.
+srcconf = configuration_data()
+srcconf.set('_GNU_SOURCE', true)
+srcconf.set('_FILE_OFFSET_BITS', 64)
+srcconf.set('__STDC_FORMAT_MACROS', true)
+srcconf.set_quoted('APPARMOR_CACHE_DIR', lxcapparmorcachedir)
+srcconf.set_quoted('LIBEXECDIR', libexecdir)
+srcconf.set_quoted('LOGPATH', lxclogpath)
+srcconf.set_quoted('LXC_DEFAULT_CONFIG', lxcdefaultconfig)
+srcconf.set_quoted('LXC_GLOBAL_CONF', lxcglobalconfig)
+srcconf.set_quoted('LXCINITDIR', libexecdir)
+srcconf.set_quoted('LXCPATH', lxcpath)
+srcconf.set_quoted('LXCROOTFSMOUNT', lxcrootfsmount)
+srcconf.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfdir)
+srcconf.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfdir)
+srcconf.set_quoted('LXCTEMPLATEDIR', lxctemplatedir)
+srcconf.set_quoted('LXC_USERNIC_CONF', lxc_user_network_conf)
+srcconf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
+srcconf.set_quoted('RUNTIME_PATH', runtimepath)
+srcconf.set_quoted('SBINDIR', sbindir)
 
-conf.set_quoted('APPARMOR_CACHE_DIR', lxcapparmorcachedir)
-conf.set_quoted('LOGPATH', lxclogpath)
-conf.set_quoted('LXCBINHOOKDIR', lxchookbindir)
-conf.set_quoted('LXC_DEFAULT_CONFIG', lxcdefaultconfig)
-conf.set_quoted('LXC_GLOBAL_CONF', lxcglobalconfig)
-conf.set_quoted('LXCHOOKDIR', lxchookdir)
-conf.set_quoted('LXCINITDIR', libexecdir)
-conf.set_quoted('LXCPATH', lxcpath)
-conf.set_quoted('LXCROOTFSMOUNT', lxcrootfsmount)
-conf.set_quoted('LXCTEMPLATECONFIG', lxctemplateconfdir)
-conf.set_quoted('LXCTEMPLATEDIR', lxctemplatedir)
-conf.set_quoted('LXC_USERNIC_CONF', lxc_user_network_conf)
-conf.set_quoted('LXC_USERNIC_DB', lxc_user_network_db)
+conf = configuration_data()
+conf.set('BINDIR', bindir)
+conf.set('LIBEXECDIR', libexecdir)
+conf.set('LOCALSTATEDIR', localstatedir)
+conf.set('LXC_GLOBAL_CONF', lxcglobalconfig)
+conf.set('LXCHOOKDIR', lxchookdir)
+conf.set('LXCINITDIR', libexecdir)
+conf.set('LXCROOTFSMOUNT', lxcrootfsmount)
+conf.set('LXCTEMPLATECONFIG', lxctemplateconfdir)
+conf.set('LXCTEMPLATEDIR', lxctemplatedir)
+conf.set('PACKAGE_VERSION', meson.project_version())
+conf.set('RUNTIME_PATH', runtimepath)
+conf.set('SYSCONFDIR', sysconfdir)
+
+# Set sysconfdir
+fs = import('fs')
+if fs.is_dir('/etc/sysconfig')
+    distrosysconfdir = join_paths(sysconfdir, 'sysconfig')
+    conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
+elif fs.is_dir('/etc/default')
+    distrosysconfdir = join_paths(sysconfdir, 'default')
+    conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
+else
+    distrosysconfdir = ''
+endif
 
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
@@ -125,7 +136,7 @@ want_mans = get_option('man')
 want_tests = get_option('tests')
 want_tools = get_option('tools')
 
-conf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
+srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
@@ -193,7 +204,7 @@ if want_io_uring
         error('liburing version does not support IORING_POLL_ADD_MULTI')
     endif
 
-    conf.set10('HAVE_LIBURING', true)
+    srcconf.set10('HAVE_LIBURING', true)
 endif
 
 ## Time EPOCH.
@@ -206,12 +217,10 @@ if time_epoch == '' and git.found() and run_command('test', '-e', '.git', check:
     latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: true).stdout().strip()
     time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
 else
-    # Fallback to current epoch
+    # Fallback to current epoch.
     time_epoch = run_command(date, '+%s', check: true).stdout()
 endif
 generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
-time_epoch = time_epoch.to_int()
-conf.set('TIME_EPOCH', time_epoch)
 
 ## Manpages.
 sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: want_mans)
@@ -219,7 +228,17 @@ docbook2man = find_program('docbook2man', required: false)
 
 docconf = configuration_data()
 docconf.set('builddir', '.')
+docconf.set('BINDIR', bindir)
+docconf.set('DATADIR', datadir)
+docconf.set('DOCDIR', docdir)
+docconf.set('LOGPATH', lxclogpath)
+docconf.set('LXC_DEFAULT_CONFIG', lxcdefaultconfig)
 docconf.set('LXC_GENERATE_DATE', generate_date)
+docconf.set('LXC_GLOBAL_CONF', lxcglobalconfig)
+docconf.set('LXCPATH', lxcpath)
+docconf.set('LXCTEMPLATEDIR', lxctemplatedir)
+docconf.set('LXC_USERNIC_CONF', lxc_user_network_conf)
+docconf.set('LXC_USERNIC_DB', lxc_user_network_db)
 docconf.set('PACKAGE_VERSION', version_data.get('LXC_VERSION'))
 if sgml2man.found() and docbook2man.found() and sgml2man.full_path() == docbook2man.full_path()
     docconf.set('docdtd', '"-//Davenport//DTD DocBook V3.0//EN"')
@@ -232,21 +251,21 @@ threads = dependency('threads')
 
 ## Seccomp.
 libseccomp = dependency('libseccomp')
-conf.set10('HAVE_SECCOMP', libseccomp.found())
+srcconf.set10('HAVE_SECCOMP', libseccomp.found())
 pkgconfig_libs += libseccomp
 if libseccomp.found()
     if libseccomp.version().version_compare('>=2.5.0')
         # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
-        conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
+        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
     else
-        conf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
+        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
     endif
 
     if libseccomp.version().version_compare('>=2.0.0')
         # https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
-        conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
     else
-        conf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
+        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
     endif
 
     seccomp_headers = '''
@@ -261,25 +280,25 @@ if libseccomp.found()
 
         # We get -1 if the size cannot be determined
         if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
-            conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
         else
-            conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
         endif
     endforeach
 endif
 
 ## SELinux.
 libselinux = dependency('libselinux', required: false)
-conf.set10('HAVE_SELINUX', libselinux.found())
+srcconf.set10('HAVE_SELINUX', libselinux.found())
 pkgconfig_libs += libselinux
 
 ## AppArmor.
 libapparmor = dependency('libapparmor', required: false)
-conf.set10('HAVE_APPARMOR', libapparmor.found())
+srcconf.set10('HAVE_APPARMOR', libapparmor.found())
 
 ## OpenSSL.
 libopenssl = dependency('openssl', required: false)
-conf.set10('HAVE_OPENSSL', libopenssl.found())
+srcconf.set10('HAVE_OPENSSL', libopenssl.found())
 pkgconfig_libs += libopenssl
 
 ## Libcap..
@@ -288,7 +307,7 @@ if not libcap.found()
     # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
     libcap = cc.find_library('cap', required: false)
 endif
-conf.set10('HAVE_LIBCAP', libcap.found())
+srcconf.set10('HAVE_LIBCAP', libcap.found())
 pkgconfig_libs += libcap
 
 libcap_static = dependency('libcap', required: false, static: true)
@@ -296,19 +315,19 @@ if not libcap_static.found()
     # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
     libcap_static = cc.find_library('cap', required: false, static: true)
 endif
-conf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 
 ## PAM.
 pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
-conf.set10('HAVE_PAM', pam.found())
+srcconf.set10('HAVE_PAM', pam.found())
 pkgconfig_libs += pam
 
 ## Others.
 have = cc.has_function('strchrnul', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
-conf.set10('HAVE_STRCHRNUL', have)
+srcconf.set10('HAVE_STRCHRNUL', have)
 
 have = cc.has_function('openpty', prefix: '#include <pty.h>', args: '-D_GNU_SOURCE')
-conf.set10('HAVE_OPENPTY', have)
+srcconf.set10('HAVE_OPENPTY', have)
 
 ## Compiler attributes.
 foreach ccattr: [
@@ -317,7 +336,7 @@ foreach ccattr: [
     'returns_nonnull',
 ]
 
-    conf.set10('HAVE_COMPILER_ATTR_' + ccattr.underscorify().to_upper(), cc.has_function_attribute(ccattr))
+    srcconf.set10('HAVE_COMPILER_ATTR_' + ccattr.underscorify().to_upper(), cc.has_function_attribute(ccattr))
 endforeach
 
 ## Syscalls.
@@ -370,7 +389,7 @@ foreach tuple: [
     else
         ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
         ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
-        cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        cond = srcconf.get(ident1, 0) == 1 or srcconf.get(ident2, 0) == 1
     endif
 
     if cond
@@ -400,9 +419,9 @@ foreach decl: [
 
     # We get -1 if the size cannot be determined
     if cc.sizeof(decl, prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
-        conf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+        srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
     else
-        conf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+        srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
     endif
 endforeach
 
@@ -422,7 +441,7 @@ foreach tuple: [
     else
         ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
         ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
-        cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        cond = srcconf.get(ident1, 0) == 1 or srcconf.get(ident2, 0) == 1
     endif
 
     if cond
@@ -499,7 +518,7 @@ foreach ident: [
 ]
 
     have = cc.has_function(ident[0], prefix: ident[1], args: '-D_GNU_SOURCE')
-    conf.set10('HAVE_' + ident[0].to_upper(), have)
+    srcconf.set10('HAVE_' + ident[0].to_upper(), have)
 endforeach
 
 found_headers = []
@@ -513,14 +532,14 @@ foreach tuple: [
     ['pty.h'],
     ['utmpx.h'],
 ]
-    conf.set10('HAVE_' + tuple[0].underscorify().to_upper(), cc.has_header(tuple[0]))
+    srcconf.set10('HAVE_' + tuple[0].underscorify().to_upper(), cc.has_header(tuple[0]))
 
     if tuple.length() >= 2
         cond = tuple[1]
     else
         ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
         ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
-        cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        cond = srcconf.get(ident1, 0) == 1 or srcconf.get(ident2, 0) == 1
     endif
 
     if cond
@@ -549,7 +568,7 @@ foreach tuple: [
     else
         ident1 = 'HAVE_' + tuple[0].underscorify().to_upper()
         ident2 = 'ENABLE_' + tuple[0].underscorify().to_upper()
-        cond = conf.get(ident1, 0) == 1 or conf.get(ident2, 0) == 1
+        cond = srcconf.get(ident1, 0) == 1 or srcconf.get(ident2, 0) == 1
     endif
 
     if cond
@@ -562,7 +581,7 @@ endforeach
 # Generate config.h
 config_h = configure_file(
         output: 'config.h',
-        configuration: conf)
+        configuration: srcconf)
 
 add_project_arguments('-include', 'config.h', language: 'c')
 
@@ -656,6 +675,13 @@ pkg_config_file = pkgconfig.generate(liblxc,
 # Empty dirs.
 install_emptydir(join_paths(localstatedir, 'cache', 'lxc'))
 install_emptydir(join_paths(localstatedir, 'lib', 'lxc'))
+
+# RPM spec file.
+configure_file(
+    configuration: conf,
+    input: 'lxc.spec.in',
+    output: 'lxc.spec',
+    install: false)
 
 # Build overview.
 status = [
