@@ -179,13 +179,13 @@ You can browse the up to the minute source code and change history online
 
 Without considering distribution specific details a simple
 
-    ./autogen.sh && ./configure && make && sudo make install
+    make && sudo make install
 
 is usually sufficient.
 
 In order to test current git master of LXC it is usually a good idea to compile with
 
-    ./autogen.sh && ./configure && make
+    make
 
 in a convenient directory and set `LD_LIBRARY_PATH="${BUILD_DIR}"/lxc/src/lxc/.libs`.
 
