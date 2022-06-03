@@ -597,15 +597,13 @@ template_scripts = []
 test_programs = []
 
 # Includes.
-basic_includes = include_directories(
+liblxc_includes = include_directories(
     '.',
     'src',
-    'src/include')
-
-liblxc_includes = [basic_includes, include_directories(
+    'src/include',
+    'src/lxc',
     'src/lxc/cgroups',
-    'src/lxc/lsm',
-    'src/lxc/storage')]
+    'src/lxc/storage')
 
 # Early sub-directories.
 subdir('src/include')

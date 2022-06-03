@@ -1,15 +1,11 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-hooks_include_directories = include_directories(
-    '../',
-    '../src/include')
-
 hooks_unmount_namespace_sources = files('unmount-namespace.c')
 
 hook_programs += executable(
     'unmount-namespace',
     hooks_unmount_namespace_sources,
-    include_directories: hooks_include_directories,
+    include_directories: liblxc_includes,
     install: true,
     install_dir: join_paths(lxclibexec, 'hooks'))
 
