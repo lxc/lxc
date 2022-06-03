@@ -44,16 +44,12 @@ jobs:
           export PATH="$(pwd)/cov-analysis-linux64/bin:${PATH}"
           export CFLAGS="-Wall -Werror"
           export LDFLAGS="-pthread -lpthread"
-          ./autogen.sh
 
           BUILD="$(pwd)/build"
-          mkdir -p "${BUILD}"
-          cd "${BUILD}"
-
-          ../configure --enable-coverity-build --enable-tests --with-distro=unknown --disable-rpath --enable-tests --enable-memfd-rexec --enable-seccomp --enable-static --enable-werror
+          ninja -C ${BUILD} -Dtests=true -Dpam-cgroup=true -Dcoverity-build=true
 
           # Build
-          cov-build --dir cov-int make -j4
+          cov-build --dir cov-int ninja -C ${BUILD}
           tar czvf lxc.tgz cov-int
 
           # Submit the results
