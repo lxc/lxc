@@ -4,6 +4,9 @@
 option('cgroup-pattern', type: 'string', value: '',
        description: 'CGroup pattern')
 
+option('coverity-build', type: 'boolean', value: 'true',
+       description: 'build for coverity')
+
 option('examples', type: 'boolean', value: 'true',
        description: 'build and install examples')
 

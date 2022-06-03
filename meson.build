@@ -128,6 +128,7 @@ endif
 
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
+coverity = get_option('coverity-build')
 init_script = get_option('init-script')
 want_examples = get_option('examples')
 want_io_uring = get_option('io-uring-event-loop')
@@ -137,6 +138,9 @@ want_tests = get_option('tests')
 want_tools = get_option('tools')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
+if coverity
+    srcconf.set('ENABLE_COVERITY_BUILD', 1)
+endif
 
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
