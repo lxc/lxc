@@ -130,6 +130,7 @@ endif
 cgrouppattern = get_option('cgroup-pattern')
 coverity = get_option('coverity-build')
 init_script = get_option('init-script')
+sanitize = get_option('b_sanitize')
 want_examples = get_option('examples')
 want_io_uring = get_option('io-uring-event-loop')
 want_pam_cgroup = get_option('pam-cgroup')
@@ -624,13 +625,18 @@ if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
+liblxc_link_whole = []
+if sanitize == 'none'
+    liblxc_link_whole = [liblxc_static]
+endif
+
 liblxc = shared_library(
     'lxc',
     version: liblxc_version,
     include_directories: liblxc_includes,
     link_args: ['-DPIC'],
     c_args: ['-DPIC'],
-    link_whole: [liblxc_static],
+    link_whole: liblxc_link_whole,
     dependencies: liblxc_dependencies,
     install: true)
 

@@ -156,16 +156,18 @@ cmd_lxc_update_config = configure_file(
     output: 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir: bindir)
 
-cmd_programs += executable(
-    'init.lxc.static',
-    cmd_lxc_init_sources,
-    include_directories: liblxc_includes,
-    link_with: [liblxc_static],
-    link_args: ['-static'],
-    c_args: ['-DNO_LXC_CONF'],
-    dependencies: [libcap_static],
-    install_dir: sbindir,
-    install: true)
+if sanitize == 'none'
+    cmd_programs += executable(
+        'init.lxc.static',
+        cmd_lxc_init_sources,
+        include_directories: liblxc_includes,
+        link_with: [liblxc_static],
+        link_args: ['-static'],
+        c_args: ['-DNO_LXC_CONF'],
+        dependencies: [libcap_static],
+        install_dir: sbindir,
+        install: true)
+endif
 
 cmd_programs += executable(
     'init.lxc',

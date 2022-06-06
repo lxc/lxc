@@ -141,13 +141,15 @@ liblxc_sources = files(
     'uuid.c',
     'uuid.h')
 
-liblxc_static = static_library(
-    'lxc_static',
-    liblxc_sources + include_sources + netns_ifaddrs_sources,
-    install: false,
-    include_directories: liblxc_includes,
-    dependencies: [threads],
-    c_args: '-fvisibility=default')
+if sanitize == 'none'
+    liblxc_static = static_library(
+        'lxc_static',
+        liblxc_sources + include_sources + netns_ifaddrs_sources,
+        install: true,
+        include_directories: liblxc_includes,
+        dependencies: [threads],
+        c_args: '-fvisibility=default')
+endif
 
 lxc_functions = configure_file(
     configuration: conf,
