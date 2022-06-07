@@ -265,7 +265,7 @@ endif
 threads = dependency('threads')
 
 ## Seccomp.
-libseccomp = dependency('libseccomp')
+libseccomp = dependency('libseccomp', required: false)
 srcconf.set10('HAVE_SECCOMP', libseccomp.found())
 pkgconfig_libs += libseccomp
 if libseccomp.found()
