@@ -191,6 +191,7 @@ cmd_programs += executable(
     include_directories: liblxc_includes,
     dependencies: liblxc_dep,
     install: true,
+    install_mode: 'rwsr-xr-x', # 4755
     install_dir: lxclibexec)
 
 cmd_programs += executable(
