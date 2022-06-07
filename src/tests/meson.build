@@ -478,13 +478,6 @@ test_programs += configure_file(
     configuration: dummy_config_data,
     install: want_tests,
     install_dir: bindir,
-    input: 'lxc-test-fuzzers',
-    output: 'lxc-test-fuzzers')
-
-test_programs += configure_file(
-    configuration: dummy_config_data,
-    install: want_tests,
-    install_dir: bindir,
     input: 'lxc-test-lxc-attach',
     output: 'lxc-test-lxc-attach')
 
