@@ -28,6 +28,7 @@ version_data = configuration_data()
 version_data.set('LXC_VERSION_MAJOR', '4')
 version_data.set('LXC_VERSION_MINOR', '0')
 version_data.set('LXC_VERSION_MICRO', '0')
+version_data.set('LXC_VERSION_BETA', '')
 version_data.set('LXC_ABI', liblxc_version)
 version_data.set('LXC_DEVEL', '1')
 version_data.set('LXC_VERSION', meson.project_version())
@@ -685,8 +686,14 @@ install_emptydir(join_paths(localstatedir, 'cache', 'lxc'))
 install_emptydir(join_paths(localstatedir, 'lib', 'lxc'))
 
 # RPM spec file.
+specconf = configuration_data()
+specconf.set('LXC_VERSION_BASE', meson.project_version())
+specconf.set('LXC_VERSION_BETA', version_data.get('LXC_VERSION_BETA'))
+specconf.set('PACKAGE', meson.project_name())
+specconf.set('LXC_DISTRO_SYSCONF', conf.get('LXC_DISTRO_SYSCONF'))
+
 configure_file(
-    configuration: conf,
+    configuration: specconf,
     input: 'lxc.spec.in',
     output: 'lxc.spec',
     install: false)
