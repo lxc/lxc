@@ -56,3 +56,9 @@ if srcconf.get('HAVE_OPENPTY') == 0
         'openpty.c',
         'openpty.h')
 endif
+
+if srcconf.get('HAVE_PRLIMIT') == 0 and srcconf.get('HAVE_PRLIMIT64') == 1
+    include_sources += files(
+        'prlimit.c',
+        'prlimit.h')
+endif
