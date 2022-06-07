@@ -216,6 +216,8 @@ if want_io_uring
     endif
 
     srcconf.set10('HAVE_LIBURING', true)
+else
+    srcconf.set10('HAVE_LIBURING', false)
 endif
 
 ## Time EPOCH.
