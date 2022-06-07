@@ -36,7 +36,6 @@ liblxc_sources = files(
     'lsm/lsm.c',
     'lsm/lsm.h',
     'lsm/nop.c',
-    'lsm/selinux.c',
     'storage/btrfs.c',
     'storage/btrfs.h',
     'storage/dir.c',
@@ -123,7 +122,6 @@ liblxc_sources = files(
     'ringbuf.h',
     'rtnl.c',
     'rtnl.h',
-    'seccomp.c',
     'start.c',
     'start.h',
     'state.c',
@@ -141,13 +139,23 @@ liblxc_sources = files(
     'uuid.c',
     'uuid.h')
 
-liblxc_static = static_library(
-    'lxc_static',
-    liblxc_sources + include_sources + netns_ifaddrs_sources,
-    install: false,
-    include_directories: liblxc_includes,
-    dependencies: [threads],
-    c_args: '-fvisibility=default')
+if libseccomp.found()
+    liblxc_sources += files('seccomp.c')
+endif
+
+if libselinux.found()
+    liblxc_sources += files('lsm/selinux.c')
+endif
+
+if sanitize == 'none'
+    liblxc_static = static_library(
+        'lxc_static',
+        liblxc_sources + include_sources + netns_ifaddrs_sources,
+        install: true,
+        include_directories: liblxc_includes,
+        dependencies: [threads],
+        c_args: '-fvisibility=default')
+endif
 
 lxc_functions = configure_file(
     configuration: conf,

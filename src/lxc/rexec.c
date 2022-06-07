@@ -16,7 +16,7 @@
 #include "string_utils.h"
 #include "syscall_wrappers.h"
 
-#if IS_BIONIC
+#if IS_BIONIC && !HAVE_FEXECVE
 #include "fexecve.h"
 #endif
 

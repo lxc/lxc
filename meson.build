@@ -28,6 +28,7 @@ version_data = configuration_data()
 version_data.set('LXC_VERSION_MAJOR', '4')
 version_data.set('LXC_VERSION_MINOR', '0')
 version_data.set('LXC_VERSION_MICRO', '0')
+version_data.set('LXC_VERSION_BETA', '')
 version_data.set('LXC_ABI', liblxc_version)
 version_data.set('LXC_DEVEL', '1')
 version_data.set('LXC_VERSION', meson.project_version())
@@ -126,9 +127,16 @@ else
     distrosysconfdir = ''
 endif
 
+# Cross-compile on Android.
+if host_machine.system() == 'android'
+    srcconf.set10('IS_BIONIC', true)
+endif
+
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
+coverity = get_option('coverity-build')
 init_script = get_option('init-script')
+sanitize = get_option('b_sanitize')
 want_examples = get_option('examples')
 want_io_uring = get_option('io-uring-event-loop')
 want_pam_cgroup = get_option('pam-cgroup')
@@ -137,6 +145,9 @@ want_tests = get_option('tests')
 want_tools = get_option('tools')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
+if coverity
+    srcconf.set('ENABLE_COVERITY_BUILD', 1)
+endif
 
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
@@ -205,6 +216,8 @@ if want_io_uring
     endif
 
     srcconf.set10('HAVE_LIBURING', true)
+else
+    srcconf.set10('HAVE_LIBURING', false)
 endif
 
 ## Time EPOCH.
@@ -214,10 +227,14 @@ git = find_program('git', required: false)
 time_epoch = run_command(sh, '-c', 'echo "$SOURCE_DATE_EPOCH"', check: true).stdout().strip()
 if time_epoch == '' and git.found() and run_command('test', '-e', '.git', check: false).returncode() == 0
     # If we're in a git repository, use the creation time of the latest git tag.
-    latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: true).stdout().strip()
-    time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
-else
-    # Fallback to current epoch.
+    latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: false).stdout().strip()
+    if latest_tag != ''
+      time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
+    endif
+endif
+
+# Fallback to current epoch.
+if time_epoch == ''
     time_epoch = run_command(date, '+%s', check: true).stdout()
 endif
 generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
@@ -250,7 +267,7 @@ endif
 threads = dependency('threads')
 
 ## Seccomp.
-libseccomp = dependency('libseccomp')
+libseccomp = dependency('libseccomp', required: false)
 srcconf.set10('HAVE_SECCOMP', libseccomp.found())
 pkgconfig_libs += libseccomp
 if libseccomp.found()
@@ -593,15 +610,13 @@ template_scripts = []
 test_programs = []
 
 # Includes.
-basic_includes = include_directories(
+liblxc_includes = include_directories(
     '.',
     'src',
-    'src/include')
-
-liblxc_includes = [basic_includes, include_directories(
+    'src/include',
+    'src/lxc',
     'src/lxc/cgroups',
-    'src/lxc/lsm',
-    'src/lxc/storage')]
+    'src/lxc/storage')
 
 # Early sub-directories.
 subdir('src/include')
@@ -622,13 +637,18 @@ if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
+liblxc_link_whole = []
+if sanitize == 'none'
+    liblxc_link_whole = [liblxc_static]
+endif
+
 liblxc = shared_library(
     'lxc',
     version: liblxc_version,
     include_directories: liblxc_includes,
     link_args: ['-DPIC'],
     c_args: ['-DPIC'],
-    link_whole: [liblxc_static],
+    link_whole: liblxc_link_whole,
     dependencies: liblxc_dependencies,
     install: true)
 
@@ -677,8 +697,14 @@ install_emptydir(join_paths(localstatedir, 'cache', 'lxc'))
 install_emptydir(join_paths(localstatedir, 'lib', 'lxc'))
 
 # RPM spec file.
+specconf = configuration_data()
+specconf.set('LXC_VERSION_BASE', meson.project_version())
+specconf.set('LXC_VERSION_BETA', version_data.get('LXC_VERSION_BETA'))
+specconf.set('PACKAGE', meson.project_name())
+specconf.set('LXC_DISTRO_SYSCONF', conf.get('LXC_DISTRO_SYSCONF'))
+
 configure_file(
-    configuration: conf,
+    configuration: specconf,
     input: 'lxc.spec.in',
     output: 'lxc.spec',
     install: false)

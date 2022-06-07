@@ -1,14 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-tools_liblxc_includes = include_directories(
-    '.',
-    '../',
-    '../cgroups',
-    '../lsm',
-    '../storage',
-    '../../include',
-    '../../../')
-
 tools_common_sources = files(
     'arguments.c',
     'arguments.h',
@@ -45,7 +36,6 @@ tools_common_sources = files(
     '../lsm/lsm.c',
     '../lsm/lsm.h',
     '../lsm/nop.c',
-    '../lsm/selinux.c',
     '../lxcseccomp.h',
     '../lxclock.c',
     '../lxclock.h',
@@ -69,7 +59,6 @@ tools_common_sources = files(
     '../process_utils.h',
     '../ringbuf.c',
     '../ringbuf.h',
-    '../seccomp.c',
     '../start.c',
     '../start.h',
     '../state.c',
@@ -108,6 +97,14 @@ tools_common_sources = files(
     '../uuid.h',
     '../log.h',
     '../log.c') + include_sources + netns_ifaddrs_sources
+
+if libseccomp.found()
+    tools_common_sources += files('../seccomp.c')
+endif
+
+if libselinux.found()
+    tools_common_sources += files('../lsm/selinux.c')
+endif
 
 tools_lxc_attach_sources = files(
     'lxc_attach.c') + tools_common_sources
@@ -179,154 +176,154 @@ if want_tools
     public_programs += executable(
         'lxc-attach',
         tools_lxc_attach_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-autostart',
         tools_lxc_autostart_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
        'lxc-cgroup',
         tools_lxc_cgroup_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
        'lxc-checkpoint',
         tools_lxc_checkpoint_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-config',
         tools_lxc_config_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-console',
         tools_lxc_console_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-copy',
         tools_lxc_copy_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-create',
         tools_lxc_create_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-destroy',
         tools_lxc_destroy_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-device',
         tools_lxc_device_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-execute',
         tools_lxc_execute_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-freeze',
         tools_lxc_freeze_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-info',
         tools_lxc_info_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-ls',
         tools_lxc_ls_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-monitor',
         tools_lxc_monitor_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-snapshot',
         tools_lxc_snapshot_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-start',
         tools_lxc_start_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-stop',
         tools_lxc_stop_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-top',
         tools_lxc_top_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-unfreeze',
         tools_lxc_unfreeze_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-unshare',
         tools_lxc_unshare_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 
     public_programs += executable(
         'lxc-wait',
         tools_lxc_wait_sources,
-        include_directories: tools_liblxc_includes,
+        include_directories: liblxc_includes,
         dependencies: liblxc_dep,
         install: true)
 endif

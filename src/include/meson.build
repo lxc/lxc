@@ -27,7 +27,7 @@ if srcconf.get('HAVE_GETGRGID_R') == 0
         'getgrgid_r.h')
 endif
 
-if srcconf.get('HAVE_HASMNTOPT') == 0 or srcconf.get('HAVE_SETMNTENT') == 0 or srcconf.get('HAVE_ENDMNTENT') == 0
+if srcconf.get('IS_BIONIC') == 1 or srcconf.get('HAVE_HASMNTOPT') == 0 or srcconf.get('HAVE_SETMNTENT') == 0 or srcconf.get('HAVE_ENDMNTENT') == 0
     include_sources += files(
         'lxcmntent.c',
         'lxcmntent.h')
@@ -55,4 +55,10 @@ if srcconf.get('HAVE_OPENPTY') == 0
     include_sources += files(
         'openpty.c',
         'openpty.h')
+endif
+
+if srcconf.get('HAVE_PRLIMIT') == 0 and srcconf.get('HAVE_PRLIMIT64') == 1
+    include_sources += files(
+        'prlimit.c',
+        'prlimit.h')
 endif

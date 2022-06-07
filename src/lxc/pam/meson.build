@@ -1,12 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-pam_cgfs_includes = include_directories(
-    '.',
-    '../',
-    '../cgroups',
-    '../../include',
-    '../../../')
-
 pam_cgfs_sources = files(
     'pam_cgfs.c',
     '../file_utils.c',
@@ -19,7 +12,7 @@ pam_cgfs_sources = files(
 if want_pam_cgroup
     pam_cgfs = shared_module(
         'pam_cgfs',
-        include_directories: pam_cgfs_includes,
+        include_directories: liblxc_includes,
         sources: pam_cgfs_sources,
         dependencies: [pkgconfig_libs],
         name_prefix: '',

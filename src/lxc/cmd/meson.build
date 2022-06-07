@@ -1,14 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-cmd_liblxc_includes = include_directories(
-    '.',
-    '../',
-    '../cgroups',
-    '../lsm',
-    '../storage',
-    '../../include',
-    '../../../')
-
 cmd_common_sources = files(
     '../af_unix.c',
     '../af_unix.h',
@@ -43,7 +34,6 @@ cmd_common_sources = files(
     '../lsm/lsm.c',
     '../lsm/lsm.h',
     '../lsm/nop.c',
-    '../lsm/selinux.c',
     '../lxcseccomp.h',
     '../lxclock.c',
     '../lxclock.h',
@@ -67,7 +57,6 @@ cmd_common_sources = files(
     '../process_utils.h',
     '../ringbuf.c',
     '../ringbuf.h',
-    '../seccomp.c',
     '../start.c',
     '../start.h',
     '../state.c',
@@ -106,6 +95,14 @@ cmd_common_sources = files(
     '../uuid.h',
     '../log.h',
     '../log.c') + include_sources
+
+if libseccomp.found()
+    cmd_common_sources += files('../seccomp.c')
+endif
+
+if libselinux.found()
+    cmd_common_sources += files('../lsm/selinux.c')
+endif
 
 cmd_lxc_init_sources = files(
     'lxc_init.c',
@@ -165,21 +162,23 @@ cmd_lxc_update_config = configure_file(
     output: 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir: bindir)
 
-cmd_programs += executable(
-    'init.lxc.static',
-    cmd_lxc_init_sources,
-    include_directories: cmd_liblxc_includes,
-    link_with: [liblxc_static],
-    link_args: ['-static'],
-    c_args: ['-DNO_LXC_CONF'],
-    dependencies: [libcap_static],
-    install_dir: sbindir,
-    install: true)
+if sanitize == 'none'
+    cmd_programs += executable(
+        'init.lxc.static',
+        cmd_lxc_init_sources,
+        include_directories: liblxc_includes,
+        link_with: [liblxc_static],
+        link_args: ['-static'],
+        c_args: ['-DNO_LXC_CONF'],
+        dependencies: [libcap_static],
+        install_dir: sbindir,
+        install: true)
+endif
 
 cmd_programs += executable(
     'init.lxc',
     cmd_lxc_init_sources,
-    include_directories: cmd_liblxc_includes,
+    include_directories: liblxc_includes,
     dependencies: liblxc_dep,
     install_dir: sbindir,
     install: true)
@@ -187,7 +186,7 @@ cmd_programs += executable(
 cmd_programs += executable(
     'lxc-monitord',
     cmd_lxc_monitord_sources,
-    include_directories: cmd_liblxc_includes,
+    include_directories: liblxc_includes,
     dependencies: liblxc_dep,
     install: true,
     install_dir: lxclibexec)
@@ -195,14 +194,15 @@ cmd_programs += executable(
 cmd_programs += executable(
     'lxc-user-nic',
     cmd_lxc_user_nic_sources,
-    include_directories: cmd_liblxc_includes,
+    include_directories: liblxc_includes,
     dependencies: liblxc_dep,
     install: true,
+    install_mode: 'rwsr-xr-x', # 4755
     install_dir: lxclibexec)
 
 cmd_programs += executable(
     'lxc-usernsexec',
     cmd_lxc_usernsexec_sources,
-    include_directories: cmd_liblxc_includes,
+    include_directories: liblxc_includes,
     dependencies: liblxc_dep,
     install: true)
