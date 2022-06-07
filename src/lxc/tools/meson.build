@@ -36,7 +36,6 @@ tools_common_sources = files(
     '../lsm/lsm.c',
     '../lsm/lsm.h',
     '../lsm/nop.c',
-    '../lsm/selinux.c',
     '../lxcseccomp.h',
     '../lxclock.c',
     '../lxclock.h',
@@ -60,7 +59,6 @@ tools_common_sources = files(
     '../process_utils.h',
     '../ringbuf.c',
     '../ringbuf.h',
-    '../seccomp.c',
     '../start.c',
     '../start.h',
     '../state.c',
@@ -99,6 +97,14 @@ tools_common_sources = files(
     '../uuid.h',
     '../log.h',
     '../log.c') + include_sources + netns_ifaddrs_sources
+
+if libseccomp.found()
+    tools_common_sources += files('../seccomp.c')
+endif
+
+if libselinux.found()
+    tools_common_sources += files('../lsm/selinux.c')
+endif
 
 tools_lxc_attach_sources = files(
     'lxc_attach.c') + tools_common_sources

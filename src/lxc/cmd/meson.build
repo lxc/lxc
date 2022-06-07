@@ -34,7 +34,6 @@ cmd_common_sources = files(
     '../lsm/lsm.c',
     '../lsm/lsm.h',
     '../lsm/nop.c',
-    '../lsm/selinux.c',
     '../lxcseccomp.h',
     '../lxclock.c',
     '../lxclock.h',
@@ -58,7 +57,6 @@ cmd_common_sources = files(
     '../process_utils.h',
     '../ringbuf.c',
     '../ringbuf.h',
-    '../seccomp.c',
     '../start.c',
     '../start.h',
     '../state.c',
@@ -97,6 +95,14 @@ cmd_common_sources = files(
     '../uuid.h',
     '../log.h',
     '../log.c') + include_sources
+
+if libseccomp.found()
+    cmd_common_sources += files('../seccomp.c')
+endif
+
+if libselinux.found()
+    cmd_common_sources += files('../lsm/selinux.c')
+endif
 
 cmd_lxc_init_sources = files(
     'lxc_init.c',

@@ -34,7 +34,6 @@ tests_common_sources = files(
     '../lxc/lsm/lsm.c',
     '../lxc/lsm/lsm.h',
     '../lxc/lsm/nop.c',
-    '../lxc/lsm/selinux.c',
     '../lxc/lxcseccomp.h',
     '../lxc/lxclock.c',
     '../lxc/lxclock.h',
@@ -58,7 +57,6 @@ tests_common_sources = files(
     '../lxc/process_utils.h',
     '../lxc/ringbuf.c',
     '../lxc/ringbuf.h',
-    '../lxc/seccomp.c',
     '../lxc/start.c',
     '../lxc/start.h',
     '../lxc/state.c',
@@ -97,6 +95,14 @@ tests_common_sources = files(
     '../lxc/uuid.h',
     '../lxc/log.h',
     '../lxc/log.c') + include_sources + netns_ifaddrs_sources
+
+if libseccomp.found()
+    tests_common_sources += files('../lxc/seccomp.c')
+endif
+
+if libselinux.found()
+    tests_common_sources += files('../lxc/lsm/selinux.c')
+endif
 
 test_programs += executable(
     'lxc-test-arch-parse',
