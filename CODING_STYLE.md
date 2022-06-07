@@ -689,6 +689,8 @@ int lxc_attach_run_command(void *payload)
 		case ENOEXEC:
 			ret = 126;
 			break;
+		case ENOTDIR:
+			__fallthrough;
 		case ENOENT:
 			ret = 127;
 			break;
