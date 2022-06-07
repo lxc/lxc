@@ -127,6 +127,11 @@ else
     distrosysconfdir = ''
 endif
 
+# Cross-compile on Android.
+if host_machine.system() == 'android'
+    srcconf.set10('IS_BIONIC', true)
+endif
+
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
 coverity = get_option('coverity-build')
