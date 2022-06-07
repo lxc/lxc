@@ -7,7 +7,7 @@
 
 #include <errno.h>
 
-#ifdef HAVE_SECCOMP
+#if HAVE_SECCOMP
 #include <linux/seccomp.h>
 #include <seccomp.h>
 #endif
@@ -29,7 +29,7 @@ struct lxc_handler;
 #define SECCOMP_FILTER_FLAG_NEW_LISTENER (1UL << 3)
 #endif
 
-#ifdef HAVE_SECCOMP
+#if HAVE_SECCOMP
 
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD

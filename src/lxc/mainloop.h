@@ -11,7 +11,7 @@
 #include "hlist.h"
 #include "memory_utils.h"
 
-#ifdef HAVE_LIBURING
+#if HAVE_LIBURING
 #include <liburing.h>
 #endif
 
@@ -29,7 +29,7 @@ struct lxc_async_descr {
 	async_descr_t type;
 	union {
 		int epfd;
-#ifdef HAVE_LIBURING
+#if HAVE_LIBURING
 		struct io_uring *ring;
 #endif
 	};
