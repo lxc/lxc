@@ -2,6 +2,9 @@ name: Sanitizers build
 on:
   - push
   - pull_request
+permissions:
+  contents: read
+
 jobs:
   sanitizers:
     strategy:
