@@ -1,6 +1,12 @@
 name: Fuzzing with OSS-fuzz
 on:
   push:
+  pull_request:
+    paths:
+      - '**/meson.build'
+      - '.github/workflows/**'
+      - 'meson_options.txt'
+      - 'src/**'
     branches:
       - master
   pull_request:
