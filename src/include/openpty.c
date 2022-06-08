@@ -11,7 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#ifdef HAVE_PTY_H
+#if HAVE_PTY_H
 #include <pty.h>
 #endif
 

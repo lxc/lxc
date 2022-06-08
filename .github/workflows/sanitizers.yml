@@ -13,10 +13,16 @@ jobs:
         compiler:
           - gcc
           - clang
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq gcc clang meson llvm
+          sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev libpam0g-dev docbook2x
 
       - name: Compiler version
         env:

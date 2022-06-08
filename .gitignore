@@ -14,17 +14,6 @@
 .libs
 .dirstamp
 
-Makefile.in
-Makefile
-COPYING
-
-aclocal.m4
-autom4te.cache
-configure
-config.log
-config.status
-libtool
-
 lxc.spec
 lxc.pc
 
@@ -112,15 +101,6 @@ src/tests/lxc-test-sys-mixed
 src/tests/lxc-test-rootfs-options
 src/tests/lxc-test-capabilities
 
-config/compile
-config/config.guess
-config/config.sub
-config/depcomp
-config/install-sh
-config/ltmain.sh
-config/missing
-config/libtool.m4
-config/lt*.m4
 config/apparmor/abstractions/start-container
 config/bash/lxc
 config/init/common/lxc-containers
@@ -152,12 +132,6 @@ doc/api/html/*
 
 hooks/unmount-namespace
 hooks/dhclient
-
-m4/
-
-src/config.h
-src/config.h.in
-src/stamp-h1
 
 .pc
 patches

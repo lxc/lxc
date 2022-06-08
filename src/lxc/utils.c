@@ -350,7 +350,7 @@ bool wait_exited(pid_t pid)
 	return true;
 }
 
-#ifdef HAVE_OPENSSL
+#if HAVE_OPENSSL
 #include <openssl/evp.h>
 
 static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value,

@@ -90,7 +90,7 @@
 #include <mntent.h>
 #endif
 
-#if !defined(HAVE_PRLIMIT) && defined(HAVE_PRLIMIT64)
+#if !HAVE_PRLIMIT && HAVE_PRLIMIT64
 #include "prlimit.h"
 #endif
 

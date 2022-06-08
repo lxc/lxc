@@ -39,15 +39,15 @@ __hidden extern struct mntent *getmntent_r(FILE *stream, struct mntent *mp,
 					   char *buffer, int bufsiz);
 #endif
 
-#if !defined(HAVE_SETMNTENT) || IS_BIONIC
+#if !HAVE_SETMNTENT || IS_BIONIC
 __hidden FILE *setmntent(const char *file, const char *mode);
 #endif
 
-#if !defined(HAVE_ENDMNTENT) || IS_BIONIC
+#if !HAVE_ENDMNTENT || IS_BIONIC
 __hidden int endmntent(FILE *stream);
 #endif
 
-#if !defined(HAVE_HASMNTOPT) || IS_BIONIC
+#if !HAVE_HASMNTOPT || IS_BIONIC
 __hidden extern char *hasmntopt(const struct mntent *mnt, const char *opt);
 #endif
 

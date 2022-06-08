@@ -11,58 +11,23 @@ export UBSAN_OPTIONS=print_stacktrace=1:print_summary=1:halt_on_error=1
 
 apt-get update -qq
 apt-get install --yes --no-install-recommends \
-    apparmor automake autoconf bash-completion bridge-utils build-essential \
+    apparmor bash-completion bridge-utils build-essential \
     busybox-static clang cloud-image-utils curl dbus debhelper debootstrap \
     devscripts dnsmasq-base docbook2x doxygen ed fakeroot file gcc graphviz \
-    git iptables net-tools libapparmor-dev libcap-dev libgnutls28-dev liblua5.2-dev \
+    git iptables meson net-tools libapparmor-dev libcap-dev libgnutls28-dev liblua5.2-dev \
     libpam0g-dev libseccomp-dev libselinux1-dev libtool linux-libc-dev \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
     wget xz-utils systemd-coredump
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
-ARGS="--enable-sanitizers \
-	--prefix=/usr/ \
-	--disable-no-undefined \
-	--build=x86_64-linux-gnu \
-	--includedir=\${prefix}/include \
-	--mandir=\${prefix}/share/man \
-	--infodir=\${prefix}/share/info \
-	--sysconfdir=/etc \
-	--localstatedir=/var \
-	--disable-silent-rules \
-	--libdir=\${prefix}/lib/x86_64-linux-gnu \
-	--libexecdir=\${prefix}/lib/x86_64-linux-gnu \
-	--disable-maintainer-mode \
-	--disable-dependency-tracking \
-	--libdir=\${prefix}/lib/x86_64-linux-gnu \
-	--libexecdir=\${prefix}/lib/x86_64-linux-gnu \
-	--with-rootfs-path=\${prefix}/lib/x86_64-linux-gnu/lxc \
-	--enable-doc \
-	--disable-rpath \
-	--with-distro=ubuntu \
-	--enable-commands \
-	--enable-pam \
-	--enable-tests \
-	--enable-memfd-rexec \
-	--disable-static-binaries \
-	--enable-static \
-	--enable-silent-rules \
-	--enable-apparmor \
-	--enable-capabilities \
-	--enable-seccomp \
-	--enable-selinux \
-	--disable-liburing \
-	--enable-werror"
-
+ARGS="-Dprefix=/usr -Dtests=true -Dpam-cgroup=false -Dwerror=true -Dio-uring-event-loop=false -Db_lto_mode=default -Db_lundef=false"
 case "$CC" in clang*)
-	ARGS="$ARGS --enable-fuzzers"
+	ARGS="$ARGS -Db_sanitize=address,undefined"
 esac
-
-./autogen.sh
-CFLAGS="-Wall -Werror" ./configure $ARGS
-make -j$(nproc)
-make install
+meson setup san_build $ARGS
+ninja -C san_build
+ninja -C san_build install
 
 cat <<'EOF' >/usr/bin/lxc-test-share-ns
 #!/bin/bash
