@@ -77,6 +77,7 @@ cmd_programs += executable(
     'init.lxc',
     cmd_lxc_init_sources,
     include_directories: liblxc_includes,
+    c_args: ['-DNO_LXC_CONF'],
     dependencies: liblxc_dep,
     install_dir: sbindir,
     install: true)
