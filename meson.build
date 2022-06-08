@@ -141,6 +141,11 @@ want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
 want_tools = get_option('tools')
+want_commands = get_option('commands')
+want_capabilities = get_option('capabilities')
+want_apparmor = get_option('apparmor')
+want_openssl = get_option('openssl')
+want_selinux = get_option('selinux')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -188,6 +193,7 @@ possible_cc_flags = [
     '-Wreturn-local-addr',
     '-fsanitize=cfi',
     '-Wstringop-overflow',
+    '-Wno-missing-field-initializers',
 ]
 
 possible_link_flags = [
@@ -303,34 +309,51 @@ if libseccomp.found()
 endif
 
 ## SELinux.
-libselinux = dependency('libselinux', required: false)
-srcconf.set10('HAVE_SELINUX', libselinux.found())
-pkgconfig_libs += libselinux
+if want_selinux
+    libselinux = dependency('libselinux', required: false)
+    srcconf.set10('HAVE_SELINUX', libselinux.found())
+    pkgconfig_libs += libselinux
+else
+    srcconf.set10('HAVE_SELINUX', false)
+endif
 
 ## AppArmor.
-libapparmor = dependency('libapparmor', required: false)
-srcconf.set10('HAVE_APPARMOR', libapparmor.found())
+if want_apparmor
+    libapparmor = dependency('libapparmor', required: false)
+    srcconf.set10('HAVE_APPARMOR', libapparmor.found())
+else
+    srcconf.set10('HAVE_APPARMOR', false)
+endif
 
 ## OpenSSL.
-libopenssl = dependency('openssl', required: false)
-srcconf.set10('HAVE_OPENSSL', libopenssl.found())
-pkgconfig_libs += libopenssl
+if want_openssl
+    libopenssl = dependency('openssl', required: false)
+    srcconf.set10('HAVE_OPENSSL', libopenssl.found())
+    pkgconfig_libs += libopenssl
+else
+    srcconf.set10('HAVE_OPENSSL', false)
+endif
 
 ## Libcap..
-libcap = dependency('libcap', required: false)
-if not libcap.found()
-    # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
-    libcap = cc.find_library('cap', required: false)
-endif
-srcconf.set10('HAVE_LIBCAP', libcap.found())
-pkgconfig_libs += libcap
+if want_capabilities
+    libcap = dependency('libcap', required: false)
+    if not libcap.found()
+        # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
+        libcap = cc.find_library('cap', required: false)
+    endif
+    srcconf.set10('HAVE_LIBCAP', libcap.found())
+    pkgconfig_libs += libcap
 
-libcap_static = dependency('libcap', required: false, static: true)
-if not libcap_static.found()
-    # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
-    libcap_static = cc.find_library('cap', required: false, static: true)
+    libcap_static = dependency('libcap', required: false, static: true)
+    if not libcap_static.found()
+        # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
+        libcap_static = cc.find_library('cap', required: false, static: true)
+    endif
+    srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+else
+    srcconf.set10('HAVE_LIBCAP', false)
+    srcconf.set10('HAVE_STATIC_LIBCAP', false)
 endif
-srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
 
 ## PAM.
 pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
@@ -675,8 +698,12 @@ subdir('doc/ko')
 subdir('doc/examples')
 subdir('doc/rootfs')
 subdir('hooks')
-subdir('src/lxc/cmd')
-subdir('src/lxc/tools')
+if want_commands
+    subdir('src/lxc/cmd')
+endif
+if want_tools
+    subdir('src/lxc/tools')
+endif
 subdir('src/lxc/tools/include')
 subdir('src/tests')
 subdir('templates')

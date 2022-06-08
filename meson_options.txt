@@ -26,6 +26,21 @@ option('pam-cgroup', type: 'boolean', value: 'false',
 option('tools', type: 'boolean', value: 'true',
        description: 'build and install tools')
 
+option('commands', type: 'boolean', value: 'true',
+       description: 'build and install commands')
+
+option('capabilities', type: 'boolean', value: 'true',
+       description: 'use capabilities')
+
+option('apparmor', type: 'boolean', value: 'true',
+       description: 'use apparmor')
+
+option('openssl', type: 'boolean', value: 'true',
+       description: 'use openssl')
+
+option('selinux', type: 'boolean', value: 'true',
+       description: 'use selinux')
+
 option('tests', type: 'boolean', value: 'false',
        description: 'build and install tests')
 
