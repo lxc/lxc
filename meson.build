@@ -128,9 +128,7 @@ else
 endif
 
 # Cross-compile on Android.
-if host_machine.system() == 'android'
-    srcconf.set10('IS_BIONIC', true)
-endif
+srcconf.set10('IS_BIONIC', host_machine.system() == 'android')
 
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
