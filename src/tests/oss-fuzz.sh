@@ -24,23 +24,23 @@ mkdir -p $OUT
 
 export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 
-# turn off the libutil dependency
-sed -i 's/^AC_CHECK_LIB(util/#/' configure.ac
-
-./autogen.sh
-./configure \
-    --disable-tools \
-    --disable-commands \
-    --disable-apparmor \
-    --disable-openssl \
-    --disable-selinux \
-    --disable-seccomp \
-    --disable-capabilities \
-    --disable-no-undefined \
-    --enable-tests \
-    --enable-fuzzers
-
-make -j$(nproc)
+# Sanitized build
+meson setup san_build \
+	-Dprefix=/usr \
+	-Db_lundef=false \
+	-Dtests=true \
+	-Dpam-cgroup=false \
+	-Dwerror=true \
+	-Dtools=false \
+	-Dcommands=false \
+	-Dcapabilities=false \
+	-Dapparmor=false \
+	-Dopenssl=false \
+	-Dselinux=false \
+	-Db_lto_mode=default \
+	-Db_sanitize=address,undefined
+ninja -C san_build
+ninja -C san_build install
 
 for fuzz_target_source in src/tests/fuzz-lxc*.c; do
     fuzz_target_name=$(basename "$fuzz_target_source" ".c")
