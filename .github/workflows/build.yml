@@ -51,8 +51,3 @@ jobs:
                 -Db_lto_mode=default
           ninja -C build
           DESTDIR=build_install ninja -C build install
-
-          # Sanitized build
-          meson setup san_build -Dtests=true -Dpam-cgroup=true -Dwerror=true -Db_sanitize=address,undefined
-          ninja -C san_build
-          DESTDIR=san_build_install ninja -C san_build install
