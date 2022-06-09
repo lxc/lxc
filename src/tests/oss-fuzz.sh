@@ -54,17 +54,17 @@ ninja -C san_build -v
 
 for fuzz_target_source in src/tests/fuzz-lxc*.c; do
     fuzz_target_name=$(basename "$fuzz_target_source" ".c")
-    cp "src/tests/$fuzz_target_name" "$OUT"
+    cp "san_build/src/tests/$fuzz_target_name" "$OUT"
 done
 
-perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >doc/examples/keys.conf
-[[ -s doc/examples/keys.conf ]]
+perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >san_build/doc/examples/keys.conf
+[[ -s san_build/doc/examples/keys.conf ]]
 
-perl -lne 'if (/config_jump_table_net\[\]\s*=/../^}/) { /"([^"]+)"/ && print "lxc.net.$1=" }' src/lxc/confile.c >doc/examples/lxc-net-keys.conf
-[[ -s doc/examples/lxc-net-keys.conf ]]
+perl -lne 'if (/config_jump_table_net\[\]\s*=/../^}/) { /"([^"]+)"/ && print "lxc.net.$1=" }' src/lxc/confile.c >san_build/doc/examples/lxc-net-keys.conf
+[[ -s san_build/doc/examples/lxc-net-keys.conf ]]
 
-zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip doc/examples
+zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip san_build/doc/examples
 
 mkdir fuzz-lxc-define-load_seed_corpus
-perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' doc/examples/{keys,lxc-net-keys}.conf | bash
+perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' san_build/doc/examples/{keys,lxc-net-keys}.conf | bash
 zip -r $OUT/fuzz-lxc-define-load_seed_corpus.zip fuzz-lxc-define-load_seed_corpus
