@@ -2,27 +2,24 @@
 
 set -ex
 
-export SANITIZER=${SANITIZER:-address}
-flags="-O1 -fno-omit-frame-pointer -gline-tables-only -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION"
-coverage_flags="-fsanitize=fuzzer-no-link"
-
-sanitizer_flags="-fsanitize=address -fsanitize-address-use-after-scope"
-if [[ "$SANITIZER" == "undefined" ]]; then
-    sanitizer_flags="-fsanitize=undefined"
-elif [[ "$SANITIZER" == "memory" ]]; then
-    sanitizer_flags="-fsanitize=memory -fsanitize-memory-track-origins"
-fi
+export LC_CTYPE=C.UTF-8
 
 export CC=${CC:-clang}
-export CFLAGS=${CFLAGS:-$flags $sanitizer_flags $coverage_flags}
-
 export CXX=${CXX:-clang++}
-export CXXFLAGS=${CXXFLAGS:-$flags $sanitizer_flags $coverage_flags}
+clang_version="$($CC --version | sed -nr 's/.*version ([^ ]+?) .*/\1/p' | sed -r 's/-$//')"
+
+SANITIZER=${SANITIZER:-address -fsanitize-address-use-after-scope}
+flags="-O1 -fno-omit-frame-pointer -g -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -fsanitize=$SANITIZER"
+
+clang_lib="/usr/lib64/clang/${clang_version}/lib/linux"
+[ -d "$clang_lib" ] || clang_lib="/usr/lib/clang/${clang_version}/lib/linux"
+
+export CFLAGS=${CFLAGS:-$flags}
+export CXXFLAGS=${CXXFLAGS:-$flags}
+export LDFLAGS=${LDFLAGS:--L${clang_lib}}
 
 export OUT=${OUT:-$(pwd)/out}
 mkdir -p $OUT
-
-export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 
 apt-get update -qq
 apt-get install --yes --no-install-recommends \
