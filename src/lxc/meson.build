@@ -139,7 +139,7 @@ liblxc_sources = files(
     'uuid.c',
     'uuid.h')
 
-if libseccomp.found()
+if want_seccomp and libseccomp.found()
     liblxc_sources += files('seccomp.c')
 endif
 

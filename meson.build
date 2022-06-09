@@ -146,6 +146,7 @@ want_capabilities = get_option('capabilities')
 want_apparmor = get_option('apparmor')
 want_openssl = get_option('openssl')
 want_selinux = get_option('selinux')
+want_seccomp = get_option('seccomp')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -291,41 +292,45 @@ endif
 threads = dependency('threads')
 
 ## Seccomp.
-libseccomp = dependency('libseccomp', required: false)
-srcconf.set10('HAVE_SECCOMP', libseccomp.found())
-pkgconfig_libs += libseccomp
-if libseccomp.found()
-    if libseccomp.version().version_compare('>=2.5.0')
-        # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
-        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
-    else
-        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
-    endif
-
-    if libseccomp.version().version_compare('>=2.0.0')
-        # https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
-        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
-    else
-        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
-    endif
-
-    seccomp_headers = '''
-    #include <seccomp.h>
-    '''
-
-    foreach decl: [
-        'scmp_filter_ctx',
-        'struct seccomp_notif_sizes',
-        'struct clone_args',
-    ]
-
-        # We get -1 if the size cannot be determined
-        if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
-            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+if want_seccomp
+    libseccomp = dependency('libseccomp', required: false)
+    srcconf.set10('HAVE_SECCOMP', libseccomp.found())
+    pkgconfig_libs += libseccomp
+    if libseccomp.found()
+        if libseccomp.version().version_compare('>=2.5.0')
+            # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
+            srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
         else
-            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+            srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
         endif
-    endforeach
+
+        if libseccomp.version().version_compare('>=2.0.0')
+            # https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
+            srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+        else
+            srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
+        endif
+
+        seccomp_headers = '''
+        #include <seccomp.h>
+        '''
+
+        foreach decl: [
+            'scmp_filter_ctx',
+            'struct seccomp_notif_sizes',
+            'struct clone_args',
+        ]
+
+            # We get -1 if the size cannot be determined
+            if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
+                srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+            else
+                srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+            endif
+        endforeach
+    endif
+else
+    srcconf.set10('HAVE_SECCOMP', false)
 endif
 
 ## SELinux.
@@ -667,8 +672,11 @@ subdir('src/lxc/pam')
 # Library.
 liblxc_dependencies = [
     threads,
-    libseccomp,
 ]
+
+if want_seccomp
+    liblxc_dependencies += libseccomp
+endif
 
 if want_capabilities
     liblxc_dependencies += [libcap]
