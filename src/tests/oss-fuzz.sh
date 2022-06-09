@@ -2,33 +2,39 @@
 
 set -ex
 
-export SANITIZER=${SANITIZER:-address}
-flags="-O1 -fno-omit-frame-pointer -gline-tables-only -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION"
-coverage_flags="-fsanitize=fuzzer-no-link"
-
-sanitizer_flags="-fsanitize=address -fsanitize-address-use-after-scope"
-if [[ "$SANITIZER" == "undefined" ]]; then
-    sanitizer_flags="-fsanitize=undefined"
-elif [[ "$SANITIZER" == "memory" ]]; then
-    sanitizer_flags="-fsanitize=memory -fsanitize-memory-track-origins"
-fi
+export LC_CTYPE=C.UTF-8
 
 export CC=${CC:-clang}
-export CFLAGS=${CFLAGS:-$flags $sanitizer_flags $coverage_flags}
-
 export CXX=${CXX:-clang++}
-export CXXFLAGS=${CXXFLAGS:-$flags $sanitizer_flags $coverage_flags}
+clang_version="$($CC --version | sed -nr 's/.*version ([^ ]+?) .*/\1/p' | sed -r 's/-$//')"
+
+SANITIZER=${SANITIZER:-address -fsanitize-address-use-after-scope}
+flags="-O1 -fno-omit-frame-pointer -g -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -fsanitize=$SANITIZER"
+
+clang_lib="/usr/lib64/clang/${clang_version}/lib/linux"
+[ -d "$clang_lib" ] || clang_lib="/usr/lib/clang/${clang_version}/lib/linux"
+
+export CFLAGS=${CFLAGS:-$flags}
+export CXXFLAGS=${CXXFLAGS:-$flags}
+export LDFLAGS=${LDFLAGS:--L${clang_lib}}
 
 export OUT=${OUT:-$(pwd)/out}
 mkdir -p $OUT
 
-export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
+apt-get update -qq
+apt-get install --yes --no-install-recommends \
+    build-essential docbook2x doxygen git \
+    wget xz-utils systemd-coredump pkgconf
+apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
+
+# make sure we have a new enough meson version
+pip3 install meson ninja
 
 # Sanitized build
 meson setup san_build \
 	-Dprefix=/usr \
 	-Db_lundef=false \
-	-Dtests=true \
+	-Dtests=false \
 	-Dpam-cgroup=false \
 	-Dwerror=true \
 	-Dtools=false \
@@ -37,24 +43,25 @@ meson setup san_build \
 	-Dapparmor=false \
 	-Dopenssl=false \
 	-Dselinux=false \
-	-Db_lto_mode=default \
-	-Db_sanitize=address,undefined
-ninja -C san_build
-ninja -C san_build install
+	-Dseccomp=false \
+	-Db_lto=false \
+	-Db_pie=false \
+	-Doss-fuzz=true
+ninja -C san_build -v
 
 for fuzz_target_source in src/tests/fuzz-lxc*.c; do
     fuzz_target_name=$(basename "$fuzz_target_source" ".c")
-    cp "src/tests/$fuzz_target_name" "$OUT"
+    cp "san_build/src/tests/$fuzz_target_name" "$OUT"
 done
 
-perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >doc/examples/keys.conf
-[[ -s doc/examples/keys.conf ]]
+perl -lne 'if (/config_jump_table\[\]\s*=/../^}/) { /"([^"]+)"/ && print "$1=" }' src/lxc/confile.c >san_build/doc/examples/keys.conf
+[[ -s san_build/doc/examples/keys.conf ]]
 
-perl -lne 'if (/config_jump_table_net\[\]\s*=/../^}/) { /"([^"]+)"/ && print "lxc.net.$1=" }' src/lxc/confile.c >doc/examples/lxc-net-keys.conf
-[[ -s doc/examples/lxc-net-keys.conf ]]
+perl -lne 'if (/config_jump_table_net\[\]\s*=/../^}/) { /"([^"]+)"/ && print "lxc.net.$1=" }' src/lxc/confile.c >san_build/doc/examples/lxc-net-keys.conf
+[[ -s san_build/doc/examples/lxc-net-keys.conf ]]
 
-zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip doc/examples
+zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip san_build/doc/examples
 
 mkdir fuzz-lxc-define-load_seed_corpus
-perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' doc/examples/{keys,lxc-net-keys}.conf | bash
+perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' san_build/doc/examples/{keys,lxc-net-keys}.conf | bash
 zip -r $OUT/fuzz-lxc-define-load_seed_corpus.zip fuzz-lxc-define-load_seed_corpus

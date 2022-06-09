@@ -146,6 +146,8 @@ want_capabilities = get_option('capabilities')
 want_apparmor = get_option('apparmor')
 want_openssl = get_option('openssl')
 want_selinux = get_option('selinux')
+want_oss_fuzz = get_option('oss-fuzz')
+want_seccomp = get_option('seccomp')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -154,6 +156,14 @@ endif
 
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
+
+# Those generate many false positives, and we do not want to change the code to
+# avoid them.
+basic_disabled_warnings = [
+        '-Wno-format-signedness',
+        '-Wno-missing-field-initializers',
+        '-Wno-unused-parameter',
+]
 
 # Build flags.
 possible_cc_flags = [
@@ -193,7 +203,6 @@ possible_cc_flags = [
     '-Wreturn-local-addr',
     '-fsanitize=cfi',
     '-Wstringop-overflow',
-    '-Wno-missing-field-initializers',
 ]
 
 possible_link_flags = [
@@ -201,7 +210,19 @@ possible_link_flags = [
     '-Wl,-z,relro',
     '-Wl,-z,now',
     '-Wl,-fuse-ld=gold',
+    '-fstack-protector',
 ]
+
+if sanitize == 'none'
+    possible_link_flags += '-Wl,--warn-common'
+endif
+
+if cc.get_id() == 'clang'
+    possible_cc_flags += [
+            '-Wno-typedef-redefinition',
+            '-Wno-gnu-variable-sized-type-not-at-end',
+    ]
+endif
 
 if meson.version().version_compare('>=0.46')
     add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags), language: 'c')
@@ -209,7 +230,15 @@ else
     add_project_link_arguments(possible_link_flags, language: 'c')
 endif
 
+add_project_arguments(cc.get_supported_arguments(basic_disabled_warnings), language : 'c')
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: 'c')
+
+if add_languages('cpp', required : want_oss_fuzz)
+    #  Used only for tests
+    cxx = meson.get_compiler('cpp')
+    cxx_cmd = ' '.join(cxx.cmd_array())
+    add_project_arguments(cxx.get_supported_arguments(basic_disabled_warnings), language : 'cpp')
+endif
 
 # Feature detection
 ## I/O uring.
@@ -271,41 +300,45 @@ endif
 threads = dependency('threads')
 
 ## Seccomp.
-libseccomp = dependency('libseccomp', required: false)
-srcconf.set10('HAVE_SECCOMP', libseccomp.found())
-pkgconfig_libs += libseccomp
-if libseccomp.found()
-    if libseccomp.version().version_compare('>=2.5.0')
-        # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
-        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
-    else
-        srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
-    endif
-
-    if libseccomp.version().version_compare('>=2.0.0')
-        # https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
-        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
-    else
-        srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
-    endif
-
-    seccomp_headers = '''
-    #include <seccomp.h>
-    '''
-
-    foreach decl: [
-        'scmp_filter_ctx',
-        'struct seccomp_notif_sizes',
-        'struct clone_args',
-    ]
-
-        # We get -1 if the size cannot be determined
-        if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
-            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+if want_seccomp
+    libseccomp = dependency('libseccomp', required: false)
+    srcconf.set10('HAVE_SECCOMP', libseccomp.found())
+    pkgconfig_libs += libseccomp
+    if libseccomp.found()
+        if libseccomp.version().version_compare('>=2.5.0')
+            # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
+            srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', true)
         else
-            srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+            srcconf.set10('HAVE_DECL_SECCOMP_NOTIFY_FD', false)
         endif
-    endforeach
+
+        if libseccomp.version().version_compare('>=2.0.0')
+            # https://github.com/seccomp/libseccomp/commit/6220c8c0fc479d97b6d3e3166a4e46fbfe25a3c0
+            srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', true)
+        else
+            srcconf.set10('HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH', false)
+        endif
+
+        seccomp_headers = '''
+        #include <seccomp.h>
+        '''
+
+        foreach decl: [
+            'scmp_filter_ctx',
+            'struct seccomp_notif_sizes',
+            'struct clone_args',
+        ]
+
+            # We get -1 if the size cannot be determined
+            if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
+                srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
+            else
+                srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
+            endif
+        endforeach
+    endif
+else
+    srcconf.set10('HAVE_SECCOMP', false)
 endif
 
 ## SELinux.
@@ -353,6 +386,12 @@ if want_capabilities
 else
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
+endif
+
+if want_oss_fuzz
+    srcconf.set10('FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION', true)
+    srcconf.set10('RUN_ON_OSS_FUZZ', true)
+    fuzzing_engine = meson.get_compiler('cpp').find_library('FuzzingEngine')
 endif
 
 ## PAM.
@@ -647,21 +686,33 @@ subdir('src/lxc/pam')
 # Library.
 liblxc_dependencies = [
     threads,
-    libseccomp,
-    libcap,
-    libopenssl,
-    libselinux,
-    libapparmor,
 ]
+
+if want_seccomp
+    liblxc_dependencies += libseccomp
+endif
+
+if want_capabilities
+    liblxc_dependencies += [libcap]
+endif
+
+if want_openssl
+    liblxc_dependencies += [libopenssl]
+endif
+
+if want_selinux
+    liblxc_dependencies += [libselinux]
+endif
+
+if want_apparmor
+    liblxc_dependencies += [libapparmor]
+endif
 
 if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
-liblxc_link_whole = []
-if sanitize == 'none'
-    liblxc_link_whole = [liblxc_static]
-endif
+liblxc_link_whole = [liblxc_static]
 
 liblxc = shared_library(
     'lxc',
@@ -678,16 +729,20 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
-subdir('config/apparmor')
-subdir('config/apparmor/abstractions')
-subdir('config/apparmor/profiles')
+if want_apparmor
+    subdir('config/apparmor')
+    subdir('config/apparmor/abstractions')
+    subdir('config/apparmor/profiles')
+endif
 subdir('config/bash')
 subdir('config/etc')
 subdir('config/init/common')
 subdir('config/init/systemd')
 subdir('config/init/sysvinit')
 subdir('config/init/upstart')
-subdir('config/selinux')
+if want_selinux
+    subdir('config/selinux')
+endif
 subdir('config/sysconfig')
 subdir('config/templates')
 subdir('config/templates/common.conf.d')
