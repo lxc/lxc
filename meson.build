@@ -668,11 +668,23 @@ subdir('src/lxc/pam')
 liblxc_dependencies = [
     threads,
     libseccomp,
-    libcap,
-    libopenssl,
-    libselinux,
-    libapparmor,
 ]
+
+if want_capabilities
+    liblxc_dependencies += [libcap]
+endif
+
+if want_openssl
+    liblxc_dependencies += [libopenssl]
+endif
+
+if want_selinux
+    liblxc_dependencies += [libselinux]
+endif
+
+if want_apparmor
+    liblxc_dependencies += [libapparmor]
+endif
 
 if want_io_uring
     liblxc_dependencies += [liburing]
@@ -698,16 +710,20 @@ liblxc_dep = declare_dependency(
     dependencies: liblxc_dependencies)
 
 # Rest of sub-directories.
-subdir('config/apparmor')
-subdir('config/apparmor/abstractions')
-subdir('config/apparmor/profiles')
+if want_apparmor
+    subdir('config/apparmor')
+    subdir('config/apparmor/abstractions')
+    subdir('config/apparmor/profiles')
+endif
 subdir('config/bash')
 subdir('config/etc')
 subdir('config/init/common')
 subdir('config/init/systemd')
 subdir('config/init/sysvinit')
 subdir('config/init/upstart')
-subdir('config/selinux')
+if want_selinux
+    subdir('config/selinux')
+endif
 subdir('config/sysconfig')
 subdir('config/templates')
 subdir('config/templates/common.conf.d')

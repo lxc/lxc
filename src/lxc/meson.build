@@ -143,7 +143,7 @@ if libseccomp.found()
     liblxc_sources += files('seccomp.c')
 endif
 
-if libselinux.found()
+if want_selinux and libselinux.found()
     liblxc_sources += files('lsm/selinux.c')
 endif
 
