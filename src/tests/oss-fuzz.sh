@@ -24,7 +24,7 @@ mkdir -p $OUT
 apt-get update -qq
 apt-get install --yes --no-install-recommends \
     build-essential docbook2x doxygen git \
-    wget xz-utils systemd-coredump
+    wget xz-utils systemd-coredump pkgconf
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 # make sure we have a new enough meson version
@@ -47,8 +47,8 @@ meson setup san_build \
 	-Db_lto=false \
 	-Db_pie=false \
 	-Doss-fuzz=true
-ninja -C san_build
-ninja -C san_build install
+ninja -C san_build -v
+
 
 for fuzz_target_source in src/tests/fuzz-lxc*.c; do
     fuzz_target_name=$(basename "$fuzz_target_source" ".c")

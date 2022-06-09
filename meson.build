@@ -713,10 +713,6 @@ if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
-if want_oss_fuzz
-    liblxc_dependencies += fuzzing_engine
-endif
-
 liblxc_link_whole = [liblxc_static]
 
 liblxc = shared_library(
