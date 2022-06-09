@@ -24,6 +24,15 @@ mkdir -p $OUT
 
 export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 
+apt-get update -qq
+apt-get install --yes --no-install-recommends \
+    build-essential docbook2x doxygen git \
+    wget xz-utils systemd-coredump
+apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
+
+# make sure we have a new enough meson version
+pip3 install meson ninja
+
 # Sanitized build
 meson setup san_build \
 	-Dprefix=/usr \
