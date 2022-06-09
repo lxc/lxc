@@ -32,6 +32,9 @@ option('commands', type: 'boolean', value: 'true',
 option('capabilities', type: 'boolean', value: 'true',
        description: 'use capabilities')
 
+option('seccomp', type: 'boolean', value: 'true',
+       description: 'use seccomp')
+
 option('apparmor', type: 'boolean', value: 'true',
        description: 'use apparmor')
 
