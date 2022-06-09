@@ -28,7 +28,7 @@ export LIB_FUZZING_ENGINE=${LIB_FUZZING_ENGINE:--fsanitize=fuzzer}
 meson setup san_build \
 	-Dprefix=/usr \
 	-Db_lundef=false \
-	-Dtests=true \
+	-Dtests=false \
 	-Dpam-cgroup=false \
 	-Dwerror=true \
 	-Dtools=false \
