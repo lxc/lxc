@@ -149,6 +149,7 @@ want_selinux = get_option('selinux')
 want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
 
+
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
     srcconf.set('ENABLE_COVERITY_BUILD', 1)

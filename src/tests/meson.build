@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-if want_tests
-    tests_common_sources = liblxc_sources + include_sources + netns_ifaddrs_sources
+tests_common_sources = liblxc_sources + include_sources + netns_ifaddrs_sources
 
+if want_tests
     test_programs += executable(
         'lxc-test-arch-parse',
         files('arch_parse.c') + tests_common_sources,
@@ -406,31 +406,28 @@ endif
 if want_oss_fuzz
     test_programs += executable(
         'fuzz-lxc-cgroup-init',
-        files('fuzz-lxc-cgroup-init.c'),
+        files('fuzz-lxc-cgroup-init.c') + tests_common_sources,
         include_directories: liblxc_includes,
         dependencies: [fuzzing_engine],
-        link_with: [liblxc_static],
-        link_args: ['-static'],
-        install: true,
+        link_with: [liblxc],
+        install: false,
         install_dir: bindir)
 
     test_programs += executable(
         'fuzz-lxc-config-read',
-        files('fuzz-lxc-config-read.c'),
+        files('fuzz-lxc-config-read.c') + tests_common_sources,
         include_directories: liblxc_includes,
         dependencies: [fuzzing_engine],
-        link_with: [liblxc_static],
-        link_args: ['-static'],
-        install: true,
+        link_with: [liblxc],
+        install: false,
         install_dir: bindir)
 
     test_programs += executable(
         'fuzz-lxc-define-load',
-        files('fuzz-lxc-define-load.c'),
+        files('fuzz-lxc-define-load.c') + tests_common_sources,
         include_directories: liblxc_includes,
         dependencies: [fuzzing_engine],
-        link_with: [liblxc_static],
-        link_args: ['-static'],
-        install: true,
+        link_with: [liblxc],
+        install: false,
         install_dir: bindir)
 endif
