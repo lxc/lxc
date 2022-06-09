@@ -74,3 +74,6 @@ option('usernet-config-path', type: 'string', value: 'lxc/lxc-usernet',
 
 option('usernet-db-path', type: 'string', value: 'lxc/nics',
        description: 'User network database file path')
+
+option('oss-fuzz', type : 'boolean', value : 'false',
+       description : 'build against oss-fuzz')

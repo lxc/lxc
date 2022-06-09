@@ -146,6 +146,7 @@ want_capabilities = get_option('capabilities')
 want_apparmor = get_option('apparmor')
 want_openssl = get_option('openssl')
 want_selinux = get_option('selinux')
+want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
@@ -231,6 +232,13 @@ endif
 
 add_project_arguments(cc.get_supported_arguments(basic_disabled_warnings), language : 'c')
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: 'c')
+
+if add_languages('cpp', required : want_oss_fuzz)
+    #  Used only for tests
+    cxx = meson.get_compiler('cpp')
+    cxx_cmd = ' '.join(cxx.cmd_array())
+    add_project_arguments(cxx.get_supported_arguments(basic_disabled_warnings), language : 'cpp')
+endif
 
 # Feature detection
 ## I/O uring.
@@ -378,6 +386,12 @@ if want_capabilities
 else
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
+endif
+
+if want_oss_fuzz
+    srcconf.set10('FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION', true)
+    srcconf.set10('RUN_ON_OSS_FUZZ', true)
+    fuzzing_engine = meson.get_compiler('cpp').find_library('FuzzingEngine')
 endif
 
 ## PAM.
@@ -698,10 +712,11 @@ if want_io_uring
     liblxc_dependencies += [liburing]
 endif
 
-liblxc_link_whole = []
-if sanitize == 'none'
-    liblxc_link_whole = [liblxc_static]
+if want_oss_fuzz
+    liblxc_dependencies += fuzzing_engine
 endif
+
+liblxc_link_whole = [liblxc_static]
 
 liblxc = shared_library(
     'lxc',
