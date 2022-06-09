@@ -155,6 +155,14 @@ endif
 dummy_config_data = configuration_data()
 dummy_config_data.set_quoted('DUMMY_VARIABLE', '1')
 
+# Those generate many false positives, and we do not want to change the code to
+# avoid them.
+basic_disabled_warnings = [
+        '-Wno-format-signedness',
+        '-Wno-missing-field-initializers',
+        '-Wno-unused-parameter',
+]
+
 # Build flags.
 possible_cc_flags = [
     '-Wvla',
@@ -193,7 +201,6 @@ possible_cc_flags = [
     '-Wreturn-local-addr',
     '-fsanitize=cfi',
     '-Wstringop-overflow',
-    '-Wno-missing-field-initializers',
 ]
 
 possible_link_flags = [
@@ -201,7 +208,19 @@ possible_link_flags = [
     '-Wl,-z,relro',
     '-Wl,-z,now',
     '-Wl,-fuse-ld=gold',
+    '-fstack-protector',
 ]
+
+if sanitize == 'none'
+    possible_link_flags += '-Wl,--warn-common'
+endif
+
+if cc.get_id() == 'clang'
+    possible_cc_flags += [
+            '-Wno-typedef-redefinition',
+            '-Wno-gnu-variable-sized-type-not-at-end',
+    ]
+endif
 
 if meson.version().version_compare('>=0.46')
     add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags), language: 'c')
@@ -209,6 +228,7 @@ else
     add_project_link_arguments(possible_link_flags, language: 'c')
 endif
 
+add_project_arguments(cc.get_supported_arguments(basic_disabled_warnings), language : 'c')
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language: 'c')
 
 # Feature detection
