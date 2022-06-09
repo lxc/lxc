@@ -46,8 +46,10 @@ meson setup san_build \
 	-Dapparmor=false \
 	-Dopenssl=false \
 	-Dselinux=false \
-	-Db_lto_mode=default \
-	-Db_sanitize=address,undefined
+	-Dseccomp=false \
+	-Db_lto=false \
+	-Db_pie=false \
+	-Doss-fuzz=true
 ninja -C san_build
 ninja -C san_build install
 
