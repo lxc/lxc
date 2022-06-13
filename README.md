@@ -179,15 +179,10 @@ You can browse the up to the minute source code and change history online
 
 Without considering distribution specific details a simple
 
-    make && sudo make install
+    meson setup -Dprefix=/usr build
+    meson compile -C build
 
 is usually sufficient.
-
-In order to test current git master of LXC it is usually a good idea to compile with
-
-    make
-
-in a convenient directory and set `LD_LIBRARY_PATH="${BUILD_DIR}"/lxc/src/lxc/.libs`.
 
 ## Getting help
 
