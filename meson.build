@@ -382,7 +382,16 @@ if want_capabilities
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap_static = cc.find_library('cap', required: false, static: true)
     endif
-    srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+
+    code = '''
+int main(int argc, char *argv[]) { return 0; };
+'''
+    if libcap_static.found()
+        libcap_static_linkable = cc.links(code, args: '-static', dependencies: libcap_static)
+        srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
+    else
+        srcconf.set10('HAVE_STATIC_LIBCAP', false)
+    endif
 else
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
