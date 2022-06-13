@@ -46,6 +46,7 @@ meson setup san_build \
 	-Dseccomp=false \
 	-Db_lto=false \
 	-Db_pie=false \
+	-Dthread-safety=false \
 	-Doss-fuzz=true
 ninja -C san_build -v
 

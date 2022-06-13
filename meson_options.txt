@@ -77,3 +77,6 @@ option('usernet-db-path', type: 'string', value: 'lxc/nics',
 
 option('oss-fuzz', type : 'boolean', value : 'false',
        description : 'build against oss-fuzz')
+
+option('thread-safety', type : 'boolean', value : 'true',
+       description : 'whether the build fails when thread-safe logging cannot be guaranteed')
