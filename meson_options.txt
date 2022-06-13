@@ -1,85 +1,111 @@
 # -*- mode: meson -*-
 
 # Main options
+# was --cgroup-pattern in autotools
 option('cgroup-pattern', type: 'string', value: '',
        description: 'CGroup pattern')
 
+# was --coverity-build in autotools
 option('coverity-build', type: 'boolean', value: 'true',
        description: 'build for coverity')
 
+# was --{disable,enable}-examples in autotools
 option('examples', type: 'boolean', value: 'true',
        description: 'build and install examples')
 
+# was --init-script in autotools
 option('init-script', type : 'array',
        choices : ['systemd', 'sysvinit', 'upstart'], value : ['systemd'],
        description : 'init script')
 
+# was --{disable,enable}-liburing in autotools
 option('io-uring-event-loop', type: 'boolean', value: 'false',
        description: 'Enable io-uring based event loop')
 
+# was --{disable,enable}-doc in autotools
 option('man', type: 'boolean', value: 'true',
        description: 'build and install manpages')
 
+# was --{disable,enable}-pam in autotools
 option('pam-cgroup', type: 'boolean', value: 'false',
        description: 'build and install the pam cgroup module')
 
+# was --{disable,enable}-tools in autotools
 option('tools', type: 'boolean', value: 'true',
        description: 'build and install tools')
 
+# was --{disable,enable}-commands in autotools
 option('commands', type: 'boolean', value: 'true',
        description: 'build and install commands')
 
+# was --{disable,enable}-capabilities in autotools
 option('capabilities', type: 'boolean', value: 'true',
        description: 'use capabilities')
 
+# was --{disable,enable}-seccomp in autotools
 option('seccomp', type: 'boolean', value: 'true',
        description: 'use seccomp')
 
+# was --{disable,enable}-apparmor in autotools
 option('apparmor', type: 'boolean', value: 'true',
        description: 'use apparmor')
 
+# was --{disable,enable}-openssl in autotools
 option('openssl', type: 'boolean', value: 'true',
        description: 'use openssl')
 
+# was --{disable,enable}-selinux in autotools
 option('selinux', type: 'boolean', value: 'true',
        description: 'use selinux')
 
+# was --{disable,enable}-tests in autotools
 option('tests', type: 'boolean', value: 'false',
        description: 'build and install tests')
 
 # Paths
+# was --apparmor-cache-dir in autotools
 option('apparmor-cache-path', type: 'string', value: 'cache/lxc/apparmor',
        description: 'AppArmor cache directory')
 
+# was --with-config-path in autotools
 option('data-path', type: 'string', value: 'lib/lxc',
        description: 'Container storage directory')
 
+# was --with-doc-dir in autotools
 option('doc-path', type: 'string', value: 'doc/lxc',
        description: 'Documentation directory')
 
+# was --with-global-conf in autotools
 option('global-config-path', type: 'string', value: 'lxc',
        description: 'Global configuration directory')
 
+# was --log-path in autotools
 option('log-path', type: 'string', value: 'log/lxc',
        description: 'Loging directory')
 
+# was --with-rootfs-path in autotools
 option('rootfs-mount-path', type: 'string', value: 'lxc/rootfs',
        description: 'Container rootfs mount directory')
 
+# was --with-runtime-path in autotools
 option('runtime-path', type: 'string', value: '/run',
        description: 'Main runtime directory')
 
+# was --with-usernic-conf in autotools
 option('usernet-config-path', type: 'string', value: 'lxc/lxc-usernet',
        description: 'User network configuration file path')
 
+# was --with-usernic-db in autotools
 option('usernet-db-path', type: 'string', value: 'lxc/nics',
        description: 'User network database file path')
 
 option('oss-fuzz', type : 'boolean', value : 'false',
        description : 'build against oss-fuzz')
 
+# was --{disable,enable}-thread-safety in autotools
 option('thread-safety', type : 'boolean', value : 'true',
        description : 'whether the build fails when thread-safe logging cannot be guaranteed')
 
+# was --{disable,enable}-memfd-rexec in autotools
 option('memfd-rexec', type : 'boolean', value : 'true',
        description : 'whether to rexec the lxc-attach binary when attaching to a container')
