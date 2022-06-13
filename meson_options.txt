@@ -80,3 +80,6 @@ option('oss-fuzz', type : 'boolean', value : 'false',
 
 option('thread-safety', type : 'boolean', value : 'true',
        description : 'whether the build fails when thread-safe logging cannot be guaranteed')
+
+option('memfd-rexec', type : 'boolean', value : 'true',
+       description : 'whether to rexec the lxc-attach binary when attaching to a container')

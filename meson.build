@@ -149,6 +149,7 @@ want_selinux = get_option('selinux')
 want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
 want_thread_safety = get_option('thread-safety')
+want_memfd_rexec = get_option('memfd-rexec')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -405,6 +406,7 @@ if want_oss_fuzz
 endif
 
 srcconf.set10('ENFORCE_THREAD_SAFETY', want_thread_safety)
+srcconf.set10('ENFORCE_MEMFD_REXEC', want_memfd_rexec)
 
 ## PAM.
 pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
