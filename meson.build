@@ -148,6 +148,8 @@ want_openssl = get_option('openssl')
 want_selinux = get_option('selinux')
 want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
+want_thread_safety = get_option('thread-safety')
+want_memfd_rexec = get_option('memfd-rexec')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -382,7 +384,16 @@ if want_capabilities
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap_static = cc.find_library('cap', required: false, static: true)
     endif
-    srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static.found())
+
+    code = '''
+int main(int argc, char *argv[]) { return 0; };
+'''
+    if libcap_static.found()
+        libcap_static_linkable = cc.links(code, args: '-static', dependencies: libcap_static)
+        srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
+    else
+        srcconf.set10('HAVE_STATIC_LIBCAP', false)
+    endif
 else
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
@@ -393,6 +404,9 @@ if want_oss_fuzz
     srcconf.set10('RUN_ON_OSS_FUZZ', true)
     fuzzing_engine = meson.get_compiler('cpp').find_library('FuzzingEngine')
 endif
+
+srcconf.set10('ENFORCE_THREAD_SAFETY', want_thread_safety)
+srcconf.set10('ENFORCE_MEMFD_REXEC', want_memfd_rexec)
 
 ## PAM.
 pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
@@ -405,6 +419,28 @@ srcconf.set10('HAVE_STRCHRNUL', have)
 
 have = cc.has_function('openpty', prefix: '#include <pty.h>', args: '-D_GNU_SOURCE')
 srcconf.set10('HAVE_OPENPTY', have)
+
+have_func_strerror_r = cc.has_function('strerror_r', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
+srcconf.set10('HAVE_STRERROR_R', have)
+
+have_func_strerror_r_char_p = false
+
+if have_func_strerror_r
+    code = '''
+#define _GNU_SOURCE
+#include <string.h>
+int func (void) {
+    char error_string[256];
+    char *ptr = strerror_r (-2, error_string, 256);
+    char c = *strerror_r (-2, error_string, 256);
+    return c != 0 && ptr != (void*) 0L;
+}
+'''
+
+have_func_strerror_r_char_p = cc.compiles(code, name : 'strerror_r() returns char *')
+endif
+
+srcconf.set10('STRERROR_R_CHAR_P', have_func_strerror_r_char_p)
 
 ## Compiler attributes.
 foreach ccattr: [
@@ -426,6 +462,7 @@ foreach tuple: [
     ['execveat'],
     ['faccessat'],
     ['strchrnul'],
+    ['strerror_r'],
     ['fgetln'],
     ['fsconfig'],
     ['fsmount'],
