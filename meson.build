@@ -421,7 +421,7 @@ have = cc.has_function('openpty', prefix: '#include <pty.h>', args: '-D_GNU_SOUR
 srcconf.set10('HAVE_OPENPTY', have)
 
 have_func_strerror_r = cc.has_function('strerror_r', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
-srcconf.set10('HAVE_STRERROR_R', have)
+srcconf.set10('HAVE_STRERROR_R', have_func_strerror_r)
 
 have_func_strerror_r_char_p = false
 
