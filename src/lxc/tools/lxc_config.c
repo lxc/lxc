@@ -40,7 +40,8 @@ static void list_config_items(void)
 	exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_config_main"))) main(int argc, char *argv[]);
+int lxc_config_main(int argc, char *argv[])
 {
 	struct lxc_config_items *i;
 	const char *value;

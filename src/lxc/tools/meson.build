@@ -17,3 +17,26 @@ if want_tools
             install: true)
     endforeach
 endif
+
+if want_tools_multicall
+    tools_all_sources = files('lxc_multicall.c') + tools_common_sources
+    foreach cmd : tools_commands
+        tools_all_sources += files('lxc_' + cmd + '.c')
+    endforeach
+
+    public_programs += executable(
+        'lxc',
+        tools_all_sources,
+        include_directories: liblxc_includes,
+        dependencies: liblxc_dep,
+        install: true)
+
+    if want_tools == false
+        foreach cmd : tools_commands
+            public_programs += install_symlink(
+                'lxc-' + cmd,
+                pointing_to: 'lxc',
+                install_dir: get_option('bindir'))
+        endforeach
+    endif
+endif

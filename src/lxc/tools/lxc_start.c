@@ -149,7 +149,8 @@ static int ensure_path(char **confpath, const char *path)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_start_main"))) main(int argc, char *argv[]);
+int lxc_start_main(int argc, char *argv[])
 {
 	const char *lxcpath;
 	char *const *args;

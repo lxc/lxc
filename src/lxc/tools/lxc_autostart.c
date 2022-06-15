@@ -304,7 +304,8 @@ static int toss_list(struct lxc_list *c_groups_list)
 	return 1;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_autostart_main"))) main(int argc, char *argv[]);
+int lxc_autostart_main(int argc, char *argv[])
 {
 	int count = 0, failed = 0, i = 0, ret = 0;
 	struct lxc_list *cmd_group;

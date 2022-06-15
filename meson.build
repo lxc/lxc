@@ -141,6 +141,7 @@ want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
 want_tests = get_option('tests')
 want_tools = get_option('tools')
+want_tools_multicall = get_option('tools-multicall')
 want_commands = get_option('commands')
 want_capabilities = get_option('capabilities')
 want_apparmor = get_option('apparmor')
@@ -793,7 +794,7 @@ subdir('hooks')
 if want_commands
     subdir('src/lxc/cmd')
 endif
-if want_tools
+if want_tools or want_tools_multicall
     subdir('src/lxc/tools')
 endif
 subdir('src/lxc/tools/include')

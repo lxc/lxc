@@ -81,7 +81,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_stop_main"))) main(int argc, char *argv[]);
+int lxc_stop_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

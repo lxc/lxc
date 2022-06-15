@@ -61,7 +61,8 @@ static int do_snapshot_restore(struct lxc_container *c,
 static int do_snapshot_task(struct lxc_container *c, enum task task);
 static void print_file(char *path);
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_snapshot_main"))) main(int argc, char *argv[]);
+int lxc_snapshot_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

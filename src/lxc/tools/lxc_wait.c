@@ -72,7 +72,8 @@ static int my_checker(const struct lxc_arguments *args)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_wait_main"))) main(int argc, char *argv[]);
+int lxc_wait_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

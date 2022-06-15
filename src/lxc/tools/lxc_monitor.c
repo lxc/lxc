@@ -216,7 +216,8 @@ static int lxc_tool_monitord_spawn(const char *lxcpath)
 	_exit(EXIT_FAILURE);
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_monitor_main"))) main(int argc, char *argv[]);
+int lxc_monitor_main(int argc, char *argv[])
 {
 	char *regexp;
 	struct lxc_msg msg;

@@ -246,7 +246,8 @@ static bool restore(struct lxc_container *c)
 	}
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_checkpoint_main"))) main(int argc, char *argv[]);
+int lxc_checkpoint_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

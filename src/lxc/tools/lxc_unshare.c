@@ -280,7 +280,8 @@ static void free_ifname_list(void)
 	}
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_unshare_main"))) main(int argc, char *argv[]);
+int lxc_unshare_main(int argc, char *argv[])
 {
 	int ret;
 	pid_t pid;

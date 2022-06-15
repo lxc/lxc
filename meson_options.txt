@@ -34,6 +34,9 @@ option('pam-cgroup', type: 'boolean', value: 'false',
 option('tools', type: 'boolean', value: 'true',
        description: 'build and install tools')
 
+option('tools-multicall', type: 'boolean', value: 'false',
+       description: 'build and install busybox style multicall binary')
+
 # was --{disable,enable}-commands in autotools
 option('commands', type: 'boolean', value: 'true',
        description: 'build and install commands')
