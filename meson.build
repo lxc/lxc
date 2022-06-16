@@ -4,7 +4,7 @@
 project(
     'lxc',
     'c',
-    version: '4.0.0-devel',
+    version: '5.0.0',
     license: 'LGPLv2+',
     default_options: [
         'b_lto=true',
@@ -25,12 +25,12 @@ pkgconfig_libs = []
 # Version.
 liblxc_version = '1.7.0'
 version_data = configuration_data()
-version_data.set('LXC_VERSION_MAJOR', '4')
+version_data.set('LXC_VERSION_MAJOR', '5')
 version_data.set('LXC_VERSION_MINOR', '0')
 version_data.set('LXC_VERSION_MICRO', '0')
 version_data.set('LXC_VERSION_BETA', '')
 version_data.set('LXC_ABI', liblxc_version)
-version_data.set('LXC_DEVEL', '1')
+version_data.set('LXC_DEVEL', '0')
 version_data.set('LXC_VERSION', meson.project_version())
 
 # Path handling.
