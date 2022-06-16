@@ -30,7 +30,7 @@ version_data.set('LXC_VERSION_MINOR', '0')
 version_data.set('LXC_VERSION_MICRO', '0')
 version_data.set('LXC_VERSION_BETA', '')
 version_data.set('LXC_ABI', liblxc_version)
-version_data.set('LXC_DEVEL', '0')
+version_data.set('LXC_DEVEL', '1')
 version_data.set('LXC_VERSION', meson.project_version())
 
 # Path handling.
