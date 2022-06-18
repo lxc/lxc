@@ -271,7 +271,8 @@ static int lxc_attach_create_log_file(const char *log_file)
 	return fd;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_attach_main"))) main(int argc, char *argv[]);
+int lxc_attach_main(int argc, char *argv[])
 {
 	int ret = -1;
 	int wexit = 0;

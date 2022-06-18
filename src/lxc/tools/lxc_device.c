@@ -78,7 +78,8 @@ static bool is_interface(const char *dev_name, pid_t pid)
 	return false;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_device_main"))) main(int argc, char *argv[]);
+int lxc_device_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

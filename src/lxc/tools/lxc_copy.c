@@ -142,7 +142,8 @@ static int parse_mntsubopts(char *subopts, char *const *keys,
 static int parse_bind_mnt(char *mntstring, enum mnttype type);
 static int parse_ovl_mnt(char *mntstring, enum mnttype type);
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_copy_main"))) main(int argc, char *argv[]);
+int lxc_copy_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;

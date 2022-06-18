@@ -190,7 +190,8 @@ static bool validate_bdev_args(struct lxc_arguments *args)
 	return true;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_create_main"))) main(int argc, char *argv[]);
+int lxc_create_main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct bdev_specs spec;

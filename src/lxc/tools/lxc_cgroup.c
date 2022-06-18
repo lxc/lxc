@@ -50,7 +50,8 @@ static int my_checker(const struct lxc_arguments *args)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_cgroup_main"))) main(int argc, char *argv[]);
+int lxc_cgroup_main(int argc, char *argv[])
 {
 	char *state_object = NULL, *value = NULL;
 	struct lxc_container *c;

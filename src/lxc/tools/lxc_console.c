@@ -77,7 +77,8 @@ static char etoc(const char *expr)
 	return 1 + ((c > 'Z') ? (c - 'a') : (c - 'Z'));
 }
 
-int main(int argc, char *argv[])
+int __attribute__((weak, alias("lxc_console_main"))) main(int argc, char *argv[]);
+int lxc_console_main(int argc, char *argv[])
 {
 	int ret;
 	struct lxc_container *c;
