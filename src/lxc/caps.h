@@ -49,7 +49,7 @@ static inline int lxc_caps_init(void)
 
 static inline int lxc_caps_last_cap(__u32 *cap)
 {
-	return 0;
+	return -1;
 }
 
 typedef int cap_value_t;
