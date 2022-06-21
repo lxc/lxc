@@ -52,6 +52,7 @@ typedef enum {
 	LXC_CMD_GET_CGROUP_CTX			= 23,
 	LXC_CMD_GET_CGROUP_FD			= 24,
 	LXC_CMD_GET_LIMIT_CGROUP_FD		= 25,
+	LXC_CMD_GET_SYSTEMD_SCOPE		= 26,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -115,6 +116,7 @@ __hidden extern char *lxc_cmd_get_config_item(const char *name, const char *item
 					      const char *lxcpath);
 __hidden extern char *lxc_cmd_get_name(const char *hashed_sock);
 __hidden extern char *lxc_cmd_get_lxcpath(const char *hashed_sock);
+__hidden extern char *lxc_cmd_get_systemd_scope(const char *name, const char *lxcpath);
 __hidden extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_state(const char *name, const char *lxcpath);

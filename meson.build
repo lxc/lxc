@@ -151,6 +151,7 @@ want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
 want_thread_safety = get_option('thread-safety')
 want_memfd_rexec = get_option('memfd-rexec')
+want_sd_bus = get_option('sd-bus')
 
 srcconf.set_quoted('DEFAULT_CGROUP_PATTERN', cgrouppattern)
 if coverity
@@ -254,6 +255,49 @@ if want_io_uring
     srcconf.set10('HAVE_LIBURING', true)
 else
     srcconf.set10('HAVE_LIBURING', false)
+endif
+
+if not want_sd_bus.disabled()
+    has_sd_bus = true
+    sd_bus_optional = want_sd_bus.auto()
+
+    libsystemd = dependency('libsystemd', required: not sd_bus_optional)
+    if not libsystemd.found()
+        if not sd_bus_optional
+            error('missing required libsystemd dependency')
+        endif
+
+        has_sd_bus = false
+    endif
+
+    if not cc.has_header('systemd/sd-bus.h')
+        if not sd_bus_optional
+            error('libsystemd misses required systemd/sd-bus.h header')
+        endif
+
+        has_sd_bus = false
+    endif
+
+    if not cc.has_header('systemd/sd-event.h')
+        if not sd_bus_optional
+            error('libsystemd misses required systemd/sd-event.h header')
+        endif
+
+        has_sd_bus = false
+    endif
+
+    if not cc.has_function('sd_bus_call_method_asyncv', prefix: '#include <systemd/sd-bus.h>', dependencies: libsystemd) 
+        if not sd_bus_optional
+            error('libsystemd misses required sd_bus_call_method_asyncv function')
+        endif
+
+        has_sd_bus = false
+    endif
+
+    srcconf.set10('HAVE_LIBSYSTEMD', has_sd_bus)
+else
+    has_sd_bus = false
+    srcconf.set10('HAVE_LIBSYSTEMD', false)
 endif
 
 ## Time EPOCH.
@@ -639,6 +683,8 @@ endforeach
 found_headers = []
 missing_headers = []
 foreach tuple: [
+    ['systemd/sd-bus.h'],
+    ['systemd/sd-event.h'],
     ['sys/resource.h'],
     ['sys/memfd.h'],
     ['sys/personality.h'],
@@ -676,6 +722,7 @@ foreach tuple: [
     ['pam'],
     ['openssl'],
     ['liburing'],
+    ['libsystemd'],
 ]
 
     if tuple.length() >= 2
@@ -748,6 +795,10 @@ endif
 
 if want_io_uring
     liblxc_dependencies += [liburing]
+endif
+
+if has_sd_bus
+    liblxc_dependencies += [libsystemd]
 endif
 
 liblxc_link_whole = [liblxc_static]
