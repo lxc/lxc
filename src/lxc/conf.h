@@ -74,6 +74,13 @@ struct lxc_cgroup {
 			char *container_dir;
 			char *namespace_dir;
 			bool relative;
+			/* If an unpriv user in pure unified-only hierarchy
+			 * starts a container, then we ask systemd to create
+			 * a scope for us, and create the monitor and container
+			 * cgroups under that.
+			 * This will ignore the above things like monitor_dir
+			 */
+			char *systemd_scope;
 		};
 	};
 
