@@ -4120,7 +4120,7 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 			return syserror("Failed to receive idmapped mount file descriptors from child");
 
 		if (fd_from < 0 || fd_userns < 0)
-			return log_trace(0, "Finished receiving idmapped mount file descriptors from child");
+			return log_trace(0, "Finished receiving idmapped mount file descriptors (%d | %d) from child", fd_from, fd_userns);
 
 		attr.attr_set	= MOUNT_ATTR_IDMAP;
 		attr.userns_fd	= fd_userns;
