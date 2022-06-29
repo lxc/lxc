@@ -150,9 +150,6 @@ static int lxc_try_preserve_namespace(struct lxc_handler *handler,
 static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 					int ns_clone_flags)
 {
-	for (lxc_namespace_t ns_idx = 0; ns_idx < LXC_NS_MAX; ns_idx++)
-		handler->nsfd[ns_idx] = -EBADF;
-
 	for (lxc_namespace_t ns_idx = 0; ns_idx < LXC_NS_MAX; ns_idx++) {
 		int ret;
 		const char *ns = ns_info[ns_idx].proc_name;
