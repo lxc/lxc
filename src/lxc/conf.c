@@ -922,29 +922,29 @@ static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 }
 
 /* Build a space-separate list of ptys to pass to systemd. */
-static bool append_ttyname(char **pp, char *name)
+static bool append_ttyname(struct lxc_tty_info *ttys, char *tty_name)
 {
-	char *p;
+	char *tty_names, *buf;
 	size_t size;
 
-	if (!*pp) {
-		*pp = zalloc(strlen(name) + strlen("container_ttys=") + 1);
-		if (!*pp)
-			return false;
-
-		sprintf(*pp, "container_ttys=%s", name);
-		return true;
-	}
-
-	size = strlen(*pp) + strlen(name) + 2;
-	p = realloc(*pp, size);
-	if (!p)
+	if (!tty_name)
 		return false;
 
-	*pp = p;
-	(void)strlcat(p, " ", size);
-	(void)strlcat(p, name, size);
+	size = strlen(tty_name) + 1;
+	if (ttys->tty_names)
+		size += strlen(ttys->tty_names) + 1;
 
+	buf = realloc(ttys->tty_names, size);
+	if (!buf)
+		return false;
+	tty_names = buf;
+
+	if (ttys->tty_names)
+		(void)strlcat(buf, " ", size);
+	else
+		buf[0] = '\0';
+	(void)strlcat(buf, tty_name, size);
+	ttys->tty_names = tty_names;
 	return true;
 }
 
@@ -1065,7 +1065,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, rootfs->buf);
 		}
 
-		if (!append_ttyname(&conf->ttys.tty_names, tty->name))
+		if (!append_ttyname(&conf->ttys, tty->name))
 			return log_error(-1, "Error setting up container_ttys string");
 	}
 
