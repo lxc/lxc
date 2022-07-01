@@ -899,13 +899,19 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 
 	/* If no broadcast address, compute one from the prefix and address. */
 	if (!bcast) {
-		unsigned int shift = LAST_BIT_PER_TYPE(inetdev->prefix);
+		/* 0<=inetdev->prefix<=32 */
+		switch (inetdev->prefix) {
+		case 32: /* single IPv4 network */
+			; /* fall thru */
+		case 31: /* RFC 3021 point to point network */
+			inetdev->bcast.s_addr = INADDR_ANY;
+			break;
 
-		inetdev->bcast.s_addr = inetdev->addr.s_addr;
-		if (inetdev->prefix < shift)
-			shift = inetdev->prefix;
-		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> shift);
-	}
+		default:
+			inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> inetdev->prefix);
+			break;
+		}
+        }
 
 	list_add_tail(&inetdev->head, &netdev->ipv4_addresses);
 	move_ptr(inetdev);
