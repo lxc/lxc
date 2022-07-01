@@ -538,6 +538,7 @@ foreach tuple: [
     ['sigdescr_np'],
     ['signalfd'],
     ['statx'],
+    ['statvfs'],
     ['strlcat'],
     ['strlcpy'],
     ['unshare'],
@@ -667,6 +668,7 @@ foreach ident: [
     ['setns',             '''#include <sched.h>'''],
     ['sigdescr_np',       '''#include <string.h>'''],
     ['signalfd',          '''#include <sys/signalfd.h>'''],
+    ['statvfs',           '''#include <sys/statvfs.h>'''],
     ['statx',             '''#include <sys/types.h>
                              #include <sys/stat.h>
                              #include <unistd.h>'''],
