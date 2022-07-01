@@ -1597,6 +1597,13 @@ static bool inherits_namespaces(const struct lxc_handler *handler)
 	return false;
 }
 
+static inline void resolve_cgroup_clone_flags(struct lxc_handler *handler)
+{
+	handler->clone_flags		&= ~(CLONE_INTO_CGROUP | CLONE_NEWCGROUP);
+	handler->ns_on_clone_flags	&= ~(CLONE_INTO_CGROUP | CLONE_NEWCGROUP);
+	handler->ns_unshare_flags	|= CLONE_NEWCGROUP;
+}
+
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1645,6 +1652,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (inherits_namespaces(handler)) {
 		pid_t attacher_pid;
 
+		resolve_cgroup_clone_flags(handler);
 		attacher_pid = lxc_clone(do_share_ns, handler,
 					 CLONE_VFORK | CLONE_VM | CLONE_FILES, NULL);
 		if (attacher_pid < 0) {
@@ -1686,11 +1694,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			SYSTRACE("Failed to spawn container directly into target cgroup");
 
 			/* Kernel might simply be too old for CLONE_INTO_CGROUP. */
-			handler->clone_flags		&= ~(CLONE_INTO_CGROUP | CLONE_NEWCGROUP);
-			handler->ns_on_clone_flags	&= ~CLONE_NEWCGROUP;
-			handler->ns_unshare_flags	|= CLONE_NEWCGROUP;
-
-			clone_args.flags		= handler->clone_flags;
+			resolve_cgroup_clone_flags(handler);
+			clone_args.flags = handler->clone_flags;
 
 			handler->pid = lxc_clone3(&clone_args, CLONE_ARGS_SIZE_VER0);
 		} else if (cgroup_fd >= 0) {
