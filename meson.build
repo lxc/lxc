@@ -420,6 +420,9 @@ if want_capabilities
     if not libcap.found()
         # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
         libcap = cc.find_library('cap', required: false)
+    else
+        have = cc.has_function('cap_get_file', dependencies: libcap, prefix: '#include <sys/capability.h>')
+        srcconf.set10('LIBCAP_SUPPORTS_FILE_CAPABILITIES', have)
     endif
     srcconf.set10('HAVE_LIBCAP', libcap.found())
     pkgconfig_libs += libcap
@@ -444,6 +447,9 @@ else
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
 endif
 
+libutil = cc.find_library('util', required: false)
+
+oss_fuzz_dependencies = []
 if want_oss_fuzz
     srcconf.set10('FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION', true)
     srcconf.set10('RUN_ON_OSS_FUZZ', true)
@@ -459,11 +465,20 @@ srcconf.set10('HAVE_PAM', pam.found())
 pkgconfig_libs += pam
 
 ## Others.
+have = cc.has_function('fmemopen', prefix: '#include <stdio.h>', args: '-D_GNU_SOURCE')
+srcconf.set10('HAVE_FMEMOPEN', have)
+
+have_openpty = cc.has_function('openpty', dependencies: libutil, prefix: '#include <pty.h>')
+srcconf.set10('HAVE_OPENPTY', have_openpty)
+
+have = cc.has_function('pthread_setcancelstate', prefix: '#include <pthread.h>')
+srcconf.set10('HAVE_PTHREAD_SETCANCELSTATE', have)
+
+have = cc.has_function('rand_r')
+srcconf.set10('HAVE_RAND_R', have)
+
 have = cc.has_function('strchrnul', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
 srcconf.set10('HAVE_STRCHRNUL', have)
-
-have = cc.has_function('openpty', prefix: '#include <pty.h>', args: '-D_GNU_SOURCE')
-srcconf.set10('HAVE_OPENPTY', have)
 
 have_func_strerror_r = cc.has_function('strerror_r', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
 srcconf.set10('HAVE_STRERROR_R', have_func_strerror_r)
@@ -565,16 +580,18 @@ decl_headers = '''
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <linux/fs.h>
-#include <linux/types.h>
+#include <linux/if_link.h>
 #include <linux/openat2.h>
 #include <linux/sched.h>
+#include <linux/types.h>
 '''
 
 foreach decl: [
     '__aligned_u64',
+    'struct clone_args',
     'struct mount_attr',
     'struct open_how',
-    'struct clone_args',
+    'struct rtnl_link_stats64',
 ]
 
     # We get -1 if the size cannot be determined
@@ -594,6 +611,7 @@ foreach tuple: [
     ['__aligned_u64'],
     ['struct mount_attr'],
     ['struct open_how'],
+    ['struct rtnl_link_stats64'],
 ]
 
     if tuple.length() >= 2
@@ -801,6 +819,13 @@ endif
 
 if has_sd_bus
     liblxc_dependencies += [libsystemd]
+endif
+
+if have_openpty
+    liblxc_dependencies += [libutil]
+    if want_oss_fuzz
+        oss_fuzz_dependencies += [libutil]
+    endif
 endif
 
 liblxc_link_whole = [liblxc_static]
