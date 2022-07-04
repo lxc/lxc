@@ -445,10 +445,10 @@ int ovl_mount(struct lxc_storage *bdev)
 			       upper, lower, mntdata);
 
 		len2 = strlen(lower) + strlen(upper) + strlen(work) +
-		       strlen("upperdir=,lowerdir=,workdir=") +
+		       strlen("upperdir=,lowerdir=,workdir=,") +
 		       strlen(mntdata) + 1;
 		options_work = must_realloc(NULL, len2);
-		ret2 = snprintf(options, len2,
+		ret2 = snprintf(options_work, len2,
 				"upperdir=%s,lowerdir=%s,workdir=%s,%s", upper,
 				lower, work, mntdata);
 	} else {
