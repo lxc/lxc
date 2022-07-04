@@ -408,7 +408,7 @@ if want_oss_fuzz
         'fuzz-lxc-cgroup-init',
         files('fuzz-lxc-cgroup-init.c') + tests_common_sources,
         include_directories: liblxc_includes,
-        dependencies: [fuzzing_engine],
+        dependencies: [fuzzing_engine, oss_fuzz_dependencies],
         link_with: [liblxc_static],
         install: false,
         install_dir: bindir)
@@ -417,7 +417,7 @@ if want_oss_fuzz
         'fuzz-lxc-config-read',
         files('fuzz-lxc-config-read.c') + tests_common_sources,
         include_directories: liblxc_includes,
-        dependencies: [fuzzing_engine],
+        dependencies: [fuzzing_engine, oss_fuzz_dependencies],
         link_with: [liblxc_static],
         install: false,
         install_dir: bindir)
@@ -426,7 +426,7 @@ if want_oss_fuzz
         'fuzz-lxc-define-load',
         files('fuzz-lxc-define-load.c') + tests_common_sources,
         include_directories: liblxc_includes,
-        dependencies: [fuzzing_engine],
+        dependencies: [fuzzing_engine, oss_fuzz_dependencies],
         link_with: [liblxc_static],
         install: false,
         install_dir: bindir)
