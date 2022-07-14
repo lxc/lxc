@@ -176,7 +176,6 @@ possible_cc_flags = [
     '-Wstrict-prototypes',
     '-fno-strict-aliasing',
     '-fstack-clash-protection',
-    '-fstack-protector-strong',
     '--param=ssp-buffer-size=4',
     '--mcet -fcf-protection',
     '-Werror=implicit-function-declaration',
@@ -214,6 +213,7 @@ possible_link_flags = [
     '-Wl,-z,now',
     '-Wl,-fuse-ld=gold',
     '-fstack-protector',
+    '-fstack-protector-strong',
 ]
 
 if sanitize == 'none'
