@@ -443,6 +443,7 @@ int main(int argc, char *argv[]) { return 0; };
         srcconf.set10('HAVE_STATIC_LIBCAP', false)
     endif
 else
+    libcap_static = []
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
 endif
