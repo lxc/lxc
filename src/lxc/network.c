@@ -608,10 +608,10 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 
 static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int err;
+	int err, disable_ipv6_fd;
 	unsigned int mtu = 1500;
 	char *veth1, *veth2;
-	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ], path[PATH_MAX];
 
 	err = validate_veth(netdev);
 	if (err)
@@ -707,6 +707,23 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 	}
 
 	if (!is_empty_string(netdev->link) && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
+		/* Disable link-local IPv6 addresses for the host's end of the veth. */
+		snprintf(path, PATH_MAX, "/proc/sys/net/ipv6/conf/%s/disable_ipv6", veth1);
+		disable_ipv6_fd = open(path, O_RDWR);
+
+		/* Don't error if the file doesn't exist. */
+		if (disable_ipv6_fd < 0 && errno != ENOENT) {
+			SYSERROR("Failed to disable IPv6 link-local addresses for veth pair \"%s\"", veth1);
+			goto out_delete;
+		}
+
+		err = write(disable_ipv6_fd, "1", 1);
+		if (err < 0) {
+			SYSERROR("Failed to disable IPv6 link-local addresses for veth pair \"%s\"", veth1);
+			goto out_delete;
+		}
+		close(disable_ipv6_fd);
+
 		if (!lxc_nic_exists(netdev->link)) {
 			SYSERROR("Failed to attach \"%s\" to bridge \"%s\", bridge interface doesn't exist", veth1, netdev->link);
 			goto out_delete;
