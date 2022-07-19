@@ -132,7 +132,7 @@ report it by e-mail to all of the following persons:
 
 - serge (at) hallyn (dot) com
 - stgraber (at) ubuntu (dot) com
-- christian.brauner (at) ubuntu (dot) com
+- brauner (at) kernel (dot) org
 
 For further details please have a look at
 
