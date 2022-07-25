@@ -32,6 +32,9 @@
 #include "utils.h"
 
 __hidden extern int lxc_log_fd;
+/* Assume we want to become root */
+static uid_t uid = 0;
+static gid_t gid = 0;
 
 static void usage(const char *name)
 {
@@ -90,8 +93,7 @@ static int do_child(void *vargv)
 	if (!lxc_drop_groups() && errno != EPERM)
 		return -1;
 
-	/* Assume we want to become root */
-	if (!lxc_switch_uid_gid(0, 0))
+	if (!lxc_switch_uid_gid(uid, gid))
 		return -1;
 
 	ret = unshare(CLONE_NEWNS);
@@ -328,7 +330,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	while ((c = getopt(argc, argv, "m:hs")) != EOF) {
+	while ((c = getopt(argc, argv, "m:hsu:g:")) != EOF) {
 		switch (c) {
 		case 'm':
 			ret = parse_map(optarg);
@@ -342,6 +344,14 @@ int main(int argc, char *argv[])
 			_exit(EXIT_SUCCESS);
 		case 's':
 			map_self = true;
+			break;
+		case 'u':
+			if (lxc_safe_uint(optarg, &uid) < 0)
+				return -1;
+			break;
+		case 'g':
+			if (lxc_safe_uint(optarg, &gid) < 0)
+				return -1;
 			break;
 		default:
 			usage(argv[0]);
