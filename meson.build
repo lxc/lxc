@@ -117,14 +117,18 @@ conf.set('SYSCONFDIR', sysconfdir)
 
 # Set sysconfdir
 fs = import('fs')
-if fs.is_dir('/etc/sysconfig')
+distrosysconfdir = get_option('distrosysconfdir')
+if distrosysconfdir != ''
+    distrosysconfdir = join_paths(sysconfdir, distrosysconfdir)
+    conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
+elif fs.is_dir('/etc/sysconfig')
     distrosysconfdir = join_paths(sysconfdir, 'sysconfig')
     conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
 elif fs.is_dir('/etc/default')
     distrosysconfdir = join_paths(sysconfdir, 'default')
     conf.set('LXC_DISTRO_SYSCONF', distrosysconfdir)
 else
-    distrosysconfdir = ''
+    error('"distrosysconfdir" is not set')
 endif
 
 # Cross-compile on Android.
