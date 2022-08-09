@@ -2885,7 +2885,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		struct lxc_mount_options opts = {};
 		int dfd_from;
 		const char *source_relative, *target_relative;
-		struct lxc_mount_attr attr = {};
+		struct mount_attr attr = {};
 
 		ret = parse_lxc_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
@@ -3005,7 +3005,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 
 		/* Set propagation mount options. */
 		if (opts.attr.propagation) {
-			attr = (struct lxc_mount_attr) {
+			attr = (struct mount_attr) {
 				.propagation = opts.attr.propagation,
 			};
 
@@ -4109,7 +4109,7 @@ int lxc_idmapped_mounts_parent(struct lxc_handler *handler)
 
 	for (;;) {
 		__do_close int fd_from = -EBADF, fd_userns = -EBADF;
-		struct lxc_mount_attr attr = {};
+		struct mount_attr attr = {};
 		struct lxc_mount_options opts = {};
 		ssize_t ret;
 

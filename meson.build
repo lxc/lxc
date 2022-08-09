@@ -590,7 +590,6 @@ decl_headers = '''
 foreach decl: [
     '__aligned_u64',
     'struct clone_args',
-    'struct mount_attr',
     'struct open_how',
     'struct rtnl_link_stats64',
 ]
@@ -610,7 +609,6 @@ foreach tuple: [
     ['struct seccomp_notif_sizes'],
     ['struct clone_args'],
     ['__aligned_u64'],
-    ['struct mount_attr'],
     ['struct open_how'],
     ['struct rtnl_link_stats64'],
 ]
@@ -629,6 +627,89 @@ foreach tuple: [
         missing_types += tuple[0]
     endif
 endforeach
+
+## Types.
+decl_headers = '''
+#include <sys/mount.h>
+'''
+
+# We get -1 if the size cannot be determined
+if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
+    srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), true)
+    found_types += 'struct mount_attr (sys/mount.h)'
+else
+    srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), false)
+    missing_types += 'struct mount_attr (sys/mount.h)' endif
+
+## Types.
+decl_headers = '''
+#include <linux/mount.h>
+'''
+
+# We get -1 if the size cannot be determined
+if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
+    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), true)
+    found_types += 'struct mount_attr (linux/mount.h)'
+else
+    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), false)
+    missing_types += 'struct mount_attr (linux/mount.h)'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FSCONFIG_SET_FLAG')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_FLAG'
+else
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_FLAG'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_STRING')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_STRING'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_STRING'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_BINARY')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_BINARY'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_BINARY'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_EMPTY')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_PATH_EMPTY'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_PATH_EMPTY'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_FD')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_PATH_FD'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_PATH_FD'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_CREATE')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_CMD_CREATE'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_CMD_CREATE'
+endif
+
+if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_RECONFIGURE')
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), true)
+    found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE'
+else
+    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), false)
+    missing_types += 'FS_CONFIG_SET_CMD_RECONFIGURE'
+endif
 
 ## Headers.
 foreach ident: [
@@ -709,6 +790,7 @@ foreach tuple: [
     ['sys/resource.h'],
     ['sys/memfd.h'],
     ['sys/personality.h'],
+    ['sys/pidfd.h'],
     ['sys/signalfd.h'],
     ['sys/timerfd.h'],
     ['pty.h'],
