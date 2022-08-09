@@ -82,36 +82,52 @@ struct lxc_rootfs;
 #endif
 
 /* fsconfig() commands */
+#if !HAVE_FSCONFIG_SET_FLAG
 #ifndef FSCONFIG_SET_FLAG
 #define FSCONFIG_SET_FLAG 0 /* Set parameter, supplying no value */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_SET_STRING
 #ifndef FSCONFIG_SET_STRING
 #define FSCONFIG_SET_STRING 1 /* Set parameter, supplying a string value */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_SET_BINARY
 #ifndef FSCONFIG_SET_BINARY
 #define FSCONFIG_SET_BINARY 2 /* Set parameter, supplying a binary blob value */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_SET_PATH
 #ifndef FSCONFIG_SET_PATH
 #define FSCONFIG_SET_PATH 3 /* Set parameter, supplying an object by path */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_SET_PATH_EMPTY
 #ifndef FSCONFIG_SET_PATH_EMPTY
 #define FSCONFIG_SET_PATH_EMPTY 4 /* Set parameter, supplying an object by (empty) path */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_SET_FD
 #ifndef FSCONFIG_SET_FD
 #define FSCONFIG_SET_FD 5 /* Set parameter, supplying an object by fd */
 #endif
+#endif
 
+#if !HAVE_FSCONFIG_CMD_CREATE
 #ifndef FSCONFIG_CMD_CREATE
 #define FSCONFIG_CMD_CREATE 6 /* Invoke superblock creation */
 #endif
+#endif
 
+#if !FSCONFIG_CMD_RECONFIGURE
 #ifndef FSCONFIG_CMD_RECONFIGURE
 #define	FSCONFIG_CMD_RECONFIGURE 7	/* Invoke superblock reconfiguration */
+#endif
 #endif
 
 /* fsmount() flags */
