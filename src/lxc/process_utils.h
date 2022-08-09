@@ -15,6 +15,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#if HAVE_SYS_PIDFD_H
+#include <sys/pidfd.h>
+#endif
+
 #include "compiler.h"
 #include "syscall_numbers.h"
 
@@ -136,8 +140,10 @@
 #endif
 
 /* waitid */
+#if !HAVE_SYS_PIDFD_H
 #ifndef P_PIDFD
 #define P_PIDFD 3
+#endif
 #endif
 
 #ifndef CLONE_ARGS_SIZE_VER0
