@@ -735,6 +735,7 @@ foreach tuple: [
     ['sys/resource.h'],
     ['sys/memfd.h'],
     ['sys/personality.h'],
+    ['sys/pidfd.h'],
     ['sys/signalfd.h'],
     ['sys/timerfd.h'],
     ['pty.h'],
