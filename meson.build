@@ -590,7 +590,6 @@ decl_headers = '''
 foreach decl: [
     '__aligned_u64',
     'struct clone_args',
-    'struct mount_attr',
     'struct open_how',
     'struct rtnl_link_stats64',
 ]
@@ -610,7 +609,6 @@ foreach tuple: [
     ['struct seccomp_notif_sizes'],
     ['struct clone_args'],
     ['__aligned_u64'],
-    ['struct mount_attr'],
     ['struct open_how'],
     ['struct rtnl_link_stats64'],
 ]
@@ -629,6 +627,34 @@ foreach tuple: [
         missing_types += tuple[0]
     endif
 endforeach
+
+## Types.
+decl_headers = '''
+#include <sys/mount.h>
+'''
+
+# We get -1 if the size cannot be determined
+if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
+    srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), true)
+    found_types += 'struct mount_attr (sys/mount.h)'
+else
+    srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), false)
+    missing_types += 'struct mount_attr (sys/mount.h)'
+endif
+
+## Types.
+decl_headers = '''
+#include <linux/mount.h>
+'''
+
+# We get -1 if the size cannot be determined
+if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
+    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), true)
+    found_types += 'struct mount_attr (linux/mount.h)'
+else
+    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), false)
+    missing_types += 'struct mount_attr (linux/mount.h)'
+endif
 
 ## Headers.
 foreach ident: [

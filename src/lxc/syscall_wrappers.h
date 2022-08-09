@@ -18,6 +18,12 @@
 #include "macro.h"
 #include "syscall_numbers.h"
 
+#if HAVE_STRUCT_MOUNT_ATTR
+#include <sys/mount.h>
+#elif HAVE_UAPI_STRUCT_MOUNT_ATTR
+#include <linux/mount.h>
+#endif
+
 #ifdef HAVE_LINUX_MEMFD_H
 #include <linux/memfd.h>
 #endif
@@ -210,16 +216,18 @@ extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
 /*
  * mount_setattr()
  */
-struct lxc_mount_attr {
+#if !HAVE_STRUCT_MOUNT_ATTR && !HAVE_UAPI_STRUCT_MOUNT_ATTR
+struct mount_attr {
 	__u64 attr_set;
 	__u64 attr_clr;
 	__u64 propagation;
 	__u64 userns_fd;
 };
+#endif
 
 #if !HAVE_MOUNT_SETATTR
 static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
-				struct lxc_mount_attr *attr, size_t size)
+				struct mount_attr *attr, size_t size)
 {
 	return syscall(__NR_mount_setattr, dfd, path, flags, attr, size);
 }
