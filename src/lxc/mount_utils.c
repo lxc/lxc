@@ -31,7 +31,7 @@ lxc_log_define(mount_utils, lxc);
  * setting in @attr_set, but must also specify MOUNT_ATTR__ATIME in the
  * @attr_clr field.
  */
-static inline void set_atime(struct lxc_mount_attr *attr)
+static inline void set_atime(struct mount_attr *attr)
 {
 	switch (attr->attr_set & MOUNT_ATTR__ATIME) {
 	case MOUNT_ATTR_RELATIME:
@@ -272,7 +272,7 @@ int create_detached_idmapped_mount(const char *path, int userns_fd,
 {
 	__do_close int fd_tree_from = -EBADF;
 	unsigned int open_tree_flags = OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
-	struct lxc_mount_attr attr = {
+	struct mount_attr attr = {
 		.attr_set	= MOUNT_ATTR_IDMAP | attr_set,
 		.attr_clr	= attr_clr,
 		.userns_fd	= userns_fd,
@@ -335,7 +335,7 @@ int __fd_bind_mount(int dfd_from, const char *path_from, __u64 o_flags_from,
 		    __u64 attr_clr, __u64 propagation, int userns_fd,
 		    bool recursive)
 {
-	struct lxc_mount_attr attr = {
+	struct mount_attr attr = {
 		.attr_set	= attr_set,
 		.attr_clr	= attr_clr,
 		.propagation	= propagation,

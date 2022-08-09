@@ -223,7 +223,7 @@ struct lxc_mount_options {
 	unsigned long mnt_flags;
 	unsigned long prop_flags;
 	char *data;
-	struct lxc_mount_attr attr;
+	struct mount_attr attr;
 	char *raw_options;
 };
 
