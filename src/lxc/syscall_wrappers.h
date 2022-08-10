@@ -240,11 +240,13 @@ static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
  * @mode: O_CREAT/O_TMPFILE file mode.
  * @resolve: RESOLVE_* flags.
  */
-struct lxc_open_how {
+#if !HAVE_STRUCT_OPEN_HOW
+struct open_how {
 	__u64 flags;
 	__u64 mode;
 	__u64 resolve;
 };
+#endif
 
 /* how->resolve flags for openat2(2). */
 #ifndef RESOLVE_NO_XDEV
@@ -296,7 +298,7 @@ struct lxc_open_how {
 #define PROTECT_OPEN_RW (O_CLOEXEC | O_NOCTTY | O_RDWR | O_NOFOLLOW)
 
 #if !HAVE_OPENAT2
-static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
+static inline int openat2(int dfd, const char *filename, struct open_how *how, size_t size)
 {
 	return syscall(__NR_openat2, dfd, filename, how, size);
 }

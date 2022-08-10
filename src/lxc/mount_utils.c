@@ -186,7 +186,7 @@ int fs_prepare(const char *fs_name,
 	int fd_from;
 
 	if (!is_empty_string(path_from)) {
-		struct lxc_open_how how = {
+		struct open_how how = {
 			.flags		= o_flags_from,
 			.resolve	= resolve_flags_from,
 		};
@@ -237,7 +237,7 @@ int fs_attach(int fd_fs,
 	int fd_to, ret;
 
 	if (!is_empty_string(path_to)) {
-		struct lxc_open_how how = {
+		struct open_how how = {
 			.flags		= o_flags_to,
 			.resolve	= resolve_flags_to,
 		};
@@ -308,7 +308,7 @@ int move_detached_mount(int dfd_from, int dfd_to, const char *path_to,
 	int fd_to, ret;
 
 	if (!is_empty_string(path_to)) {
-		struct lxc_open_how how = {
+		struct open_how how = {
 			.flags		= o_flags_to,
 			.resolve	= resolve_flags_to,
 		};
@@ -348,7 +348,7 @@ int __fd_bind_mount(int dfd_from, const char *path_from, __u64 o_flags_from,
 	set_atime(&attr);
 
 	if (!is_empty_string(path_from)) {
-		struct lxc_open_how how = {
+		struct open_how how = {
 			.flags		= o_flags_from,
 			.resolve	= resolve_flags_from,
 		};

@@ -608,9 +608,7 @@ decl_headers = '''
 #include <uchar.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <linux/fs.h>
 #include <linux/if_link.h>
-#include <linux/openat2.h>
 #include <linux/types.h>
 '''
 
