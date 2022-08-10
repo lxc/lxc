@@ -124,7 +124,7 @@ struct lxc_rootfs;
 #endif
 #endif
 
-#if !FSCONFIG_CMD_RECONFIGURE
+#if !HAVE_FSCONFIG_CMD_RECONFIGURE
 #ifndef FSCONFIG_CMD_RECONFIGURE
 #define	FSCONFIG_CMD_RECONFIGURE 7	/* Invoke superblock reconfiguration */
 #endif

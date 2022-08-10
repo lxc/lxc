@@ -19,8 +19,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
-/* Needs to be after sys/mount.h header */
-#include <linux/fs.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>

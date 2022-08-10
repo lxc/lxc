@@ -656,7 +656,6 @@ foreach tuple: [
     endif
 endforeach
 
-## Types.
 decl_headers = '''
 #include <sys/mount.h>
 '''
@@ -669,74 +668,61 @@ else
     srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), false)
     missing_types += 'struct mount_attr (sys/mount.h)' endif
 
-## Types.
-decl_headers = '''
-#include <linux/mount.h>
-'''
-
-# We get -1 if the size cannot be determined
-if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') > 0
-    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), true)
-    found_types += 'struct mount_attr (linux/mount.h)'
-else
-    srcconf.set10('HAVE_UAPI_' + 'struct mount_attr'.underscorify().to_upper(), false)
-    missing_types += 'struct mount_attr (linux/mount.h)'
-endif
-
+## Check if sys/mount.h defines the fsconfig commands
 if cc.has_header_symbol('sys/mount.h', 'FSCONFIG_SET_FLAG')
     srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), true)
-    found_types += 'FSCONFIG_SET_FLAG'
+    found_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), false)
-    missing_types += 'FSCONFIG_SET_FLAG'
+    missing_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_STRING')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_STRING'
+    found_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_STRING'
+    missing_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_BINARY')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_BINARY'
+    found_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_BINARY'
+    missing_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_EMPTY')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_PATH_EMPTY'
+    found_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_PATH_EMPTY'
+    missing_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_FD')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_PATH_FD'
+    found_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_PATH_FD'
+    missing_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_CREATE')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_CMD_CREATE'
+    found_types += 'FS_CONFIG_SET_CMD_CREAT (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_CMD_CREATE'
+    missing_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
 endif
 
 if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_RECONFIGURE')
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE'
+    found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_CMD_RECONFIGURE'
+    missing_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
 endif
 
 ## Headers.
