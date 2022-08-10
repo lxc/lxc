@@ -652,7 +652,7 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 	    unsigned int resolve_flags, mode_t mode)
 {
 	__do_close int fd = -EBADF;
-	struct lxc_open_how how = {
+	struct open_how how = {
 		.flags		= o_flags,
 		.mode		= mode,
 		.resolve	= resolve_flags,

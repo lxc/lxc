@@ -90,7 +90,7 @@ __returns_twice pid_t lxc_raw_legacy_clone(unsigned long flags, int *pidfd)
 __returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
 {
 	pid_t pid;
-	struct lxc_clone_args args = {
+	struct clone_args args = {
 		.flags		= flags,
 		.pidfd		= ptr_to_u64(pidfd),
 	};

@@ -8,6 +8,7 @@
 #include <asm/types.h>
 #include <limits.h>
 #include <linux/if_link.h>
+#include <linux/ioctl.h>
 #include <linux/loop.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -811,5 +812,17 @@ static inline bool is_set(__u32 bit, __u32 *bitarr)
 }
 
 #define BIT(nr) (1UL << (nr))
+
+#ifndef FS_IOC_GETFLAGS
+#define FS_IOC_GETFLAGS _IOR('f', 1, long)
+#endif
+
+#ifndef FS_IOC_SETFLAGS
+#define FS_IOC_SETFLAGS _IOW('f', 2, long)
+#endif
+
+#ifndef FS_IMMUTABLE_FL
+#define FS_IMMUTABLE_FL 0x00000010 /* Immutable file */
+#endif
 
 #endif /* __LXC_MACRO_H */

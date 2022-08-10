@@ -10,6 +10,7 @@
 #include <linux/keyctl.h>
 #include <sched.h>
 #include <stdint.h>
+#include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -17,12 +18,6 @@
 
 #include "macro.h"
 #include "syscall_numbers.h"
-
-#if HAVE_STRUCT_MOUNT_ATTR
-#include <sys/mount.h>
-#elif HAVE_UAPI_STRUCT_MOUNT_ATTR
-#include <linux/mount.h>
-#endif
 
 #ifdef HAVE_LINUX_MEMFD_H
 #include <linux/memfd.h>
@@ -216,7 +211,7 @@ extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
 /*
  * mount_setattr()
  */
-#if !HAVE_STRUCT_MOUNT_ATTR && !HAVE_UAPI_STRUCT_MOUNT_ATTR
+#if !HAVE_STRUCT_MOUNT_ATTR
 struct mount_attr {
 	__u64 attr_set;
 	__u64 attr_clr;
@@ -245,11 +240,13 @@ static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
  * @mode: O_CREAT/O_TMPFILE file mode.
  * @resolve: RESOLVE_* flags.
  */
-struct lxc_open_how {
+#if !HAVE_STRUCT_OPEN_HOW
+struct open_how {
 	__u64 flags;
 	__u64 mode;
 	__u64 resolve;
 };
+#endif
 
 /* how->resolve flags for openat2(2). */
 #ifndef RESOLVE_NO_XDEV
@@ -301,7 +298,7 @@ struct lxc_open_how {
 #define PROTECT_OPEN_RW (O_CLOEXEC | O_NOCTTY | O_RDWR | O_NOFOLLOW)
 
 #if !HAVE_OPENAT2
-static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
+static inline int openat2(int dfd, const char *filename, struct open_how *how, size_t size)
 {
 	return syscall(__NR_openat2, dfd, filename, how, size);
 }
