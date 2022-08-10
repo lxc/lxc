@@ -10,6 +10,7 @@
 #include <linux/keyctl.h>
 #include <sched.h>
 #include <stdint.h>
+#include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -17,12 +18,6 @@
 
 #include "macro.h"
 #include "syscall_numbers.h"
-
-#if HAVE_STRUCT_MOUNT_ATTR
-#include <sys/mount.h>
-#elif HAVE_UAPI_STRUCT_MOUNT_ATTR
-#include <linux/mount.h>
-#endif
 
 #ifdef HAVE_LINUX_MEMFD_H
 #include <linux/memfd.h>
@@ -216,7 +211,7 @@ extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
 /*
  * mount_setattr()
  */
-#if !HAVE_STRUCT_MOUNT_ATTR && !HAVE_UAPI_STRUCT_MOUNT_ATTR
+#if !HAVE_STRUCT_MOUNT_ATTR
 struct mount_attr {
 	__u64 attr_set;
 	__u64 attr_clr;
