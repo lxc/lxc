@@ -583,7 +583,6 @@ decl_headers = '''
 #include <linux/fs.h>
 #include <linux/if_link.h>
 #include <linux/openat2.h>
-#include <linux/sched.h>
 #include <linux/types.h>
 '''
 

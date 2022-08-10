@@ -5,7 +5,6 @@
 
 #include "config.h"
 
-#include <linux/sched.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>

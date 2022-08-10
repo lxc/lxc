@@ -32,8 +32,6 @@
 
 #include "namespace.h"
 
-#include <sched.h>
-#include <linux/sched.h>
 #include <linux/reboot.h>
 
 int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);
