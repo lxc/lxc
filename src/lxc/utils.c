@@ -1095,7 +1095,7 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 			    unsigned int flags, const void *data)
 {
 	__do_close int source_fd = -EBADF, target_fd = -EBADF;
-	struct lxc_open_how how = {
+	struct open_how how = {
 		.flags		= PROTECT_OPATH_DIRECTORY,
 		.resolve	= PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS,
 	};
