@@ -21,6 +21,7 @@
 #include "list.h"
 #include "lxcseccomp.h"
 #include "memory_utils.h"
+#include "mount_utils.h"
 #include "namespace.h"
 #include "ringbuf.h"
 #include "start.h"
