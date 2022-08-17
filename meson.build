@@ -335,9 +335,6 @@ endif
 generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
 
 ## Manpages.
-sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: want_mans)
-docbook2man = find_program('docbook2man', required: false)
-
 docconf = configuration_data()
 docconf.set('builddir', '.')
 docconf.set('BINDIR', bindir)
@@ -352,10 +349,15 @@ docconf.set('LXCTEMPLATEDIR', lxctemplatedir)
 docconf.set('LXC_USERNIC_CONF', lxc_user_network_conf)
 docconf.set('LXC_USERNIC_DB', lxc_user_network_db)
 docconf.set('PACKAGE_VERSION', version_data.get('LXC_VERSION'))
-if sgml2man.found() and docbook2man.found() and sgml2man.full_path() == docbook2man.full_path()
-    docconf.set('docdtd', '"-//Davenport//DTD DocBook V3.0//EN"')
-else
-    docconf.set('docdtd', '"-//OASIS//DTD DocBook XML" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"')
+docconf.set('docdtd', '"-//OASIS//DTD DocBook XML" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"')
+sgml2man = find_program('docbook2X2man', 'docbook2x-man', 'db2x_docbook2man', 'docbook2man', 'docbook-to-man', required: false, version: '>=0.8')
+if not sgml2man.found()
+    sgml2man = find_program('docbook2man', required: false, version: '<0.8')
+    if sgml2man.found()
+        docconf.set('docdtd', '"-//Davenport//DTD DocBook V3.0//EN"')
+    elif want_mans
+        error('missing required docbook2x or docbook-utils dependency')
+    endif
 endif
 
 ## Threads.
