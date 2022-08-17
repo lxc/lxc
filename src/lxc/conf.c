@@ -50,6 +50,7 @@
 #include "mount_utils.h"
 #include "namespace.h"
 #include "network.h"
+#include "open_utils.h"
 #include "parse.h"
 #include "process_utils.h"
 #include "ringbuf.h"

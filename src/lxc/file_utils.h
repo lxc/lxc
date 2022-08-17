@@ -108,10 +108,7 @@ __hidden extern int open_at(int dfd, const char *path, unsigned int o_flags,
 __hidden extern int open_at_same(int fd_same, int dfd, const char *path,
 				 unsigned int o_flags,
 				 unsigned int resolve_flags, mode_t mode);
-static inline int open_beneath(int dfd, const char *path, unsigned int flags)
-{
-	return open_at(dfd, path, flags, PROTECT_LOOKUP_BENEATH, 0);
-}
+__hidden extern int open_beneath(int dfd, const char *path, unsigned int flags);
 __hidden int fd_make_nonblocking(int fd);
 __hidden extern char *read_file_at(int dfd, const char *fnam,
                                    unsigned int o_flags,

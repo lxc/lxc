@@ -114,6 +114,7 @@ liblxc_sources = files(
     'nl.h',
     'parse.c',
     'parse.h',
+    'open_utils.h',
     'process_utils.c',
     'process_utils.h',
     'rexec.c',

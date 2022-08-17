@@ -18,6 +18,7 @@
 #include "file_utils.h"
 #include "log.h"
 #include "lsm.h"
+#include "open_utils.h"
 #include "parse.h"
 #include "process_utils.h"
 #include "utils.h"
