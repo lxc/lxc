@@ -6,6 +6,7 @@ pam_cgfs_sources = files(
     '../file_utils.h',
     '../macro.h',
     '../memory_utils.h',
+    '../open_utils.h',
     '../string_utils.c',
     '../string_utils.h') + include_sources
 

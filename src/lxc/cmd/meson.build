@@ -20,6 +20,7 @@ cmd_lxc_init_sources = files(
     '../memory_utils.h',
     '../namespace.c',
     '../namespace.h',
+    '../open_utils.h',
     '../string_utils.c',
     '../string_utils.h') + include_sources
 
@@ -41,6 +42,7 @@ cmd_lxc_init_static_sources = files(
     '../memory_utils.h',
     '../namespace.c',
     '../namespace.h',
+    '../open_utils.h',
     '../string_utils.c',
     '../string_utils.h') + include_sources
 

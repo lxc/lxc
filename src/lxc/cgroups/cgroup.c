@@ -12,8 +12,9 @@
 #include "compiler.h"
 #include "conf.h"
 #include "initutils.h"
-#include "memory_utils.h"
 #include "log.h"
+#include "memory_utils.h"
+#include "open_utils.h"
 #include "start.h"
 #include "string_utils.h"
 

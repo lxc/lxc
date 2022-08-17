@@ -10,6 +10,7 @@
 #include "macro.h"
 #include "memory_utils.h"
 #include "mount_utils.h"
+#include "open_utils.h"
 #include "storage.h"
 #include "utils.h"
 

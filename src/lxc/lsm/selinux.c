@@ -15,6 +15,7 @@
 #include "log.h"
 #include "lsm.h"
 #include "memory_utils.h"
+#include "open_utils.h"
 
 #define DEFAULT_LABEL "unconfined_t"
 

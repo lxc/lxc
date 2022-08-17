@@ -23,6 +23,7 @@
 #include "lxclock.h"
 #include "mainloop.h"
 #include "memory_utils.h"
+#include "open_utils.h"
 #include "start.h"
 #include "syscall_wrappers.h"
 #include "terminal.h"

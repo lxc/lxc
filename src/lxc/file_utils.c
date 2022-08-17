@@ -15,6 +15,7 @@
 #include "file_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
+#include "open_utils.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
@@ -799,4 +800,9 @@ bool same_device(int fda, const char *patha, int fdb, const char *pathb)
 		return false;
 
 	return (st_fda.st_rdev == st_fdb.st_rdev);
+}
+
+int open_beneath(int dfd, const char *path, unsigned int flags)
+{
+	return open_at(dfd, path, flags, PROTECT_LOOKUP_BENEATH, 0);
 }

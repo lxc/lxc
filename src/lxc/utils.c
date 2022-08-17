@@ -32,6 +32,7 @@
 #include "lxclock.h"
 #include "memory_utils.h"
 #include "namespace.h"
+#include "open_utils.h"
 #include "parse.h"
 #include "process_utils.h"
 #include "syscall_wrappers.h"

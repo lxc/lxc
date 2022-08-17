@@ -45,6 +45,7 @@
 #include "mainloop.h"
 #include "memory_utils.h"
 #include "mount_utils.h"
+#include "open_utils.h"
 #include "storage/storage.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"

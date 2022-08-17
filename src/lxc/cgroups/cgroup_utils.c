@@ -14,6 +14,7 @@
 #include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
+#include "open_utils.h"
 #include "utils.h"
 
 lxc_log_define(cgroup_utils, lxc);
