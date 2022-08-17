@@ -176,6 +176,90 @@ struct lxc_rootfs;
 #define MOUNT_ATTR_IDMAP 0x00100000
 #endif
 
+#if !HAVE_MOVE_MOUNT
+static inline int move_mount_lxc(int from_dfd, const char *from_pathname,
+				 int to_dfd, const char *to_pathname,
+				 unsigned int flags)
+{
+	return syscall(__NR_move_mount, from_dfd, from_pathname, to_dfd,
+		       to_pathname, flags);
+}
+#define move_mount move_mount_lxc
+#else
+extern int move_mount(int from_dfd, const char *from_pathname, int to_dfd,
+		      const char *to_pathname, unsigned int flags);
+#endif
+
+#if !HAVE_OPEN_TREE
+static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flags)
+{
+	return syscall(__NR_open_tree, dfd, filename, flags);
+}
+#define open_tree open_tree_lxc
+#else
+extern int open_tree(int dfd, const char *filename, unsigned int flags);
+#endif
+
+#if !HAVE_FSOPEN
+static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
+{
+	return syscall(__NR_fsopen, fs_name, flags);
+}
+#define fsopen fsopen_lxc
+#else
+extern int fsopen(const char *fs_name, unsigned int flags);
+#endif
+
+#if !HAVE_FSPICK
+static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
+{
+	return syscall(__NR_fspick, dfd, path, flags);
+}
+#define fspick fspick_lxc
+#else
+extern int fspick(int dfd, const char *path, unsigned int flags);
+#endif
+
+#if !HAVE_FSCONFIG
+static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const void *value, int aux)
+{
+	return syscall(__NR_fsconfig, fd, cmd, key, value, aux);
+}
+#define fsconfig fsconfig_lxc
+#else
+extern int fsconfig(int fd, unsigned int cmd, const char *key, const void *value, int aux);
+#endif
+
+#if !HAVE_FSMOUNT
+static inline int fsmount_lxc(int fs_fd, unsigned int flags, unsigned int attr_flags)
+{
+	return syscall(__NR_fsmount, fs_fd, flags, attr_flags);
+}
+#define fsmount fsmount_lxc
+#else
+extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
+#endif
+
+/*
+ * mount_setattr()
+ */
+#if !HAVE_STRUCT_MOUNT_ATTR
+struct mount_attr {
+	__u64 attr_set;
+	__u64 attr_clr;
+	__u64 propagation;
+	__u64 userns_fd;
+};
+#endif
+
+#if !HAVE_MOUNT_SETATTR
+static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
+				struct mount_attr *attr, size_t size)
+{
+	return syscall(__NR_mount_setattr, dfd, path, flags, attr, size);
+}
+#endif
+
 __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new_flags);
 
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
