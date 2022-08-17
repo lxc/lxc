@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "conf.h"
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
