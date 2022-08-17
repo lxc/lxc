@@ -11,10 +11,6 @@
 #include "hlist.h"
 #include "memory_utils.h"
 
-#if HAVE_LIBURING
-#include <liburing.h>
-#endif
-
 #define LXC_MAINLOOP_ERROR -1
 #define LXC_MAINLOOP_CONTINUE 0
 #define LXC_MAINLOOP_CLOSE 1
