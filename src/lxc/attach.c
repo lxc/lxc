@@ -40,6 +40,7 @@
 #include "memory_utils.h"
 #include "mount_utils.h"
 #include "namespace.h"
+#include "open_utils.h"
 #include "process_utils.h"
 #include "sync.h"
 #include "syscall_wrappers.h"

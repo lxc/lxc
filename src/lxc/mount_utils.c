@@ -10,12 +10,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "conf.h"
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "mount_utils.h"
+#include "open_utils.h"
 #include "syscall_numbers.h"
 #include "syscall_wrappers.h"
 
