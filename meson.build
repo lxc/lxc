@@ -85,6 +85,11 @@ srcconf = configuration_data()
 srcconf.set('_GNU_SOURCE', true)
 srcconf.set('_FILE_OFFSET_BITS', 64)
 srcconf.set('__STDC_FORMAT_MACROS', true)
+
+## This is a hack to prevent any inclusion ofr linux/mount.h which causes
+## conflicts with sys/mount.h all over the place
+srcconf.set('_LINUX_MOUNT_H', true)
+
 srcconf.set_quoted('APPARMOR_CACHE_DIR', lxcapparmorcachedir)
 srcconf.set_quoted('LIBEXECDIR', libexecdir)
 srcconf.set_quoted('LOGPATH', lxclogpath)
