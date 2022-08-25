@@ -299,9 +299,9 @@ if not want_sd_bus.disabled()
         has_sd_bus = false
     endif
 
-    if not cc.has_function('sd_bus_call_method_asyncv', prefix: '#include <systemd/sd-bus.h>', dependencies: libsystemd)
+    if not cc.has_function('sd_bus_call_method_async', prefix: '#include <systemd/sd-bus.h>', dependencies: libsystemd)
         if not sd_bus_optional
-            error('libsystemd misses required sd_bus_call_method_asyncv function')
+            error('libsystemd misses required sd_bus_call_method_async function')
         endif
 
         has_sd_bus = false
