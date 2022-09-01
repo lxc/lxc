@@ -9,6 +9,8 @@ on:
       - 'src/**'
     branches:
       - master
+permissions:
+  contents: read
 jobs:
   Fuzzing:
     runs-on: ubuntu-22.04
