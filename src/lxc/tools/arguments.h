@@ -137,6 +137,7 @@ struct lxc_arguments {
 #define LXC_COMMON_OPTIONS                                                     \
 	    { "name",        required_argument, 0, 'n'         },              \
 	    { "help",        no_argument,       0, 'h'         },              \
+	    { "help",        no_argument,       0, '?'         },              \
 	    { "usage",       no_argument,       0, OPT_USAGE   },              \
 	    { "version",     no_argument,       0, OPT_VERSION },              \
 	    { "quiet",       no_argument,       0, 'q'         },              \
