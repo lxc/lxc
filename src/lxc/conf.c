@@ -3041,7 +3041,7 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 			dfd_from = rootfs->dfd_mnt;
 		else
 			dfd_from = rootfs->dfd_host;
-		fd_to = open_at(dfd_from, target_relative, PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH_WITH_SYMLINKS, 0);
+		fd_to = open_at(dfd_from, target_relative, PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 		if (fd_to < 0) {
 			if (opts.optional) {
 				TRACE("Skipping optional idmapped mount");
