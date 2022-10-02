@@ -190,7 +190,7 @@ When you find you need help, the LXC projects provides you with several options.
 
 ### Discuss Forum
 
-We maintain an discuss forum at
+We maintain a discuss forum at
 
 - https://discuss.linuxcontainers.org/
 
