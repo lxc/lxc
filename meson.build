@@ -896,6 +896,9 @@ endif
 
 if has_sd_bus
     liblxc_dependencies += [libsystemd]
+    if want_oss_fuzz
+        oss_fuzz_dependencies += [libsystemd]
+    endif
 endif
 
 if have_openpty
