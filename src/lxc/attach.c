@@ -1828,6 +1828,7 @@ int lxc_attach_run_command(void *payload)
 	ret = execvp(cmd->program, cmd->argv);
 	if (ret < 0) {
 		switch (errno) {
+		case EACCES:
 		case ENOEXEC:
 			ret = 126;
 			break;
