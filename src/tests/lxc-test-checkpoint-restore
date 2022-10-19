@@ -10,6 +10,12 @@ FAIL() {
 	exit 1
 }
 
+cleanup() {
+	set +e
+	lxc-stop -n $name -k
+	lxc-destroy -f -n $name
+}
+
 if [ "$(id -u)" != "0" ]; then
 	echo "ERROR: Must run as root."
 	exit 1
@@ -27,6 +33,7 @@ if verlte "$criu_version" "1.3.1"; then
 fi
 
 name=lxc-test-criu
+trap cleanup EXIT HUP INT TERM
 lxc-create -t busybox -n $name || FAIL "creating container"
 
 cat >> "$(lxc-config lxc.lxcpath)/$name/config" <<EOF
@@ -47,6 +54,3 @@ sleep 5s
 lxc-checkpoint -n $name -v -s -D /tmp/checkpoint || FAIL "failed checkpointing"
 lxc-wait -n $name -s STOPPED
 lxc-checkpoint -n $name -v -r -D /tmp/checkpoint || FAIL "failed restoring"
-
-lxc-stop -n $name -k
-lxc-destroy -f -n $name
