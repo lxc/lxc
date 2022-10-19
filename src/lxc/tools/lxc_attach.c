@@ -399,6 +399,8 @@ int lxc_attach_main(int argc, char *argv[])
 	}
 	if (WIFEXITED(ret))
 		wexit = WEXITSTATUS(ret);
+	else if (WIFSIGNALED(ret))
+		wexit = WTERMSIG(ret) + 128;
 
 out:
 	lxc_container_put(c);
