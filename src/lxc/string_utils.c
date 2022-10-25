@@ -203,7 +203,7 @@ char *path_simplify(const char *path)
 	absolute = abspath(path_new);
 
 	f = path_new;
-	if (*f == '.' && IN_SET(f[1], 0, '/')) {
+	if (*f == '.' && (f[1] == 0 || f[1] == '/')) {
 		ignore_slash = true;
 		f++;
 	}
@@ -216,7 +216,7 @@ char *path_simplify(const char *path)
 		}
 
 		if (slash) {
-			if (*f == '.' && IN_SET(f[1], 0, '/'))
+			if (*f == '.' && (f[1] == 0 || f[1] == '/'))
 				continue;
 
 			slash = false;

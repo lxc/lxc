@@ -508,7 +508,7 @@ static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 
 	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
 	if (client_fd < 0) {
-		if (IN_SET(errno, ECONNREFUSED, EPIPE))
+		if (errno == ECONNREFUSED || errno == EPIPE)
 			*stopped = 1;
 
 		return systrace("Command \"%s\" failed to connect command socket", lxc_cmd_str(cmd->req.cmd));

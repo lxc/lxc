@@ -3504,7 +3504,7 @@ static int create_transient_name(struct lxc_netdev *netdev)
 
 static int netdev_requires_move(const struct lxc_netdev *netdev)
 {
-	if (IN_SET(netdev->type, LXC_NET_EMPTY, LXC_NET_NONE))
+	if (netdev->type == LXC_NET_EMPTY || netdev->type == LXC_NET_NONE)
 		return false;
 
 	/*
