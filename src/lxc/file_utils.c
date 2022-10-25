@@ -796,7 +796,7 @@ bool same_device(int fda, const char *patha, int fdb, const char *pathb)
 	errno = EINVAL;
 	modea = (st_fda.st_mode & S_IFMT);
 	modeb = (st_fdb.st_mode & S_IFMT);
-	if (modea != modeb || !IN_SET(modea, S_IFCHR, S_IFBLK))
+	if (modea != modeb || !(modea == S_IFCHR || modea == S_IFBLK))
 		return false;
 
 	return (st_fda.st_rdev == st_fdb.st_rdev);
