@@ -468,12 +468,13 @@ int main(int argc, char *argv[]) { return 0; };
 '''
     if libcap_static.found()
         libcap_static_linkable = cc.links(code, args: '-static', dependencies: libcap_static)
-        srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
     else
-        srcconf.set10('HAVE_STATIC_LIBCAP', false)
+        libcap_static_linkable = false
     endif
+    srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
 else
     libcap_static = []
+    libcap_static_linkable = false
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
 endif
