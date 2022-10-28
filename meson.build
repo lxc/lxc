@@ -674,7 +674,7 @@ else
     missing_types += 'struct mount_attr (sys/mount.h)' endif
 
 ## Check if sys/mount.h defines the fsconfig commands
-if cc.has_header_symbol('sys/mount.h', 'FSCONFIG_SET_FLAG')
+if cc.get_define('FSCONFIG_SET_FLAG', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), true)
     found_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 else
@@ -682,7 +682,7 @@ else
     missing_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_STRING')
+if cc.get_define('FS_CONFIG_SET_STRING', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 else
@@ -690,7 +690,7 @@ else
     missing_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_BINARY')
+if cc.get_define('FS_CONFIG_SET_BINARY', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 else
@@ -698,7 +698,7 @@ else
     missing_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_EMPTY')
+if cc.get_define('FS_CONFIG_SET_PATH_EMPTY', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 else
@@ -706,7 +706,7 @@ else
     missing_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_FD')
+if cc.get_define('FS_CONFIG_SET_PATH_FD', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 else
@@ -714,7 +714,7 @@ else
     missing_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_CREATE')
+if cc.get_define('FS_CONFIG_SET_CMD_CREATE', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_CMD_CREAT (sys/mount.h)'
 else
@@ -722,7 +722,7 @@ else
     missing_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_RECONFIGURE')
+if cc.get_define('FS_CONFIG_SET_CMD_RECONFIGURE', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
 else
