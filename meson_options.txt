@@ -18,6 +18,11 @@ option('init-script', type : 'array',
        choices : ['systemd', 'sysvinit', 'upstart'], value : ['systemd'],
        description : 'init script')
 
+# was --systemd-unidir in autotools
+# If set to "", the value is taken from the running systemd instance.
+option('systemd-unitdir', type : 'string', value: '',
+       description : 'systemd system unit directory')
+
 # was --{disable,enable}-liburing in autotools
 option('io-uring-event-loop', type: 'boolean', value: 'false',
        description: 'Enable io-uring based event loop')
