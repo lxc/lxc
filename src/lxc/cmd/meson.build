@@ -68,7 +68,7 @@ if sanitize == 'none'
         link_with: [liblxc_static],
         link_args: ['-static'],
         c_args: ['-DNO_LXC_CONF'],
-        dependencies: [libcap_static],
+        dependencies: [libcap_static] + liblxc_dependency_headers,
         install_dir: sbindir,
         install: true)
 endif
