@@ -149,7 +149,7 @@ if want_selinux and libselinux.found()
 endif
 
 liblxc_static = static_library(
-    'lxc_static',
+    'lxc',
     liblxc_sources + include_sources + netns_ifaddrs_sources,
     install: true,
     include_directories: liblxc_includes,
