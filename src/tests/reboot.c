@@ -34,7 +34,13 @@
 
 #include <linux/reboot.h>
 
+/*
+ * glibc clone(2) wrapper function prototypes as defined in that manpage. Most
+ * architectures use clone(...), but ia64 uses __clone2(...).
+ */
 int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);
+int __clone2(int (*fn)(void *), void *stack_base, size_t stack_size, \
+		int flags, void *arg, ...);
 
 static int do_reboot(void *arg)
 {
@@ -53,7 +59,12 @@ static int test_reboot(int cmd, int sig)
 	int status;
 	pid_t ret;
 
+#if defined(__ia64__)
+	ret = __clone2(do_reboot, stack, stack_size, \
+			CLONE_NEWPID | SIGCHLD, &cmd);
+#else
 	ret = clone(do_reboot, stack, CLONE_NEWPID | SIGCHLD, &cmd);
+#endif
 	if (ret < 0) {
 		printf("failed to clone: %s\n", strerror(errno));
 		return -1;
