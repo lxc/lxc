@@ -3302,7 +3302,7 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 		(void)strlcat(add_controllers, "+", full_len + 1);
 		(void)strlcat(add_controllers, *it, full_len + 1);
 
-		if ((it + 1) && *(it + 1))
+		if (*(it + 1))
 			(void)strlcat(add_controllers, " ", full_len + 1);
 	}
 
@@ -3755,7 +3755,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 	 * from the layout bitmask we created when parsing the cgroups.
 	 *
 	 * Keep the ordering in the switch otherwise the bistmask-based
-	 * matching won't work. 
+	 * matching won't work.
 	 */
 	if (ops->cgroup_layout == CGROUP_LAYOUT_UNKNOWN) {
 		switch (layout_mask) {

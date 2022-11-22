@@ -8,8 +8,11 @@ lxc_apparmor_load = configure_file(
     install_dir: lxclibexec)
 
 if 'systemd' in init_script
-    systemd = dependency('systemd')
-    systemd_system_unit_dir = systemd.get_variable('systemdsystemunitdir')
+    systemd_system_unit_dir = get_option('systemd-unitdir')
+    if systemd_system_unit_dir == ''
+        systemd = dependency('systemd')
+        systemd_system_unit_dir = systemd.get_variable('systemdsystemunitdir')
+    endif
 
     configure_file(
         configuration: conf,

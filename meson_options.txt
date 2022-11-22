@@ -18,6 +18,11 @@ option('init-script', type : 'array',
        choices : ['systemd', 'sysvinit', 'upstart'], value : ['systemd'],
        description : 'init script')
 
+# was --systemd-unidir in autotools
+# If set to "", the value is taken from the running systemd instance.
+option('systemd-unitdir', type : 'string', value: '',
+       description : 'systemd system unit directory')
+
 # was --{disable,enable}-liburing in autotools
 option('io-uring-event-loop', type: 'boolean', value: 'false',
        description: 'Enable io-uring based event loop')
@@ -112,3 +117,6 @@ option('thread-safety', type : 'boolean', value : 'true',
 # was --{disable,enable}-memfd-rexec in autotools
 option('memfd-rexec', type : 'boolean', value : 'true',
        description : 'whether to rexec the lxc-attach binary when attaching to a container')
+
+option('distrosysconfdir', type : 'string', value: '',
+       description: 'relative path to sysconfdir for distro default configuration')

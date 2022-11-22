@@ -60,7 +60,7 @@ cmd_lxc_update_config = configure_file(
     output: 'lxc-update-config')
 install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir: bindir)
 
-if sanitize == 'none'
+if sanitize == 'none' and libcap_static_linkable
     cmd_programs += executable(
         'init.lxc.static',
         cmd_lxc_init_sources,
@@ -68,7 +68,7 @@ if sanitize == 'none'
         link_with: [liblxc_static],
         link_args: ['-static'],
         c_args: ['-DNO_LXC_CONF'],
-        dependencies: [libcap_static],
+        dependencies: [libcap_static] + liblxc_dependency_headers,
         install_dir: sbindir,
         install: true)
 endif

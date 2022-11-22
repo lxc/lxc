@@ -152,7 +152,7 @@ liblxc_static = static_library(
     liblxc_sources + include_sources + netns_ifaddrs_sources,
     install: true,
     include_directories: liblxc_includes,
-    dependencies: [threads],
+    dependencies: [threads] + liblxc_dependency_headers,
     c_args: '-fvisibility=default')
 
 lxc_functions = configure_file(
