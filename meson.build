@@ -22,6 +22,9 @@ cc = meson.get_compiler('c')
 pkgconfig = import('pkgconfig')
 pkgconfig_libs = []
 
+liblxc_dependencies = []
+oss_fuzz_dependencies = []
+
 # Version.
 liblxc_version = '1.7.0'
 version_data = configuration_data()
@@ -260,6 +263,8 @@ if want_io_uring
     if cc.has_function('io_uring_prep_poll_add', prefix: '#include <liburing.h>', dependencies: liburing) == false
         error('liburing version does not support IORING_POLL_ADD_MULTI')
     endif
+    pkgconfig_libs += liburing
+    liblxc_dependencies += liburing
 
     srcconf.set10('HAVE_LIBURING', true)
 else
@@ -295,12 +300,19 @@ if not want_sd_bus.disabled()
         has_sd_bus = false
     endif
 
-    if not cc.has_function('sd_bus_call_method_async', prefix: '#include <systemd/sd-bus.h>', dependencies: libsystemd) 
+    if not cc.has_function('sd_bus_call_method_async', prefix: '#include <systemd/sd-bus.h>', dependencies: libsystemd)
         if not sd_bus_optional
             error('libsystemd misses required sd_bus_call_method_async function')
         endif
 
         has_sd_bus = false
+    endif
+
+    if has_sd_bus
+        liblxc_dependencies += libsystemd
+        if want_oss_fuzz
+            oss_fuzz_dependencies += libsystemd
+        endif
     endif
 
     srcconf.set10('HAVE_LIBSYSTEMD', has_sd_bus)
@@ -356,12 +368,14 @@ endif
 
 ## Threads.
 threads = dependency('threads')
+liblxc_dependencies += threads
 
 ## Seccomp.
 if want_seccomp
     libseccomp = dependency('libseccomp', required: false)
     srcconf.set10('HAVE_SECCOMP', libseccomp.found())
     pkgconfig_libs += libseccomp
+    liblxc_dependencies += libseccomp
     if libseccomp.found()
         if libseccomp.version().version_compare('>=2.5.0')
             # https://github.com/seccomp/libseccomp/commit/dead12bc788b259b148cc4d93b970ef0bd602b1a
@@ -388,7 +402,7 @@ if want_seccomp
         ]
 
             # We get -1 if the size cannot be determined
-            if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE') > 0
+            if cc.sizeof(decl, prefix: seccomp_headers, args: '-D_GNU_SOURCE', dependencies: libseccomp) > 0
                 srcconf.set10('HAVE_' + decl.underscorify().to_upper(), true)
             else
                 srcconf.set10('HAVE_' + decl.underscorify().to_upper(), false)
@@ -404,6 +418,7 @@ if want_selinux
     libselinux = dependency('libselinux', required: false)
     srcconf.set10('HAVE_SELINUX', libselinux.found())
     pkgconfig_libs += libselinux
+    liblxc_dependencies += libselinux
 else
     srcconf.set10('HAVE_SELINUX', false)
 endif
@@ -412,6 +427,8 @@ endif
 if want_apparmor
     libapparmor = dependency('libapparmor', required: false)
     srcconf.set10('HAVE_APPARMOR', libapparmor.found())
+    # We do not use the AppArmor library at runtime, so it's not in our pkg-config.
+    liblxc_dependencies += libapparmor
 else
     srcconf.set10('HAVE_APPARMOR', false)
 endif
@@ -421,6 +438,7 @@ if want_openssl
     libopenssl = dependency('openssl', required: false)
     srcconf.set10('HAVE_OPENSSL', libopenssl.found())
     pkgconfig_libs += libopenssl
+    liblxc_dependencies += libopenssl
 else
     srcconf.set10('HAVE_OPENSSL', false)
 endif
@@ -437,6 +455,7 @@ if want_capabilities
     endif
     srcconf.set10('HAVE_LIBCAP', libcap.found())
     pkgconfig_libs += libcap
+    liblxc_dependencies += libcap
 
     libcap_static = dependency('libcap', required: false, static: true)
     if not libcap_static.found()
@@ -449,19 +468,19 @@ int main(int argc, char *argv[]) { return 0; };
 '''
     if libcap_static.found()
         libcap_static_linkable = cc.links(code, args: '-static', dependencies: libcap_static)
-        srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
     else
-        srcconf.set10('HAVE_STATIC_LIBCAP', false)
+        libcap_static_linkable = false
     endif
+    srcconf.set10('HAVE_STATIC_LIBCAP', libcap_static_linkable)
 else
     libcap_static = []
+    libcap_static_linkable = false
     srcconf.set10('HAVE_LIBCAP', false)
     srcconf.set10('HAVE_STATIC_LIBCAP', false)
 endif
 
 libutil = cc.find_library('util', required: false)
 
-oss_fuzz_dependencies = []
 if want_oss_fuzz
     srcconf.set10('FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION', true)
     srcconf.set10('RUN_ON_OSS_FUZZ', true)
@@ -480,8 +499,14 @@ pkgconfig_libs += pam
 have = cc.has_function('fmemopen', prefix: '#include <stdio.h>', args: '-D_GNU_SOURCE')
 srcconf.set10('HAVE_FMEMOPEN', have)
 
-have_openpty = cc.has_function('openpty', dependencies: libutil, prefix: '#include <pty.h>')
-srcconf.set10('HAVE_OPENPTY', have_openpty)
+have = cc.has_function('openpty', dependencies: libutil, prefix: '#include <pty.h>')
+srcconf.set10('HAVE_OPENPTY', have)
+if have
+    liblxc_dependencies += libutil
+    if want_oss_fuzz
+        oss_fuzz_dependencies += libutil
+    endif
+endif
 
 have = cc.has_function('pthread_setcancelstate', prefix: '#include <pthread.h>')
 srcconf.set10('HAVE_PTHREAD_SETCANCELSTATE', have)
@@ -649,7 +674,7 @@ else
     missing_types += 'struct mount_attr (sys/mount.h)' endif
 
 ## Check if sys/mount.h defines the fsconfig commands
-if cc.has_header_symbol('sys/mount.h', 'FSCONFIG_SET_FLAG')
+if cc.get_define('FSCONFIG_SET_FLAG', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), true)
     found_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 else
@@ -657,7 +682,7 @@ else
     missing_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_STRING')
+if cc.get_define('FS_CONFIG_SET_STRING', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 else
@@ -665,7 +690,7 @@ else
     missing_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_BINARY')
+if cc.get_define('FS_CONFIG_SET_BINARY', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 else
@@ -673,7 +698,7 @@ else
     missing_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_EMPTY')
+if cc.get_define('FS_CONFIG_SET_PATH_EMPTY', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 else
@@ -681,7 +706,7 @@ else
     missing_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_PATH_FD')
+if cc.get_define('FS_CONFIG_SET_PATH_FD', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 else
@@ -689,7 +714,7 @@ else
     missing_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_CREATE')
+if cc.get_define('FS_CONFIG_SET_CMD_CREATE', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_CMD_CREAT (sys/mount.h)'
 else
@@ -697,7 +722,7 @@ else
     missing_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
 endif
 
-if cc.has_header_symbol('sys/mount.h', 'FS_CONFIG_SET_CMD_RECONFIGURE')
+if cc.get_define('FS_CONFIG_SET_CMD_RECONFIGURE', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), true)
     found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
 else
@@ -860,53 +885,18 @@ liblxc_includes = include_directories(
     'src/lxc/cgroups',
     'src/lxc/storage')
 
+# Our static sub-project binaries don't (and in fact can't) link to our
+# dependencies directly, but need access to the headers when compiling (most
+# notably seccomp headers).
+liblxc_dependency_headers = []
+foreach dep: liblxc_dependencies
+    liblxc_dependency_headers += dep.partial_dependency(compile_args: true)
+endforeach
+
 # Early sub-directories.
 subdir('src/include')
 subdir('src/lxc')
 subdir('src/lxc/pam')
-
-# Library.
-liblxc_dependencies = [
-    threads,
-]
-
-if want_seccomp
-    liblxc_dependencies += libseccomp
-endif
-
-if want_capabilities
-    liblxc_dependencies += [libcap]
-endif
-
-if want_openssl
-    liblxc_dependencies += [libopenssl]
-endif
-
-if want_selinux
-    liblxc_dependencies += [libselinux]
-endif
-
-if want_apparmor
-    liblxc_dependencies += [libapparmor]
-endif
-
-if want_io_uring
-    liblxc_dependencies += [liburing]
-endif
-
-if has_sd_bus
-    liblxc_dependencies += [libsystemd]
-    if want_oss_fuzz
-        oss_fuzz_dependencies += [libsystemd]
-    endif
-endif
-
-if have_openpty
-    liblxc_dependencies += [libutil]
-    if want_oss_fuzz
-        oss_fuzz_dependencies += [libutil]
-    endif
-endif
 
 liblxc_link_whole = [liblxc_static]
 
