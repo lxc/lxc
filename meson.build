@@ -324,7 +324,7 @@ if time_epoch == '' and git.found() and run_command('test', '-e', '.git', check:
     # If we're in a git repository, use the creation time of the latest git tag.
     latest_tag = run_command(git, 'describe', '--abbrev=0', '--tags', check: false).stdout().strip()
     if latest_tag != ''
-      time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout()
+      time_epoch = run_command(git, 'log', '--no-show-signature', '-1', '--format=%at', latest_tag, check: true).stdout().strip()
     endif
 endif
 
