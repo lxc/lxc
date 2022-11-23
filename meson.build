@@ -330,7 +330,7 @@ endif
 
 # Fallback to current epoch.
 if time_epoch == ''
-    time_epoch = run_command(date, '+%s', check: true).stdout()
+    time_epoch = run_command(date, '+%s', check: true).stdout().strip()
 endif
 generate_date = run_command(date, '--utc', '--date=@' + time_epoch, '+%Y-%m-%d', check: true).stdout().strip()
 
