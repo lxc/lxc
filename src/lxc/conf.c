@@ -1606,8 +1606,11 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 		return log_error_errno(-errno, errno, "Failed to enter old root directory");
 
 	/*
-	 * Make fd_oldroot a depedent mount to make sure our umounts don't
-	 * propagate to the host.
+	 * Unprivileged containers will have had all their mounts turned into
+	 * dependent mounts when the container was created. But for privileged
+	 * containers we need to turn the old root mount tree into a dependent
+	 * mount tree to prevent propagating mounts and umounts into the host
+	 * mount namespace.
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0)
@@ -1620,6 +1623,31 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 	ret = fchdir(rootfs->dfd_mnt);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to re-enter new root directory \"%s\"", rootfs->mount);
+
+	/*
+	 * Finally, we turn the rootfs into a shared mount. Note, that this
+	 * doesn't reestablish mount propagation with the hosts mount
+	 * namespace. Instead we'll create a new peer group.
+	 *
+	 * We're doing this because most workloads do rely on the rootfs being
+	 * a shared mount. For example, systemd daemon like sytemd-udevd run in
+	 * their own mount namespace. Their mount namespace has been made a
+	 * dependent mount (MS_SLAVE) with the host rootfs as it's dominating
+	 * mount. This means new mounts on the host propagate into the
+	 * respective services.
+	 *
+	 * This is broken if we leave the container's rootfs a dependent mount.
+	 * In which case both the container's rootfs and the service's rootfs
+	 * will be dependent mounts with the host's rootfs as their dominating
+	 * mount. So if you were to mount over the rootfs from the host it
+	 * would not just propagate into the container's mount namespace it
+	 * would also propagate into the service. That's nonsense semantics for
+	 * nearly all relevant use-cases. Instead, establish the container's
+	 * rootfs as a separate peer group mirroring the behavior on the host.
+	 */
+	ret = mount("", ".", "", MS_SHARED | MS_REC, NULL);
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to turn new root mount tree into shared mount tree");
 
 	TRACE("Changed into new rootfs \"%s\"", rootfs->mount);
 	return 0;
