@@ -560,15 +560,20 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	if (ret < 0)
 		WARN("Failed to detach bpf program from cgroup");
 
-	if (!list_empty(&handler->conf->id_map)) {
+	/*
+	 * Only do the user namespace dance if we have too. If the container's
+	 * monitor is root we can assume that it is privileged enough to remove
+	 * the cgroups it created when the container started.
+	 */
+	if (!list_empty(&handler->conf->id_map) && !handler->am_root) {
 		struct generic_userns_exec_data wrap = {
 			.conf			= handler->conf,
 			.path_prune		= ops->container_limit_cgroup,
 			.hierarchies		= ops->hierarchies,
 			.origuid		= 0,
 		};
-		ret = userns_exec_1(handler->conf, cgroup_tree_remove_wrapper,
-				    &wrap, "cgroup_tree_remove_wrapper");
+		ret = userns_exec_full(handler->conf, cgroup_tree_remove_wrapper,
+				       &wrap, "cgroup_tree_remove_wrapper");
 	} else {
 		ret = cgroup_tree_remove(ops->hierarchies, ops->container_limit_cgroup);
 	}
