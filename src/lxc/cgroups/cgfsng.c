@@ -567,8 +567,8 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 			.hierarchies		= ops->hierarchies,
 			.origuid		= 0,
 		};
-		ret = userns_exec_1(handler->conf, cgroup_tree_remove_wrapper,
-				    &wrap, "cgroup_tree_remove_wrapper");
+		ret = userns_exec_full(handler->conf, cgroup_tree_remove_wrapper,
+				       &wrap, "cgroup_tree_remove_wrapper");
 	} else {
 		ret = cgroup_tree_remove(ops->hierarchies, ops->container_limit_cgroup);
 	}
