@@ -4345,6 +4345,14 @@ static int setup_capabilities(struct lxc_conf *conf)
 	return 0;
 }
 
+static int make_shmount_dependent_mount(const struct lxc_conf *conf)
+{
+	if (!(conf->auto_mounts & LXC_AUTO_SHMOUNTS_MASK))
+		return 0;
+
+	return mount(NULL, conf->shmount.path_cont, NULL, MS_REC | MS_SLAVE, 0);
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
@@ -4473,6 +4481,11 @@ int lxc_setup(struct lxc_handler *handler)
 	ret = lxc_setup_rootfs_switch_root(&lxc_conf->rootfs);
 	if (ret < 0)
 		return log_error(-1, "Failed to pivot root into rootfs");
+
+	ret = make_shmount_dependent_mount(lxc_conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to turn mount tunnel \"%s\" into dependent mount",
+				 lxc_conf->shmount.path_cont);
 
 	/* Setting the boot-id is best-effort for now. */
 	if (lxc_conf->autodev > 0)
