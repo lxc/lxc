@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq gcc clang
+          sudo apt-get install -qq gcc clang meson
           sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev docbook2x libsystemd-dev
 
       - name: Compiler version
@@ -47,7 +47,7 @@ jobs:
           export LDFLAGS="-pthread -lpthread"
 
           BUILD="$(pwd)/build"
-          ninja -C ${BUILD} -Dtests=true -Dpam-cgroup=true -Dcoverity-build=true
+          meson setup -Dtests=true -Dpam-cgroup=true -Dcoverity-build=true build/
 
           # Build
           cov-build --dir cov-int ninja -C ${BUILD}
