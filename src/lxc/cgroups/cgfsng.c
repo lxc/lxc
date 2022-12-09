@@ -1268,7 +1268,9 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 		return syserror("Out of memory");
 
 	do {
-		snprintf(full_scope_name, len, "lxc-%s-%d.scope", conf->name, idx);
+		r = strnprintf(full_scope_name, len, "lxc-%s-%d.scope", conf->name, idx);
+		if (r < 0)
+			return log_error_errno(-1, errno, "Failed to build scope name for \"%s\"", conf->name);
 		sd_data.scope_name = full_scope_name;
 		if (start_scope(bus, &sd_data, event)) {
 			conf->cgroup_meta.systemd_scope = get_current_unified_cgroup();
