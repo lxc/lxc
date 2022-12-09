@@ -1162,7 +1162,7 @@ static bool enable_controllers_delegation(int fd_dir, char *cg)
 
 	lxc_iterate_parts(controller, rbuf, " ") {
 		full_len += strlen(controller) + 2;
-		wbuf = must_realloc(wbuf, full_len);
+		wbuf = must_realloc(wbuf, full_len + 1);
 		if (first) {
 			wbuf[0] = '\0';
 			first = false;
