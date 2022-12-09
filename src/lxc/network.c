@@ -118,7 +118,7 @@ static const char loop_device[] = "lo";
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int addrlen, err;
 	struct rtmsg *rt;
@@ -254,7 +254,7 @@ static int setup_ipv6_addr_routes(struct lxc_netdev *netdev)
 static int lxc_ip_neigh_proxy(__u16 nlmsg_type, int family, int ifindex, void *dest)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int addrlen, err;
 	struct ndmsg *rt;
@@ -317,7 +317,7 @@ struct bridge_vlan_info {
 static int lxc_bridge_vlan(unsigned int ifindex, unsigned short operation, unsigned short vlan_id, bool tagged)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err;
 	struct ifinfomsg *ifi;
@@ -937,7 +937,7 @@ on_error:
 static int lxc_ipvlan_create(const char *parent, const char *name, int mode, int isolation)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
@@ -1499,7 +1499,7 @@ static netdev_shutdown_server_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err;
 	struct ifinfomsg *ifi;
@@ -1534,7 +1534,7 @@ static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
 int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err;
 	struct ifinfomsg *ifi;
@@ -1692,7 +1692,7 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 int lxc_netdev_delete_by_index(int ifindex)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err;
 	struct ifinfomsg *ifi;
@@ -1736,7 +1736,7 @@ int lxc_netdev_delete_by_name(const char *name)
 int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, len;
 	struct ifinfomsg *ifi;
@@ -1791,7 +1791,7 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 int netdev_set_flag(const char *name, int flag)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
@@ -1834,7 +1834,7 @@ int netdev_set_flag(const char *name, int flag)
 static int netdev_get_flag(const char *name, int *flag)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
@@ -1910,7 +1910,7 @@ int lxc_netdev_isup(const char *name)
 int netdev_get_mtu(int ifindex)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int readmore = 0;
 	__u32 recv_len = 0;
@@ -2022,7 +2022,7 @@ int netdev_get_mtu(int ifindex)
 int lxc_netdev_set_mtu(const char *name, int mtu)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, len;
 	struct ifinfomsg *ifi;
@@ -2075,7 +2075,7 @@ int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned in
                     int n_rxqueues, int n_txqueues)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, len;
 	struct ifinfomsg *ifi;
@@ -2164,7 +2164,7 @@ int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned in
 int lxc_vlan_create(const char *parent, const char *name, unsigned short vlanid)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, len, lindex;
 	struct ifinfomsg *ifi;
@@ -2232,7 +2232,7 @@ int lxc_vlan_create(const char *parent, const char *name, unsigned short vlanid)
 int lxc_macvlan_create(const char *parent, const char *name, int mode)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
@@ -2437,7 +2437,7 @@ static int ip_addr_add(int family, int ifindex, void *addr, void *bcast,
 		       void *acast, int prefix)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int addrlen, err;
 	struct ifaddrmsg *ifa;
@@ -2557,7 +2557,7 @@ static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void **res)
 static int ip_addr_get(int family, int ifindex, void **res)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int answer_len, err;
 	struct ifaddrmsg *ifa;
@@ -2675,7 +2675,7 @@ int lxc_ipv4_addr_get(int ifindex, struct in_addr **res)
 static int ip_gateway_add(int family, int ifindex, void *gw)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int addrlen, err;
 	struct rtmsg *rt;
@@ -4179,7 +4179,7 @@ int lxc_netns_set_nsid(int fd)
 	char buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
 		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
 		 NLMSG_ALIGN(1024)];
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	struct nlmsghdr *hdr;
 	struct rtgenmsg *msg;
@@ -4248,7 +4248,7 @@ static inline __s32 rta_getattr_s32(const struct rtattr *rta)
 
 int lxc_netns_get_nsid(int fd)
 {
-	struct nl_handler nlh;
+	struct nl_handler nlh = NL_HANDLER_INIT;
 	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int ret;
 	ssize_t len;
