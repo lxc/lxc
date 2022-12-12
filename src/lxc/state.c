@@ -112,7 +112,7 @@ int lxc_wait(const char *lxcname, const char *states, int timeout,
 	}
 
 	TRACE("Retrieved state of container %s", lxc_state2str(state));
-	if (!s[state])
+	if ((state < STOPPED || state > MAX_STATE - 1) || !s[state])
 		return -1;
 
 	return 0;
