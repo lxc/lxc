@@ -71,6 +71,19 @@ in_userns() {
   echo yes
 }
 
+getmanifestpath() {
+  basedir="$1"
+  q="$2"
+
+  digest=$(jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end' < "${basedir}/index.json")
+  if [ -z "${digest}" ]; then
+    echo "$q not found in index.json" >&2
+    return
+  fi
+  echo "${basedir}/blobs/sha256/${digest:7}"
+  return
+}
+
 getconfigpath() {
   basedir="$1"
   q="$2"
@@ -338,20 +351,37 @@ else
   skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
 fi
 
-echo "Unpacking the rootfs"
-# shellcheck disable=SC2039
-umoci_args=("")
-if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+set -x
+manifestpath=$(getmanifestpath "${DOWNLOAD_TEMP}" latest)
+LXC_CONF_FILE="${LXC_PATH}/config"
+CONT_HOOKDIR="${LXC_PATH}/hooks"
+mkdir -p "${CONT_HOOKDIR}"
+squashfs=0
+cat <<EOF >"${CONT_HOOKDIR}/oci-pre-mount"
+#!/bin/bash
+atomfs mount "${LXC_ROOTFS}.cache:latest" "${LXC_ROOTFS}"
+EOF
+chmod 755 "${CONT_HOOKDIR}/oci-pre-mount"
+if jq '.layers[0].mediaType' $manifestpath | grep -q "application/vnd.stacker.image.layer.squashfs"; then
+  squashfs=1
+  skopeo copy "oci:${DOWNLOAD_TEMP}:latest" oci:"${LXC_ROOTFS}.cache:latest"
+  echo "lxc.hook.pre-mount = ${CONT_HOOKDIR}/oci-pre-mount" >> "${LXC_CONF_FILE}"
+  # TODO - we should do a stop hook to umount.  unpriv doesn't need it, but root does
+else
+  echo "Unpacking the rootfs"
   # shellcheck disable=SC2039
-  umoci_args+=(--rootless)
+  umoci_args=("")
+  if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+    # shellcheck disable=SC2039
+    umoci_args+=(--rootless)
+  fi
+  # shellcheck disable=SC2039
+  # shellcheck disable=SC2068
+  umoci --log=error unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
+  find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
 fi
-# shellcheck disable=SC2039
-# shellcheck disable=SC2068
-umoci --log=error unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
-find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
 
 OCI_CONF_FILE=$(getconfigpath "${DOWNLOAD_TEMP}" latest)
-LXC_CONF_FILE="${LXC_PATH}/config"
 entrypoint=$(getep "${OCI_CONF_FILE}")
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
@@ -381,12 +411,29 @@ fi
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
-cat <<EOF > "${LXC_ROOTFS}/etc/hostname"
+cat <<EOF > "${LXC_PATH}/rfs_hostname"
 ${LXC_NAME}
 EOF
+if [ $squashfs -eq 1 ]; then
+  cat <<'EOF' > $CONT_HOOKDIR/oci-hostname-hook
+#!/bin/bash
+env
+id -u
+lxc_path="$(dirname $LXC_CONFIG_FILE)"
+ls $lxc_path
+echo "LXC_ROOTFS_MOUNT is $LXC_ROOTFS_MOUNT"
+ls -laF ${LXC_ROOTFS_MOUNT}
+mkdir -p ${LXC_ROOTFS_MOUNT}/etc
+cp ${lxc_path}/rfs_hostname ${LXC_ROOTFS_MOUNT}/etc/hostname
+EOF
+  chmod 755 $CONT_HOOKDIR/oci-hostname-hook
+  echo "lxc.hook.mount = $CONT_HOOKDIR/oci-hostname-hook" >> "${LXC_CONF_FILE}"
+else
+  cp "${LXC_PATH}/rfs_hostname" "${LXC_ROOTFS}/etc/hostname"
+fi
 
 # set minimal hosts
-cat <<EOF > "${LXC_ROOTFS}/etc/hosts"
+cat <<EOF > "${LXC_PATH}/rfs_hosts"
 127.0.0.1   localhost
 127.0.1.1   ${LXC_NAME}
 ::1     localhost ip6-localhost ip6-loopback
@@ -395,6 +442,20 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 EOF
+
+if [ $squashfs -eq 1 ]; then
+  cat <<'EOF' > "$CONT_HOOKDIR/oci-hosts-hook"
+#!/bin/bash
+env
+lxc_path="$(dirname $LXC_CONFIG_FILE)"
+mkdir -p ${LXC_ROOTFS_MOUNT}/etc
+cp ${lxc_path}/rfs_hosts ${LXC_ROOTFS_MOUNT}/etc/hosts
+EOF
+  chmod 755 $CONT_HOOKDIR/oci-hosts-hook
+  echo "lxc.hook.mount = $CONT_HOOKDIR/oci-hosts-hook" >> "${LXC_CONF_FILE}"
+else
+  cp "${LXC_PATH}/rfs_hosts" "${LXC_ROOTFS}/etc/hosts"
+fi
 
 # shellcheck disable=SC2039
 uidgid=($(getuidgid "${OCI_CONF_FILE}" "${LXC_ROOTFS}" ))

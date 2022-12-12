@@ -13,6 +13,7 @@
   mount -> /usr/lib*/lxc/{**,},
   mount -> @LXCROOTFSMOUNT@/{,**},
   mount fstype=devpts -> /dev/pts/,
+  mount fstype=fuse.squashfuse -> **,
   mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
   mount options=bind /dev/pts/** -> /dev/**,
   mount options=(rw, make-slave) -> **,
