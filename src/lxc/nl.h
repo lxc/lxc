@@ -38,6 +38,8 @@ struct nl_handler {
 	struct sockaddr_nl peer;
 };
 
+#define NL_HANDLER_INIT { .fd = -EBADF }
+
 /*
  * struct nlmsg : the netlink message structure. This message is to be used to
  *  be allocated with netlink_alloc.
