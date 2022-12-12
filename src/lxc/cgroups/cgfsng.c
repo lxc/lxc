@@ -3646,7 +3646,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			char *__controllers, *__current_cgroup;
 
 			type = LEGACY_HIERARCHY;
-			layout_mask |= CGFSNG_LAYOUT_UNIFIED;
+			layout_mask |= CGFSNG_LAYOUT_LEGACY;
 
 			__controllers = strchr(line, ':');
 			if (!__controllers)
