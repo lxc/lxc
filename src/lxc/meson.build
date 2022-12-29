@@ -32,7 +32,6 @@ liblxc_sources = files(
     'cgroups/cgroup2_devices.h',
     'cgroups/cgroup_utils.c',
     'cgroups/cgroup_utils.h',
-    'lsm/apparmor.c',
     'lsm/lsm.c',
     'lsm/lsm.h',
     'lsm/nop.c',
@@ -139,6 +138,10 @@ liblxc_sources = files(
     'utils.h',
     'uuid.c',
     'uuid.h')
+
+if want_apparmor and libapparmor.found()
+    liblxc_sources += files('lsm/apparmor.c')
+endif
 
 if want_seccomp and libseccomp.found()
     liblxc_sources += files('seccomp.c')
