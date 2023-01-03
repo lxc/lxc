@@ -122,6 +122,7 @@ if [ -z "${KVER_MAJOR}" ]; then
     KVER_MINOR="0"
 fi
 
+echo ""
 echo "--- Namespaces ---"
 echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
 echo
