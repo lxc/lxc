@@ -271,15 +271,15 @@ echo -n "CONFIG_PACKET_DIAG: " && is_enabled CONFIG_PACKET_DIAG
 echo
 echo -n "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
 echo
-echo -n "File capabilities: " && \
-    ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
-       is_enabled CONFIG_SECURITY_FILE_CAPABILITIES; echo ) || \
-    ( ( [ "${KVER_MAJOR}" = "2" ] && [ ${KVER_MINOR} -gt 32 ] ) || \
-         [ ${KVER_MAJOR} -gt 2 ] && $SETCOLOR_SUCCESS && \
-         echo "enabled" && $SETCOLOR_NORMAL )
+echo -n "File capabilities: "
+if [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ]; then
+    is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
+    echo
+else
+    $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+fi
 
 echo
 echo "Note : Before booting a new kernel, you can check its configuration"
 echo "usage : CONFIG=/path/to/config $0"
 echo
-
