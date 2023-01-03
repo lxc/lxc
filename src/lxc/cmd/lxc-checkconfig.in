@@ -51,9 +51,9 @@ has_cgroup_ns() {
     mandatory=no
 
     if [ -f "/proc/self/ns/cgroup" ]; then
-	    show_enabled 0
+        show_enabled 0
     else
-	    show_enabled 1
+        show_enabled 1
     fi
 }
 
@@ -132,28 +132,28 @@ echo
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
 echo
 if is_set CONFIG_USER_NS; then
-	if command -v newuidmap >/dev/null 2>&1; then
-		f=$(command -v newuidmap)
-		if [ ! -u "${f}" ]; then
-			echo "Warning: newuidmap is not setuid-root"
-		fi
-	else
-		echo "newuidmap is not installed"
-	fi
-	if command -v newgidmap >/dev/null 2>&1; then
-		f=$(command -v newgidmap)
-		if [ ! -u "${f}" ]; then
-			echo "Warning: newgidmap is not setuid-root"
-		fi
-	else
-		echo "newgidmap is not installed"
-	fi
+    if command -v newuidmap >/dev/null 2>&1; then
+        f=$(command -v newuidmap)
+        if [ ! -u "${f}" ]; then
+            echo "Warning: newuidmap is not setuid-root"
+        fi
+    else
+        echo "newuidmap is not installed"
+    fi
+    if command -v newgidmap >/dev/null 2>&1; then
+        f=$(command -v newgidmap)
+        if [ ! -u "${f}" ]; then
+            echo "Warning: newgidmap is not setuid-root"
+        fi
+    else
+        echo "newgidmap is not installed"
+    fi
 fi
 echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo
 if ([ $KVER_MAJOR -lt 4 ]) || ([ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]); then
-	echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
-	echo
+    echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+    echo
 fi
 echo
 
@@ -235,10 +235,10 @@ echo -n "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
 echo
 echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
 if ( [ $KVER_MAJOR -gt 3 ] && [ $KVER_MINOR -gt 6 ] ) && [ $KVER_MAJOR -lt 5 ] ; then
-	echo
-	echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
-	echo
-	echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+    echo
+    echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
+    echo
+    echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
 fi
 echo
 echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
