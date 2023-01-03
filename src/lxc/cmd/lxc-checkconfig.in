@@ -69,7 +69,9 @@ is_probed() {
     fi
 }
 
-echo "LXC version $(lxc-start --version)"
+if type lxc-start >/dev/null 2>&1; then
+    echo "LXC version $(lxc-start --version)"
+fi
 
 if [ ! -f $CONFIG ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
