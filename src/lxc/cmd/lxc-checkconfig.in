@@ -51,9 +51,9 @@ has_cgroup_ns() {
     mandatory=no
 
     if [ -f "/proc/self/ns/cgroup" ]; then
-	    show_enabled 0
+        show_enabled 0
     else
-	    show_enabled 1
+        show_enabled 1
     fi
 }
 
@@ -69,7 +69,9 @@ is_probed() {
     fi
 }
 
-echo "LXC version $(lxc-start --version)"
+if type lxc-start >/dev/null 2>&1; then
+    echo "LXC version $(lxc-start --version)"
+fi
 
 if [ ! -f $CONFIG ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
@@ -120,6 +122,7 @@ if [ -z "${KVER_MAJOR}" ]; then
     KVER_MINOR="0"
 fi
 
+echo ""
 echo "--- Namespaces ---"
 echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
 echo
@@ -132,36 +135,34 @@ echo
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
 echo
 if is_set CONFIG_USER_NS; then
-	if command -v newuidmap >/dev/null 2>&1; then
-		f=$(command -v newuidmap)
-		if [ ! -u "${f}" ]; then
-			echo "Warning: newuidmap is not setuid-root"
-		fi
-	else
-		echo "newuidmap is not installed"
-	fi
-	if command -v newgidmap >/dev/null 2>&1; then
-		f=$(command -v newgidmap)
-		if [ ! -u "${f}" ]; then
-			echo "Warning: newgidmap is not setuid-root"
-		fi
-	else
-		echo "newgidmap is not installed"
-	fi
+    if command -v newuidmap >/dev/null 2>&1; then
+        f=$(command -v newuidmap)
+        if [ ! -u "${f}" ]; then
+            echo "Warning: newuidmap is not setuid-root"
+        fi
+    else
+        echo "newuidmap is not installed"
+    fi
+    if command -v newgidmap >/dev/null 2>&1; then
+        f=$(command -v newgidmap)
+        if [ ! -u "${f}" ]; then
+            echo "Warning: newgidmap is not setuid-root"
+        fi
+    else
+        echo "newgidmap is not installed"
+    fi
 fi
 echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo
 if ([ $KVER_MAJOR -lt 4 ]) || ([ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]); then
-	echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
-	echo
+    echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+    echo
 fi
 echo
 
 echo "--- Control groups ---"
-
 echo -n "Cgroups: " && is_enabled CONFIG_CGROUPS
 echo
-
 echo -n "Cgroup namespace: " && has_cgroup_ns
 echo
 
@@ -169,39 +170,39 @@ print_cgroups() {
   # print all mountpoints for cgroup filesystems
   awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
 }
-
 CGROUP_V1_MNTS=$(print_cgroups cgroup /proc/self/mounts)
-echo
-echo "Cgroup v1 mount points: "
-echo "$CGROUP_V1_MNTS"
-echo
-
 CGROUP_V2_MNTS=$(print_cgroups cgroup2 /proc/self/mounts)
+
+echo "Cgroup v1 mount points: "
+for mnt in ${CGROUP_V1_MNTS}; do
+    echo " - ${mnt}"
+done
+
 echo "Cgroup v2 mount points: "
-echo "$CGROUP_V2_MNTS"
-echo
+for mnt in ${CGROUP_V2_MNTS}; do
+    echo " - ${mnt}"
+done
 
-CGROUP_SYSTEMD_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/systemd")
-if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
-    echo -n "Cgroup v1 systemd controller: "
-    $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
-    echo
-fi
+if [ "${CGROUP_V2_MNTS}" != "/sys/fs/cgroup" ]; then
+    CGROUP_SYSTEMD_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/systemd")
+    if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
+        echo -n "Cgroup v1 systemd controller: "
+        $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
+        echo
+    fi
 
-CGROUP_FREEZER_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/freezer")
-if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
-    echo -n "Cgroup v1 freezer controller: "
-    $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
-    echo
-fi
+    CGROUP_FREEZER_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep "/freezer")
+    if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
+        echo -n "Cgroup v1 freezer controller: "
+        $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
+        echo
+    fi
 
-CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
-if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
-    echo -n "Cgroup v1 clone_children flag: " &&
-    $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
-else
-    echo -n "Cgroup ns_cgroup: " && is_enabled CONFIG_CGROUP_NS yes
-    echo
+    CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
+    if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
+        echo -n "Cgroup v1 clone_children flag: " &&
+        $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+    fi
 fi
 
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
@@ -235,10 +236,10 @@ echo -n "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
 echo
 echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
 if ( [ $KVER_MAJOR -gt 3 ] && [ $KVER_MINOR -gt 6 ] ) && [ $KVER_MAJOR -lt 5 ] ; then
-	echo
-	echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
-	echo
-	echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+    echo
+    echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
+    echo
+    echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
 fi
 echo
 echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
@@ -270,15 +271,15 @@ echo -n "CONFIG_PACKET_DIAG: " && is_enabled CONFIG_PACKET_DIAG
 echo
 echo -n "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
 echo
-echo -n "File capabilities: " && \
-    ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
-       is_enabled CONFIG_SECURITY_FILE_CAPABILITIES; echo ) || \
-    ( ( [ "${KVER_MAJOR}" = "2" ] && [ ${KVER_MINOR} -gt 32 ] ) || \
-         [ ${KVER_MAJOR} -gt 2 ] && $SETCOLOR_SUCCESS && \
-         echo "enabled" && $SETCOLOR_NORMAL )
+echo -n "File capabilities: "
+if [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ]; then
+    is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
+    echo
+else
+    $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+fi
 
 echo
 echo "Note : Before booting a new kernel, you can check its configuration"
 echo "usage : CONFIG=/path/to/config $0"
 echo
-
