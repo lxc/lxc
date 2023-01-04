@@ -10,7 +10,7 @@ project(
         'b_lto=true',
         'b_lto_mode=thin',
         'b_colorout=always',
-        'b_asneeded=true',
+        'b_asneeded=false',
         'b_pie=true',
         'b_staticpic=true',
         'c_std=gnu11',
@@ -220,6 +220,7 @@ possible_cc_flags = [
 ]
 
 possible_link_flags = [
+    '-Wl,--no-as-needed',
     '-Wl,--gc-sections',
     '-Wl,-z,relro',
     '-Wl,-z,now',
