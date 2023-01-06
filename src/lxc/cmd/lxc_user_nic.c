@@ -489,20 +489,30 @@ static int instantiate_veth(char *veth1, char *veth2, pid_t pid, unsigned int mt
 	return netdev_set_flag(veth1, IFF_UP);
 }
 
-static int get_mtu(char *name)
+#define NETDEV_MTU_DEFAULT 1500
+
+static unsigned int get_mtu(char *name)
 {
-	int idx;
+	int idx, val;
 
 	idx = if_nametoindex(name);
-	if (idx < 0)
-		return -1;
+	if (idx < 0) {
+		usernic_error("Could not find netdev %s\n", name);
+		return NETDEV_MTU_DEFAULT;
+	}
 
-	return netdev_get_mtu(idx);
+	val = netdev_get_mtu(idx);
+	if (val < 0) {
+		usernic_error("Could not get MTU for netdev %s ifindex %d\n", name, idx);
+		return NETDEV_MTU_DEFAULT;
+	}
+
+	return val;
 }
 
 static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
-	unsigned int mtu = 1500;
+	unsigned int mtu = NETDEV_MTU_DEFAULT;
 	int ret;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 
@@ -520,8 +530,6 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 
 	if (strcmp(br, "none"))
 		mtu = get_mtu(br);
-	if (!mtu)
-		mtu = 1500;
 
 	/* create the nics */
 	ret = instantiate_veth(veth1buf, veth2buf, pid, mtu);
