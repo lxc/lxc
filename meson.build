@@ -224,10 +224,14 @@ possible_link_flags = [
     '-Wl,--gc-sections',
     '-Wl,-z,relro',
     '-Wl,-z,now',
-    '-Wl,-fuse-ld=gold',
     '-fstack-protector',
     '-fstack-protector-strong',
 ]
+
+# The gold linker fails with a bus error on sparc64
+if build_machine.cpu_family() != 'sparc64'
+    possible_link_flags += '-Wl,-fuse-ld=gold'
+endif
 
 if sanitize == 'none'
     possible_link_flags += '-Wl,--warn-common'
