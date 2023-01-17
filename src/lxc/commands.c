@@ -1059,7 +1059,7 @@ out:
  *
  * Returns the state on success, < 0 on failure
  */
-int lxc_cmd_get_state(const char *name, const char *lxcpath)
+int lxc_cmd_get_state(const char *name, const char *lxcpath, int timeout)
 {
 	bool stopped = false;
 	ssize_t ret;
@@ -1067,7 +1067,7 @@ int lxc_cmd_get_state(const char *name, const char *lxcpath)
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_STATE);
 
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	ret = lxc_cmd_timeout(name, &cmd, &stopped, lxcpath, NULL, timeout);
 	if (ret < 0 && stopped)
 		return STOPPED;
 

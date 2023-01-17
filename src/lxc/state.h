@@ -27,7 +27,7 @@ enum {
 	REBOOT_INIT
 };
 
-__hidden extern lxc_state_t lxc_getstate(const char *name, const char *lxcpath);
+__hidden extern lxc_state_t lxc_getstate(const char *name, const char *lxcpath, int timeout);
 
 __hidden extern lxc_state_t lxc_str2state(const char *state);
 __hidden extern const char *lxc_state2str(lxc_state_t state);

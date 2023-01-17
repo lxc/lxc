@@ -119,7 +119,7 @@ __hidden extern char *lxc_cmd_get_lxcpath(const char *hashed_sock);
 __hidden extern char *lxc_cmd_get_systemd_scope(const char *name, const char *lxcpath);
 __hidden extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath);
-__hidden extern int lxc_cmd_get_state(const char *name, const char *lxcpath);
+__hidden extern int lxc_cmd_get_state(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_stop(const char *name, const char *lxcpath);
 
 /* lxc_cmd_add_state_client    Register a new state client fd in the container's
