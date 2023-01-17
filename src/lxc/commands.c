@@ -441,12 +441,12 @@ __access_r(3, 2) static int rsp_many_fds_reap(int fd, __u32 fds_len,
 }
 
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
-			const char *lxcpath, const char *hashed_sock_name)
+			const char *lxcpath, const char *hashed_sock_name, int rcv_timeout)
 {
 	__do_close int client_fd = -EBADF;
 	ssize_t ret = -1;
 
-	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
+	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command", rcv_timeout);
 	if (client_fd < 0)
 		return -1;
 
@@ -475,13 +475,15 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 }
 
 /*
- * lxc_cmd: Connect to the specified running container, send it a command
- * request and collect the response
+ * lxc_cmd_timeout: Connect to the specified running container, send it a command
+ * request and collect the response with timeout
  *
- * @name           : name of container to connect to
- * @cmd            : command with initialized request to send
- * @stopped        : output indicator if the container was not running
- * @lxcpath        : the lxcpath in which the container is running
+ * @name             : name of container to connect to
+ * @cmd              : command with initialized request to send
+ * @stopped          : output indicator if the container was not running
+ * @lxcpath          : the lxcpath in which the container is running
+ * @hashed_sock_name : the hashed name of the socket (optional, can be NULL)
+ * @rcv_timeout      : SO_RCVTIMEO for LXC client_fd socket
  *
  * Returns the size of the response message on success, < 0 on failure
  *
@@ -493,8 +495,8 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
  * the slot with lxc_cmd_fd_cleanup(). The socket fd will be returned in the
  * cmd response structure.
  */
-static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
-		       const char *lxcpath, const char *hashed_sock_name)
+static ssize_t lxc_cmd_timeout(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
+		       const char *lxcpath, const char *hashed_sock_name, int rcv_timeout)
 {
 	__do_close int client_fd = -EBADF;
 	bool stay_connected = false;
@@ -506,7 +508,16 @@ static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 
 	*stopped = 0;
 
-	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
+	/*
+	 * We don't want to change anything for the case when the client
+	 * socket fd lifetime is longer than the lxc_cmd_timeout() execution.
+	 * So it's better not to set SO_RCVTIMEO for client_fd,
+	 * because it'll have an affect on the entire socket lifetime.
+	 */
+	if (stay_connected)
+		rcv_timeout = 0;
+
+	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name, rcv_timeout);
 	if (client_fd < 0) {
 		if (errno == ECONNREFUSED || errno == EPIPE)
 			*stopped = 1;
@@ -525,6 +536,12 @@ static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 		cmd->rsp.ret = move_fd(client_fd);
 
 	return ret;
+}
+
+static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
+		       const char *lxcpath, const char *hashed_sock_name)
+{
+	return lxc_cmd_timeout(name, cmd, stopped, lxcpath, hashed_sock_name, 0);
 }
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
