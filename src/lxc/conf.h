@@ -233,7 +233,7 @@ struct lxc_mount_options {
  * @path         : the rootfs source (directory or device)
  * @mount        : where it is mounted
  * @buf		 : static buffer to construct paths
- * @bev_type     : optional backing store type
+ * @bdev_type     : optional backing store type
  * @managed      : whether it is managed by LXC
  * @dfd_mnt	 : fd for @mount
  * @dfd_dev : fd for /dev of the container
