@@ -1,3 +1,5 @@
+
+
 name: Static analysis
 on:
   - push
