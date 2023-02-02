@@ -285,7 +285,7 @@ int setproctitle(char *title)
 	arg_start = (unsigned long)proctitle;
 	arg_end = arg_start + len;
 
-	brk_val = syscall(__NR_brk, 0);
+	brk_val = syscall(__NR_sbrk, 0);
 
 	prctl_map = (struct prctl_mm_map){
 	    .start_code = start_code,
