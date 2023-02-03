@@ -228,6 +228,27 @@ struct lxc_mount_options {
 	char *raw_options;
 };
 
+#define MAX_LOWERDIRS 64
+#define MAX_LOWER_OPTION_LEN 256
+#define MAX_LOWER_PATH_LEN (4 * PATH_MAX)
+
+/* Defines a structure to store the overlay data
+ * @used              : whether this configuration is used
+ * @lower_path        : an array of lower paths, as provided by the user
+ * @lower_options     : an array of lower options
+ * @lower_resolved    : the resulting lower path after it has been mounted
+ * @upperdir          : the upperdir for this overlay
+ * @workdir           : the workdir for this overlay
+ */
+struct lxc_overlay {
+	bool used;
+	char *lower_path[MAX_LOWERDIRS];
+	char *lower_mount_options[MAX_LOWERDIRS];
+	char *lower_resolved[MAX_LOWERDIRS];
+	char *upperdir;
+};
+
+
 /* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
  * @path         : the rootfs source (directory or device)
@@ -255,6 +276,7 @@ struct lxc_rootfs {
 	bool managed;
 	struct lxc_mount_options mnt_opts;
 	struct lxc_storage *storage;
+	struct lxc_overlay overlay;
 };
 
 /*

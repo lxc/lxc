@@ -93,6 +93,7 @@ lxc_config_define(init_gid);
 lxc_config_define(init_uid);
 lxc_config_define(init_groups);
 lxc_config_define(jump_table_net);
+lxc_config_define(jump_table_overlay);
 lxc_config_define(keyring_session);
 lxc_config_define(log_file);
 lxc_config_define(log_level);
@@ -141,6 +142,8 @@ lxc_config_define(rootfs_managed);
 lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_path);
+lxc_config_define(overlay_lower);
+lxc_config_define(overlay_upperdir);
 lxc_config_define(seccomp_profile);
 lxc_config_define(seccomp_allow_nesting);
 lxc_config_define(seccomp_notify_cookie);
@@ -257,6 +260,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.rootfs.mount",               true,  set_config_rootfs_mount,               get_config_rootfs_mount,               clr_config_rootfs_mount,               },
 	{ "lxc.rootfs.options",             true,  set_config_rootfs_options,             get_config_rootfs_options,             clr_config_rootfs_options,             },
 	{ "lxc.rootfs.path",                true,  set_config_rootfs_path,                get_config_rootfs_path,                clr_config_rootfs_path,                },
+	{ "lxc.rootfs.overlay.",            false, set_config_jump_table_overlay,         get_config_jump_table_overlay,         clr_config_jump_table_overlay,         },
 	{ "lxc.seccomp.allow_nesting",      true,  set_config_seccomp_allow_nesting,      get_config_seccomp_allow_nesting,      clr_config_seccomp_allow_nesting,      },
 	{ "lxc.seccomp.notify.cookie",      true,  set_config_seccomp_notify_cookie,      get_config_seccomp_notify_cookie,      clr_config_seccomp_notify_cookie,      },
 	{ "lxc.seccomp.notify.proxy",       true,  set_config_seccomp_notify_proxy,       get_config_seccomp_notify_proxy,       clr_config_seccomp_notify_proxy,       },
@@ -285,6 +289,10 @@ static struct lxc_config_t unsupported_config_key = {
 };
 
 struct lxc_config_net_t {
+	LXC_CONFIG_MEMBERS;
+};
+
+struct lxc_config_overlay_t {
 	LXC_CONFIG_MEMBERS;
 };
 
@@ -324,6 +332,19 @@ static struct lxc_config_net_t unsupported_config_net_key = {
 	set_config_unsupported_key,
 	get_config_unsupported_key,
 	clr_config_unsupported_key,
+};
+
+static struct lxc_config_overlay_t unsupported_config_overlay_key = {
+	NULL,
+	false,
+	set_config_unsupported_key,
+	get_config_unsupported_key,
+	clr_config_unsupported_key,
+};
+
+static struct lxc_config_overlay_t config_jump_table_overlay[] = {
+	{ "lower",                  false, set_config_overlay_lower,              get_config_overlay_lower,              clr_config_overlay_lower,              },
+	{ "upperdir",               true,  set_config_overlay_upperdir,           get_config_overlay_upperdir,           clr_config_overlay_upperdir,           },
 };
 
 struct lxc_config_t *lxc_get_config_exact(const char *key)
@@ -381,6 +402,14 @@ static inline bool match_config_net_item(const struct lxc_config_net_t *entry,
 	return strnequal(entry->name, key, strlen(entry->name));
 }
 
+static inline bool match_config_overlay(const struct lxc_config_overlay_t *entry,
+					 const char *key)
+{
+	if (entry->strict)
+		return strequal(entry->name, key);
+	return strnequal(entry->name, key, strlen(entry->name));
+}
+
 static struct lxc_config_net_t *lxc_get_config_net(const char *key)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table_net); i++) {
@@ -393,6 +422,20 @@ static struct lxc_config_net_t *lxc_get_config_net(const char *key)
 	}
 
 	return &unsupported_config_net_key;
+}
+
+static struct lxc_config_overlay_t *lxc_get_config_overlay(const char *key)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(config_jump_table_overlay); i++) {
+		struct lxc_config_overlay_t *cur = &config_jump_table_overlay[i];
+
+		if (!match_config_overlay(cur, key))
+			continue;
+
+		return cur;
+	}
+
+	return &unsupported_config_overlay_key;
 }
 
 static int set_config_net(const char *key, const char *value,
@@ -554,6 +597,100 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 	}
 
 	return ret_errno(EINVAL);
+}
+
+static int lxc_get_lowerdir_index(const char *key, int *idx, char *residual,
+				  size_t residual_len)
+{
+	int64_t tmpidx;
+	const char *idx_start;
+	int ret;
+
+	if (!idx) {
+		return ret_errno(EINVAL);
+	}
+
+	/* check that this is a sensible lower key */
+	if (!strnequal("lower.", key, STRLITERALLEN("lower.")))
+		return syserror_set(-EINVAL,
+				    "Invalid lower configuration \"%s\"", key);
+
+	/* lxc.rootfs.overlay.lower.<n> */
+	/* beginning of index string */
+	idx_start = key + STRLITERALLEN("lower.");
+	if (!isdigit(*idx_start))
+		return syserror_set(-EINVAL,
+				    "Failed to detect digit in string \"%s\"",
+				    key + 8);
+
+	ret = lxc_safe_int64_residual(idx_start, &tmpidx, 10, residual,
+				      residual_len);
+	if (ret)
+		return syserror("Failed to parse lower index");
+
+	if (tmpidx < 0 || tmpidx >= MAX_LOWERDIRS)
+		return syserror_set(-ERANGE, "Number of configured lowerdirs "
+					     "would overflow the counter");
+	*idx = (unsigned int)tmpidx;
+
+	return 0;
+}
+
+static int set_config_overlay_lower(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_overlay *overlay = data;
+	int ret;
+	int idx;
+	char suboption[PATH_MAX + STRLITERALLEN(".path")];
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_overlay_lower(key, lxc_conf, data);
+
+	ret = lxc_get_lowerdir_index(key, &idx, suboption, sizeof(suboption));
+	if (ret) {
+		return ret;
+	}
+
+	if (strequal(suboption, ".path")) {
+		ret = set_config_string_item_max(&lxc_conf->rootfs.overlay
+						      .lower_path[idx],
+						 value, MAX_LOWER_PATH_LEN);
+		if (ret < 0)
+			return ret;
+	} else if (strequal(suboption, ".mount_options")) {
+		ret = set_config_string_item_max(&lxc_conf->rootfs.overlay
+						      .lower_mount_options[idx],
+						 value, MAX_LOWER_OPTION_LEN);
+		if (ret < 0)
+			return ret;
+	} else {
+		return ret_errno(EINVAL);
+	}
+
+	return 0;
+}
+
+static int set_config_overlay_upperdir(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	int ret;
+	struct lxc_overlay *overlay = data;
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_overlay_upperdir(key, lxc_conf, data);
+
+	ret = set_config_path_item(&lxc_conf->rootfs.overlay.upperdir, value);
+	if (ret < 0)
+		return ret_errno(ENOMEM);
+
+	return 0;
 }
 
 static int set_config_net_name(const char *key, const char *value,
@@ -5398,6 +5535,12 @@ struct config_net_info {
 	struct lxc_netdev *netdev;
 };
 
+struct config_overlay_info {
+	char subkey[256];
+	const struct lxc_config_overlay_t *ops;
+	struct lxc_overlay *overlay;
+};
+
 static int get_network_config_ops(const char *key, struct lxc_conf *lxc_conf,
 				  struct config_net_info *info, bool allocate)
 {
@@ -5448,6 +5591,37 @@ static int get_network_config_ops(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
+static int get_overlay_config_ops(const char *key, struct lxc_conf *lxc_conf,
+				  struct config_overlay_info *info, bool allocate)
+{
+	if (is_empty_string(key))
+		return ret_errno(EINVAL);
+
+	/* check that this is a sensible overlay key */
+	if (!strnequal("lxc.rootfs.overlay.", key,
+		       STRLITERALLEN("lxc.rootfs.overlay.")))
+		return syserror_set(-EINVAL,
+				    "Invalid overlay configuration key \"%s\"",
+				    key);
+
+	info->overlay = &lxc_conf->rootfs.overlay;
+
+	/* lxc.rootfs.overlay. */
+	/* beginning of index string */
+	key = key + STRLITERALLEN("lxc.rootfs.overlay.");
+
+	strlcpy(info->subkey, key, sizeof(info->subkey));
+
+	/* lxc.rootfs.overlay.<subkey> */
+	info->ops = lxc_get_config_overlay(key);
+	if (info->ops == &unsupported_config_overlay_key)
+		return syserror_set(-ENOENT,
+				    "Unknown overlay configuration key \"%s\"",
+				    key);
+
+	return 0;
+}
+
 /* Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.' was
  * found. So we make sure next comes an integer, find the right callback (by
  * rewriting the key), and call it.
@@ -5471,6 +5645,40 @@ static int set_config_jump_table_net(const char *key, const char *value,
 		return ret;
 
 	return info.ops->set(info.subkey, value, lxc_conf, info.netdev);
+}
+
+/* Config entry is something like "lxc.rootfs.overlay.lower" the key
+ * 'lxc.rootfs.overlay.' was found.
+ */
+static int set_config_jump_table_overlay(const char *key, const char *value,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	struct config_overlay_info info = {};
+	int ret;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_jump_table_overlay(key, lxc_conf, data);
+
+	ret = get_overlay_config_ops(key, lxc_conf, &info, true);
+	if (ret)
+		return ret;
+
+	info.overlay->used = 1;
+
+	if (lxc_conf->rootfs.path && !strequal(lxc_conf->rootfs.path, "overlayfs:")) {
+		return log_error_errno(-EINVAL, EINVAL, "lxc.rootfs.path is already configured: \"%s\"", lxc_conf->rootfs.path);
+	}
+
+	if (!lxc_conf->rootfs.path) {
+		/* set the type of storage to overlayfs */
+		lxc_conf->rootfs.path = strdup("overlayfs:");
+		if (!lxc_conf->rootfs.path) {
+			return ret_errno(ENOMEM);
+		}
+	}
+
+	return info.ops->set((const char *)&info.subkey, value, lxc_conf,
+			     info.overlay);
 }
 
 static int clr_config_jump_table_net(const char *key, struct lxc_conf *lxc_conf,
@@ -5506,6 +5714,47 @@ static int clr_config_jump_table_net(const char *key, struct lxc_conf *lxc_conf,
 		return ret;
 
 	return info.ops->clr(info.subkey, lxc_conf, info.netdev);
+}
+
+static int clr_config_jump_table_overlay(const char *key,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	struct config_overlay_info info = {};
+	int ret;
+
+	ret = get_overlay_config_ops(key, lxc_conf, &info, false);
+	if (ret)
+		return ret;
+
+	return info.ops->clr(info.subkey, lxc_conf, info.overlay);
+}
+
+static int clr_config_overlay_lower(const char *key, struct lxc_conf *lxc_conf,
+				    void *data)
+{
+	int i;
+	struct lxc_overlay *overlay = data;
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	for (i = 0; i < MAX_LOWERDIRS; i++) {
+		free_disarm(overlay->lower_path[i]);
+	}
+
+	return 0;
+}
+
+static int clr_config_overlay_upperdir(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_overlay *overlay = data;
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	free_disarm(overlay->upperdir);
+	return 0;
 }
 
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
@@ -5910,6 +6159,19 @@ static int get_config_jump_table_net(const char *key, char *retv, int inlen,
 	return info.ops->get(info.subkey, retv, inlen, c, info.netdev);
 }
 
+static int get_config_jump_table_overlay(const char *key, char *retv, int inlen,
+					 struct lxc_conf *c, void *data)
+{
+	struct config_overlay_info info = {};
+	int ret;
+
+	ret = get_overlay_config_ops(key, c, &info, false);
+	if (ret)
+		return ret;
+
+	return info.ops->get(info.subkey, retv, inlen, c, info.overlay);
+}
+
 static int get_config_net_type(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
@@ -5981,6 +6243,64 @@ static int get_config_net_l2proxy(const char *key, char *retv, int inlen,
 		return ret_errno(EINVAL);
 
 	return lxc_get_conf_bool(c, retv, inlen, netdev->l2proxy);
+}
+
+static int get_config_overlay_lower(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
+{
+	int len;
+	int ret;
+	int fulllen = 0;
+	int idx = 0;
+	struct lxc_overlay *overlay = data;
+	char suboption[128];
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	ret = lxc_get_lowerdir_index(key, &idx, suboption, sizeof(suboption));
+	if (ret) {
+		return ret;
+	}
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (strequal(suboption, ".path")) {
+		if (overlay->lower_path[idx])
+			strprint(retv, inlen, "%s", overlay->lower_path[idx]);
+	} else if (strequal(suboption, ".mount_options")) {
+		if (overlay->lower_mount_options[idx])
+			strprint(retv, inlen, "%s",
+				 overlay->lower_mount_options[idx]);
+	} else {
+		return ret_errno(EINVAL);
+	}
+
+	return fulllen;
+}
+
+static int get_config_overlay_upperdir(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
+{
+	int len;
+	int fulllen = 0;
+	struct lxc_overlay *overlay = data;
+
+	if (!overlay)
+		return ret_errno(EINVAL);
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (overlay->upperdir[0] != '\0')
+		strprint(retv, inlen, "%s", overlay->upperdir);
+
+	return fulllen;
 }
 
 static int get_config_net_name(const char *key, char *retv, int inlen,

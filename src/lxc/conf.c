@@ -1445,6 +1445,246 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 	return log_trace(0, "Container uses separate rootfs. Opened container's rootfs");
 }
 
+enum LOWERDIR_TYPE {
+	LOWERDIR_FUSE,
+	LOWERDIR_DIR
+};
+
+static int lxc_mount_overlay_lower(struct lxc_overlay *overlay, int index,
+				   const char *lxcpath,
+				   const char *container_name)
+{
+	size_t retlen = 0;
+	int ret;
+	char lowerdir_mount[PATH_MAX];
+	/* fuse binary may take a PATH_MAX, the path argument takes another
+	 * PATH_MAX, so 4 * PATH_MAX should be enough
+	 */
+	char cmd_buffer[4 * PATH_MAX];
+	char number_buffer[32];
+	enum LOWERDIR_TYPE type;
+	char *lower;
+
+	if (index < 0 || index >= MAX_LOWERDIRS) {
+		return log_error(-EINVAL, "index %d out of range", index);
+	}
+
+	if (!overlay->lower_path[index]) {
+		return log_error(-EINVAL, "lower[%d] not set", index);
+	}
+
+	lower = overlay->lower_path[index];
+
+	if (strnequal(overlay->lower_path[index],
+		      "fuse:", STRLITERALLEN("fuse:"))) {
+		lower += STRLITERALLEN("fuse:");
+		type = LOWERDIR_FUSE;
+	} else {
+		type = LOWERDIR_DIR;
+	}
+
+	if (type == LOWERDIR_FUSE) {
+		retlen = strlcpy(lowerdir_mount, lxcpath, sizeof(lowerdir_mount));
+		if (retlen >= sizeof(lowerdir_mount)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to lowerdir_mount",
+					 lxcpath);
+		}
+
+		retlen = strlcat(lowerdir_mount, "/", sizeof(lowerdir_mount));
+		if (retlen >= sizeof(lowerdir_mount)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to lowerdir_mount",
+					 "/");
+		}
+
+		retlen = strlcat(lowerdir_mount, container_name,
+				 sizeof(lowerdir_mount));
+		if (retlen >= sizeof(lowerdir_mount)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to lowerdir_mount",
+					 container_name);
+		}
+
+		retlen = strlcat(lowerdir_mount, "/overlay/lower-",
+				 sizeof(lowerdir_mount));
+		if (retlen >= sizeof(lowerdir_mount)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to lowerdir_mount",
+					 "/");
+		}
+
+		snprintf(number_buffer, sizeof(number_buffer), "%d", index);
+
+		retlen = strlcat(lowerdir_mount, number_buffer,
+				 sizeof(lowerdir_mount));
+		if (retlen >= sizeof(lowerdir_mount)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to lowerdir_mount",
+					 number_buffer);
+		}
+
+		ret = mkdir_p(lowerdir_mount, 0755);
+		if (ret < 0) {
+			return ret;
+		}
+
+		retlen = strlcpy(cmd_buffer, lower, sizeof(cmd_buffer));
+		if (retlen >= sizeof(cmd_buffer)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to cmd_buffer", lower);
+		}
+
+		lxc_char_replace(':', ' ', cmd_buffer);
+
+		if (overlay->lower_mount_options[index]) {
+			retlen = strlcat(cmd_buffer, " -o ", sizeof(cmd_buffer));
+			if (retlen >= sizeof(cmd_buffer)) {
+				return log_error(-EINVAL, "cannot copy (%s) to cmd_buffer",
+						 " -o ");
+			}
+
+			retlen = strlcat(cmd_buffer,
+					 overlay->lower_mount_options[index],
+					 sizeof(cmd_buffer));
+			if (retlen >= sizeof(cmd_buffer)) {
+				return log_error(-EINVAL, "cannot copy (%s) to cmd_buffer",
+						 overlay->lower_mount_options[index]);
+			}
+		}
+
+		retlen = strlcat(cmd_buffer, " ", sizeof(cmd_buffer));
+		if (retlen >= sizeof(cmd_buffer)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to cmd_buffer", " ");
+		}
+
+		retlen = strlcat(cmd_buffer, lowerdir_mount, sizeof(cmd_buffer));
+		if (retlen >= sizeof(cmd_buffer)) {
+			return log_error(-EINVAL,
+					 "cannot copy (%s) to cmd_buffer",
+					 lowerdir_mount);
+		}
+
+		DEBUG("command to run: \"%s\"", cmd_buffer);
+		ret = run_buffer(cmd_buffer);
+		if (ret < 0) {
+			return ret;
+		}
+
+		overlay->lower_resolved[index] = strdup(lowerdir_mount);
+		if (!overlay->lower_resolved[index]) {
+			return ret_errno(ENOMEM);
+		}
+	} else if (type == LOWERDIR_DIR) {
+		overlay->lower_resolved[index] =
+		    strdup(overlay->lower_path[index]);
+		if (!overlay->lower_resolved[index]) {
+			return ret_errno(ENOMEM);
+		}
+	} else {
+		return log_error(-EINVAL, "lower type not recognized");
+	}
+
+	return 0;
+}
+
+static int lxc_mount_overlay(struct lxc_rootfs *rootfs, const char *lxcpath,
+			     const char *container_name)
+{
+	size_t i;
+	struct lxc_overlay *overlay = &rootfs->overlay;
+	size_t lowerdir_size = 0;
+	size_t nr_lowerdirs = 0;
+	size_t rootfs_path_size = 0;
+	int ret;
+	char *tmp;
+
+	if (!overlay->used) {
+		return log_trace(0, "Container doesn't use rootfs.overlay "
+				    "namespace.");
+	}
+
+	/* if the path is set to anything other than "overlayfs:", bail */
+	if (!strequal(rootfs->path, "overlayfs:")) {
+		return log_error(-1, "lxc.rootfs.path is already configured: %s",
+				 rootfs->path);
+	}
+
+	if (!overlay->upperdir) {
+		return log_error(-1, "overlay is missing upperdir");
+	}
+
+	for (i = 0; i < MAX_LOWERDIRS; i++) {
+		if (overlay->lower_path[i]) {
+			ret = lxc_mount_overlay_lower(overlay, i, lxcpath,
+						      container_name);
+			if (ret < 0) {
+				return ret;
+			}
+			DEBUG("lower \"%s\"", overlay->lower_path[i]);
+			lowerdir_size += strlen(overlay->lower_resolved[i]);
+			nr_lowerdirs++;
+		} else {
+			break;
+		}
+	}
+
+	if (!i) {
+		return log_error(-1, "overlay is missing lower");
+	}
+
+	DEBUG("Mount overlay, upperdir \"%s\"", overlay->upperdir);
+
+	rootfs_path_size = strlen("overlayfs:") + lowerdir_size +
+			   nr_lowerdirs * strlen(":") +
+			   strlen(overlay->upperdir) + 1;
+	tmp = realloc(rootfs->path, rootfs_path_size);
+	if (!tmp) {
+		return ret_errno(ENOMEM);
+	}
+
+	rootfs->path = tmp;
+
+	if (strlcpy(rootfs->path, "overlayfs:", rootfs_path_size) >=
+	    rootfs_path_size) {
+		return log_error(-1, "Failed to copy \"%s\" to rootfs->path (size: %lu)",
+				 "overlayfs", rootfs_path_size);
+	}
+
+	for (i = 0; i < nr_lowerdirs; i++) {
+		if (strlcat(rootfs->path, overlay->lower_resolved[i],
+			    rootfs_path_size) >= rootfs_path_size) {
+			return log_error(-1, "Failed to append \"%s\" to \"%s\" (size: %lu)",
+					 overlay->lower_resolved[i],
+					 rootfs->path, rootfs_path_size);
+		}
+		if (strlcat(rootfs->path, ":", rootfs_path_size) >=
+		    rootfs_path_size) {
+			return log_error(-1, "Failed to append \"%s\" to \"%s\" (size: %lu)",
+					 ":", rootfs->path, rootfs_path_size);
+		}
+	}
+	if (strlcat(rootfs->path, overlay->upperdir, rootfs_path_size) >=
+	    rootfs_path_size) {
+		return log_error(-1, "Failed to append \"%s\" to \"%s\" (size: %lu)",
+				 overlay->upperdir, rootfs->path,
+				 rootfs_path_size);
+	}
+
+	DEBUG("Rootfs path: \"%s\"", rootfs->path);
+
+	/* since we couldn't know the overlayfs arguments beforehand, we need to
+	 * fix the path in storage ops */
+	free(rootfs->storage->src);
+	rootfs->storage->src = strdup(rootfs->path);
+	if (!rootfs->storage->src) {
+		return ret_errno(ENOMEM);
+	}
+
+	return log_trace(0, "Container uses overlay rootfs.");
+}
+
 static bool lxc_rootfs_overmounted(struct lxc_rootfs *rootfs)
 {
 	__do_close int fd_rootfs = -EBADF;
@@ -3988,6 +4228,10 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 	if (ret < 0)
 		return log_error(-1, "Failed to run pre-mount hooks");
 
+	ret = lxc_mount_overlay(&conf->rootfs, lxcpath, conf->name);
+	if (ret < 0)
+		return log_error(-1, "Failed to setup overlay");
+
 	ret = lxc_mount_rootfs(&conf->rootfs);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup rootfs for");
@@ -4820,6 +5064,20 @@ int lxc_clear_apparmor_raw(struct lxc_conf *c)
 	INIT_LIST_HEAD(&c->lsm_aa_raw);
 	return 0;
 }
+static void lxc_rootfs_free(struct lxc_rootfs *rootfs) {
+	int i;
+
+	free(rootfs->mount);
+	free(rootfs->bdev_type);
+	free(rootfs->path);
+
+	for (i = 0; i < MAX_LOWERDIRS; i++) {
+		free(rootfs->overlay.lower_path[i]);
+		free(rootfs->overlay.lower_mount_options[i]);
+		free(rootfs->overlay.lower_resolved[i]);
+	}
+	free(rootfs->overlay.upperdir);
+}
 
 void lxc_conf_free(struct lxc_conf *conf)
 {
@@ -4829,9 +5087,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (current_config == conf)
 		current_config = NULL;
 	lxc_terminal_conf_free(&conf->console);
-	free(conf->rootfs.mount);
-	free(conf->rootfs.bdev_type);
-	free(conf->rootfs.path);
+	lxc_rootfs_free(&conf->rootfs);
 	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
 	if (conf->logfd != -1)

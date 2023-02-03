@@ -30,6 +30,8 @@ __hidden extern const char **lxc_va_arg_list_to_argv_const(va_list ap, size_t sk
  * Some simple string functions; if they return pointers, they are allocated
  * buffers.
  */
+__hidden extern size_t lxc_char_replace(const char needle, const char replacement,
+					char *haystack);
 __hidden extern char *lxc_string_replace(const char *needle, const char *replacement,
 					 const char *haystack);
 __hidden extern bool lxc_string_in_array(const char *needle, const char **haystack);

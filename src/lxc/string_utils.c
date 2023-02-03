@@ -82,6 +82,19 @@ const char **lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 	return (const char **)lxc_va_arg_list_to_argv(ap, skip, 0);
 }
 
+size_t lxc_char_replace(const char needle, const char replacement,
+			char *haystack) {
+	size_t i;
+	size_t count = 0;
+	for (i = 0; i < strlen(haystack); i++) {
+		if (haystack[i] == needle) {
+			haystack[i] = replacement;
+			count++;
+		}
+	}
+	return count;
+}
+
 char *lxc_string_replace(const char *needle, const char *replacement,
 			 const char *haystack)
 {

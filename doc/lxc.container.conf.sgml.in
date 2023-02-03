@@ -1505,6 +1505,71 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
+            <option>lxc.rootfs.overlay.upperdir</option>
+          </term>
+          <listitem>
+            <para>
+              this option can be used as an alternative to lxc.rootfs.path for specifying
+              the upperdir for the rootfs overlay mount. It must be used in conjunction
+              with lxc.rootfs.overlay.lower.[i].path.
+            </para>
+              a pathname is used for this option, for example
+              <filename>/home/joe/.local/share/lxc/my-container/upper</filename>
+            <para>
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.overlay.lower.[i].path</option>
+          </term>
+          <listitem>
+            <para>
+              specify the lower path for the ith lowerdir in the overlay
+            </para>
+            <para>
+              For specifying a directory, a pathname can be used. For a fuse
+              mount, the following syntax is used:
+              <filename>fuse:fuse_binary:[arg_1]:[arg_2]:...:[arg_n]:source</filename>
+              The arguments to the <filename>fuse_binary</filename> are specified with
+              trailing colon-separated values. Before calling the
+              <filename>fuse_binary</filename>, the colons are replaced with spaces.
+              <filename>source</filename> is not a special argument, it just denotes the
+              source of the fuse mount, (e.g. the squash archive for squashfs, the remote
+              filesystem for sshfs).
+              The mount point is auto-generated in
+              <filename>LCX_PATH/LXC_NAME/overlay/lower-[i]</filename> and it is appended
+              to the <filename>fuse_binary</filename> command line.
+              For example, for an unprivileged container "my-container",
+              <filename>fuse:/usr/bin/squashfuse:/home/joe/rootfs.sqhs</filename>
+              will call <filename>/usr/bin/squashfuse /home/joe/rootfs.sqhs
+              /home/joe/.local/share/lxc/my-container/overlay/lower-0</filename>
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.overlay.lower.[i].mount_options</option>
+          </term>
+          <listitem>
+            <para>
+              specify the mount options for this lower path
+            </para>
+            <para>
+              In case the lower path is specified as <filename>fuse:</filename>, these mount
+              options will be passed to the <filename>fuse_binary</filename> prepending "-o"
+              to them. The mount options are a list of comma-separated values and are passed
+              as-is to the <filename>fuse_binary</filename>. For example, <filename>allow_other,ro
+              </filename> will be passed to the <filename>fuse_binary</filename> as
+              <filename>-o allow_other,ro</filename>.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
             <option>lxc.rootfs.mount</option>
           </term>
           <listitem>
