@@ -2212,7 +2212,7 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 
 static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
 {
-	ssize_t ret;
+	size_t ret;
 
 	/* If '=' is contained in opt, the option must go into data. */
 	if (!strchr(opt, '=')) {
@@ -2236,12 +2236,12 @@ static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t siz
 
 	if (strlen(*data)) {
 		ret = strlcat(*data, ",", size);
-		if (ret < 0)
+		if (ret >= size)
 			return log_error_errno(ret, errno, "Failed to append \",\" to %s", *data);
 	}
 
 	ret = strlcat(*data, opt, size);
-	if (ret < 0)
+	if (ret >= size)
 		return log_error_errno(ret, errno, "Failed to append \"%s\" to %s", opt, *data);
 
 	return 0;
