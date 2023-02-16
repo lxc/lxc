@@ -224,7 +224,7 @@ int setproctitle(char *title)
 	 * PR_SET_MM_MAP requires us to set it all at once, so we have to
 	 * figure it out anyway.
 	 */
-	unsigned long start_data, end_data, start_brk, start_code, end_code,
+	uint64_t start_data, end_data, start_brk, start_code, end_code,
 	    start_stack, arg_start, arg_end, env_start, env_end, brk_val;
 	struct prctl_mm_map prctl_map;
 
@@ -253,7 +253,7 @@ int setproctitle(char *title)
 	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(buf_ptr, "%lu %lu %lu", &start_code, &end_code, &start_stack);
+	i = sscanf(buf_ptr, "%" PRIu64 " %" PRIu64 " %" PRIu64, &start_code, &end_code, &start_stack);
 	if (i != 3)
 		return -1;
 
@@ -267,7 +267,7 @@ int setproctitle(char *title)
 	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(buf_ptr, "%lu %lu %lu %*u %*u %lu %lu", &start_data,
+	i = sscanf(buf_ptr, "%" PRIu64 " %" PRIu64 " %" PRIu64 " %*u %*u %" PRIu64 " %" PRIu64, &start_data,
 		   &end_data, &start_brk, &env_start, &env_end);
 	if (i != 5)
 		return -1;
