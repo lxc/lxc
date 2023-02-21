@@ -36,15 +36,18 @@ done
 LOCALSTATEDIR=@LOCALSTATEDIR@
 LXC_TEMPLATE_CONFIG=@LXCTEMPLATECONFIG@
 LXC_HOOK_DIR=@LXCHOOKDIR@
+MOUNT_HELPER="atomfs"
+MOUNTED_WORKDIR=""
 
 # Some useful functions
 cleanup() {
-  if [ -d "${DOWNLOAD_TEMP}" ]; then
-    rm -Rf "${DOWNLOAD_TEMP}"
-  fi
-
   if [ -d "${LXC_ROOTFS}.tmp" ]; then
     rm -Rf "${LXC_ROOTFS}.tmp"
+  fi
+  if [ -n "${MOUNTED_WORKDIR}" ]; then
+    echo "${MOUNT_HELPER} unmount ${MOUNTED_WORKDIR}" >&2
+    "${MOUNT_HELPER}" umount "${MOUNTED_WORKDIR}"
+    MOUNTED_WORKDIR=""
   fi
 }
 
@@ -72,28 +75,50 @@ in_userns() {
 }
 
 getconfigpath() {
-  basedir="$1"
-  q="$2"
-
-  digest=$(jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end' < "${basedir}/index.json")
-  if [ -z "${digest}" ]; then
-    echo "$q not found in index.json" >&2
-    return
-  fi
-
-  # Ok we have the image config digest, now get the config from that
+  local basedir="$1" mfpath="$2" cdigest=""
+  # Ok we have the image config digest, now get the config ref from the manifest.
   # shellcheck disable=SC2039
-  d=${digest:7}
-  cdigest=$(jq -c -r '.config.digest' < "${basedir}/blobs/sha256/${d}")
+  cdigest=$(jq -c -r '.config.digest' < "$mfpath")
   if [ -z "${cdigest}" ]; then
     echo "container config not found" >&2
     return
   fi
 
-  # shellcheck disable=SC2039
-  d2=${cdigest:7}
-  echo "${basedir}/blobs/sha256/${d2}"
-  return
+  # cdigest is '<hashtype>:<hash>', so 'ht' gets type, hv gets value.
+  local ht="${cdigest%%:*}" hv="${cdigest#*:}" p=""
+  p="$basedir/blobs/$ht/$hv"
+  if [ ! -f "$p" ]; then
+    echo "config file did not exist for digest $cdigest" >&2
+    return 1
+  fi
+  echo "$p"
+}
+
+getmanifestpath() {
+  local basedir="$1" ref="$2" p=""
+  # if given 'sha256:<hash>' then return the blobs/sha256/hash
+  case "$ref" in
+    sha256:*)
+      p="$basedir/blobs/sha256/${ref#sha256:}"
+      [ -f "$p" ] && echo "$p" && return 0
+      echo "could not find manifest path to blob $ref. file did not exist: $p" >&2
+      return 1
+      ;;
+  esac
+  # find the reference by annotation
+  local blobref="" hashtype="" hashval=""
+  blobref=$(jq -c -r --arg q "$ref" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end' < "${basedir}/index.json")
+  # blobref is 'hashtype:hash'
+  hashtype="${blobref%%:*}"
+  hashval="${blobref#*:}"
+  p="$basedir/blobs/$hashtype/$hashval"
+  [ -f "$p" ] && echo "$p" && return 0
+  echo "did not find manifest for $ref. file did not exist: $p" >&2
+  return 1
+}
+
+getlayermediatype() {
+  jq -c -r '.layers[0].mediaType' <"$1"
 }
 
 # Get entrypoint from oci image. Use sh if unspecified
@@ -211,6 +236,13 @@ Required arguments:
 Optional arguments:
 [ --username <username> ]: The username for the registry
 [ --password <password> ]: The password for the registry
+[ --mount-helper <command> ]: program that will be used to mount. default is 'atomfs'
+
+     mount-helper is expected to support being called with 'mount'
+     and 'umount' subcommands as below:
+
+        mount-helper mount oci:<oci_dir>:<oci_name> <mountpoint>
+        mount-helper umount <mountpoint>
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -222,7 +254,7 @@ EOF
   return 0
 }
 
-if ! options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,dhcp,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
+if ! options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,dhcp,name:,path:,rootfs:,mapped-uid:,mapped-gid:,mount-helper: -- "$@"); then
     usage
     exit 1
 fi
@@ -253,6 +285,7 @@ while :; do
     --rootfs)     LXC_ROOTFS=$2; shift 2;;
     --mapped-uid) LXC_MAPPED_UID=$2; shift 2;;
     --mapped-gid) LXC_MAPPED_GID=$2; shift 2;;
+    --mount-helper) MOUNT_HELPER=$2; shift 2;;
     *)            break;;
   esac
 done
@@ -289,6 +322,7 @@ if [ "$USERNS" = "yes" ]; then
   fi
 fi
 
+OCI_DIR="$LXC_PATH/oci"
 if [ "${OCI_USE_CACHE}" = "true" ]; then
   if [ "$USERNS" = "yes" ]; then
     DOWNLOAD_BASE="${HOME}/.cache/lxc"
@@ -296,23 +330,16 @@ if [ "${OCI_USE_CACHE}" = "true" ]; then
     DOWNLOAD_BASE="${LOCALSTATEDIR}/cache/lxc"
   fi
 else
-  DOWNLOAD_BASE=/tmp
+  DOWNLOAD_BASE="$OCI_DIR"
 fi
 mkdir -p "${DOWNLOAD_BASE}"
 
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
-if ! command -v mktemp >/dev/null 2>&1; then
-  DOWNLOAD_TEMP="${DOWNLOAD_BASE}/lxc-oci.$$"
-  mkdir -p "${DOWNLOAD_TEMP}"
-else
-  DOWNLOAD_TEMP=$(mktemp -d -p "${DOWNLOAD_BASE}")
-fi
-
 # Download the image
 # shellcheck disable=SC2039
-skopeo_args=("")
+skopeo_args=("--remove-signatures" "--insecure-policy")
 if [ -n "$OCI_USERNAME" ]; then
   CREDENTIALS="${OCI_USERNAME}"
 
@@ -324,37 +351,65 @@ if [ -n "$OCI_USERNAME" ]; then
   skopeo_args+=(--src-creds "${CREDENTIALS}")
 fi
 
+OCI_NAME="$LXC_NAME"
 if [ "${OCI_USE_CACHE}" = "true" ]; then
-  # shellcheck disable=SC2039
-  # shellcheck disable=SC2068
   skopeo_args+=(--dest-shared-blob-dir "${DOWNLOAD_BASE}")
-  # shellcheck disable=SC2039
-  # shellcheck disable=SC2068
-  skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
-  ln -s "${DOWNLOAD_BASE}/sha256" "${DOWNLOAD_TEMP}/blobs/sha256"
-else
-  # shellcheck disable=SC2039
-  # shellcheck disable=SC2068
-  skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+  mkdir -p "${OCI_DIR}/blobs/"
+  ln -s "${DOWNLOAD_BASE}/sha256" "${OCI_DIR}/blobs/sha256"
 fi
 
-echo "Unpacking the rootfs"
-# shellcheck disable=SC2039
-umoci_args=("")
-if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-  # shellcheck disable=SC2039
-  umoci_args+=(--rootless)
-fi
-# shellcheck disable=SC2039
-# shellcheck disable=SC2068
-umoci --log=error unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
-find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
+skopeo copy "${skopeo_args[@]}" "${OCI_URL}" "oci:${OCI_DIR}:${OCI_NAME}"
 
-OCI_CONF_FILE=$(getconfigpath "${DOWNLOAD_TEMP}" latest)
+mfpath=$(getmanifestpath "${OCI_DIR}" "${OCI_NAME}")
+OCI_CONF_FILE=$(getconfigpath "${OCI_DIR}" "$mfpath")
+mediatype=$(getlayermediatype "$mfpath")
+echo "mfpath=$mfpath conf=$OCI_CONF_FILE" 1>&2
+echo "mediatype=$mediatype" >&2
+
+case "$mediatype" in
+  #application/vnd.oci.image.layer.v1.tar+gzip
+  application/vnd.oci.image.layer.v1.tar*)
+    echo "Unpacking tar rootfs" 2>&1
+    # shellcheck disable=SC2039
+    umoci_args=("")
+    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+      # shellcheck disable=SC2039
+      umoci_args+=(--rootless)
+    fi
+    # shellcheck disable=SC2039
+    # shellcheck disable=SC2068
+    umoci --log=error unpack ${umoci_args[@]} --image "${OCI_DIR}:${OCI_NAME}" "${LXC_ROOTFS}.tmp"
+    find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
+    ;;
+  #application/vnd.stacker.image.layer.squashfs+zstd+verity
+  application/vnd.*.image.layer.squashfs*)
+    if ! command -v "${MOUNT_HELPER}" >/dev/null 2>&1; then
+      echo "media type $mediatype requires $MOUNT_HELPER" >&2
+      exit 1
+    fi
+    echo "$MOUNT_HELPER mount ${OCI_DIR}:${OCI_NAME} $LXC_ROOTFS" >&2
+    "$MOUNT_HELPER" mount "${OCI_DIR}:${OCI_NAME}" "$LXC_ROOTFS"
+    MOUNTED_WORKDIR="$LXC_ROOTFS"
+    ;;
+  *)
+    echo "Unknown media type $mediatype" >&2
+    exit 1
+    ;;
+esac
+
 LXC_CONF_FILE="${LXC_PATH}/config"
 entrypoint=$(getep "${OCI_CONF_FILE}")
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
+
+case "$mediatype" in
+  application/vnd.*.image.layer.squashfs*)
+    echo "lxc.hook.version = 1" >> "${LXC_CONF_FILE}"
+    # shellcheck disable=SC2016
+    echo "lxc.hook.pre-mount = $MOUNT_HELPER mount" \
+        '${LXC_ROOTFS_PATH}/../oci:${LXC_NAME} ${LXC_ROOTFS_PATH}' \
+        >> "${LXC_CONF_FILE}";;
+esac
 
 environment=$(getenv "${OCI_CONF_FILE}")
 # shellcheck disable=SC2039
