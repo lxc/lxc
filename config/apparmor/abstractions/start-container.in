@@ -20,6 +20,7 @@
   mount options=(rw, make-shared) -> **,
   mount options=(rw, make-rshared) -> **,
   mount fstype=debugfs,
+  mount fstype=fuse.*,
   # allow pre-mount hooks to stage mounts under /var/lib/lxc/<container>/
   mount -> /var/lib/lxc/{**,},
 
