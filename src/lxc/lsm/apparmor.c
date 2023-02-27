@@ -973,12 +973,14 @@ static int load_apparmor_profile(struct lsm_ops *ops, struct lxc_conf *conf, con
 			goto out;
 		}
 		old_len = profile_sb.st_size;
-		old_content = lxc_strmmap(NULL, old_len, PROT_READ,
-		                          MAP_PRIVATE, profile_fd, 0);
-		if (old_content == MAP_FAILED) {
-			SYSERROR("Failed to mmap old profile from %s",
-			         profile_path);
-			goto out;
+		if (old_len) {
+			old_content = lxc_strmmap(NULL, old_len, PROT_READ,
+						  MAP_PRIVATE, profile_fd, 0);
+			if (old_content == MAP_FAILED) {
+				SYSERROR("Failed to mmap old profile from %s",
+					 profile_path);
+				goto out;
+			}
 		}
 	} else if (errno != ENOENT) {
 		SYSERROR("Error reading old profile from %s", profile_path);
