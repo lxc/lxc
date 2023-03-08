@@ -59,9 +59,8 @@
 #include "strlcat.h"
 #endif
 
-#if HAVE_LIBSYSTEMD
-#include <systemd/sd-bus.h>
-#include <systemd/sd-event.h>
+#if HAVE_DBUS
+#include <dbus/dbus.h>
 #endif
 
 lxc_log_define(cgfsng, cgroup);
@@ -963,102 +962,400 @@ static bool check_cgroup_dir_config(struct lxc_conf *conf)
 #define SYSTEMD_SCOPE_UNSUPP 1
 #define SYSTEMD_SCOPE_SUCCESS 0
 
-#if HAVE_LIBSYSTEMD
-struct sd_callback_data {
-	char *scope_name;
-	bool job_complete;
-};
-
-static int systemd_jobremoved_callback(sd_bus_message *m, void *userdata, sd_bus_error *error)
-{
-	char *path, *unit, *result;
-	struct sd_callback_data *sd_data = userdata;
-	uint32_t id;
-	int r;
-
-	r = sd_bus_message_read(m, "uoss", &id, &path, &unit, &result);
-	if (r < 0)
-		return log_error(-1, "bad message received in callback: %s", strerror(-r));
-
-	if (sd_data->scope_name && strcmp(unit, sd_data->scope_name) != 0)
-		return log_trace(-1, "unit was '%s' not '%s'", unit, sd_data->scope_name);
-	if (strcmp(result, "done") == 0) {
-		sd_data->job_complete = true;
-		return log_info(1, "job is done");
-	}
-	return log_debug(0, "result was '%s', not 'done'", result);
-}
-
+#if HAVE_DBUS
 #define DESTINATION "org.freedesktop.systemd1"
 #define PATH "/org/freedesktop/systemd1"
 #define INTERFACE "org.freedesktop.systemd1.Manager"
-#define MEMBER "StartTransientUnit"
-static bool start_scope(sd_bus *bus, struct sd_callback_data *data, struct sd_event *event)
+
+static bool dbus_threads_initialized = false;
+
+static void _dbus_connection_free(DBusConnection **conn) {
+	if (*conn) {
+		dbus_connection_unref(*conn);
+		*conn = NULL;
+	}
+}
+
+static void _dbus_message_free(DBusMessage **message)
 {
-	__attribute__((__cleanup__(sd_bus_error_free))) sd_bus_error error = SD_BUS_ERROR_NULL;;
-	__attribute__((__cleanup__(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
-	__attribute__((__cleanup__(sd_bus_message_unrefp))) sd_bus_message *m = NULL;
-	char *path = NULL;
-	int r;
+	if (*message) {
+		dbus_message_unref(*message);
+		*message = NULL;
+	}
+}
 
-	r = sd_bus_message_new_method_call(bus, &m,
-		DESTINATION, PATH, INTERFACE, MEMBER);
-	if (r < 0)
-		return log_error(false, "Failed creating sdbus message");
+static bool systemd_cgroup_scope_ready(DBusConnection *connection, const char *scope_name)
+{
+	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
+	DBusMessageIter iter;
+	char *unit, *result;
 
-	r = sd_bus_message_append(m, "ss", data->scope_name, "fail");
-	if (r < 0)
-		return log_error(false, "Failed setting systemd scope name");
+	dbus_connection_read_write(connection, 0);
+	message = dbus_connection_pop_message(connection);
+	if (!message)
+		return log_debug(false, "Dbus error...");
 
-	r = sd_bus_message_open_container(m, 'a', "(sv)");
-	if (r < 0)
-		return log_error(false, "Failed allocating sdbus msg properties");
+	if (!dbus_message_is_signal(message, INTERFACE, "JobRemoved"))
+		return false;
 
-	r = sd_bus_message_append(m, "(sv)(sv)(sv)",
-		"PIDs", "au", 1, getpid(),
-		"Delegate", "b", 1,
-		"CollectMode", "s", "inactive-or-failed");
-	if (r < 0)
-		return log_error(false, "Failed setting properties on sdbus message");
+	TRACE("got a JobRemoved signal.");
+	// "uoss" -> &id, &path, &unit, &result)
+	if (!dbus_message_iter_init(message, &iter)) // id
+		return log_debug(false, "Dbus error...");
+	if (DBUS_TYPE_UINT32 != dbus_message_iter_get_arg_type(&iter))
+		return log_debug(false, "Dbus error...");
 
-	r = sd_bus_message_close_container(m);
-	if (r < 0)
-		return log_error(false, "Failed closing sdbus message properties");
+	if (!dbus_message_iter_next(&iter)) // path
+		return log_debug(false, "Dbus error...");
 
-	r = sd_bus_message_append(m, "a(sa(sv))", 0);
-	if (r < 0)
-		return log_error(false, "Failed appending aux boilerplate\n");
+	if (!dbus_message_iter_next(&iter)) // unit
+		return log_debug(false, "Dbus error...");
+	if (DBUS_TYPE_STRING != dbus_message_iter_get_arg_type(&iter))
+		return log_debug(false, "Dbus error...");
+	dbus_message_iter_get_basic(&iter, &unit);
+	if (strcmp(unit, scope_name) != 0)
+		return log_debug(false, "unit was '%s' not '%s'", unit, scope_name);
 
-	r = sd_bus_call(NULL, m, 0, &error, &reply);
-	if (r < 0)
-		return log_error(false,  "Failed sending sdbus message: %s", error.message);
+	if (!dbus_message_iter_next(&iter)) // result
+		return log_debug(false, "Dbus error...");
+	if (DBUS_TYPE_STRING != dbus_message_iter_get_arg_type(&iter))
+		return log_debug(false, "Dbus error...");
+	dbus_message_iter_get_basic(&iter, &result);
+	if (strcmp(result, "done") != 0)
+		return log_debug(false, "JobRemoved signal received, but result was '%s' not done", result);
 
-	/* Parse the response message */
-	r = sd_bus_message_read(reply, "o", &path);
-	if (r < 0)
-		return log_error(false, "Failed to parse response message: %s", strerror(-r));
+	return true;
+}
 
-	/* Now spin up a mini-event-loop to wait for the "job completed" message */
-	int tries = 0;
+struct dbus_iter {
+	DBusMessageIter iter;
+	DBusMessageIter *parent;
+	bool set;
+};
 
-	while (!data->job_complete) {
-		r = sd_event_run(event, 1000 * 1000);
-		if (r < 0) {
-			log_debug(stderr, "Error waiting for JobRemoved: %s\n", strerror(-r));
-			continue;
+static bool open_dbus_container(DBusMessageIter *parent, int type, const char *sig, struct dbus_iter *sub)
+{
+	if (!dbus_message_iter_open_container(parent, type, sig, &sub->iter))
+		return false;
+	sub->set = true;
+	sub->parent = parent;
+	return true;
+}
+
+static bool close_dbus_container(struct dbus_iter *sub)
+{
+	sub->set = false;
+	return dbus_message_iter_close_container(sub->parent, &sub->iter);
+}
+
+static void abandon_dbus_container(struct dbus_iter *sub)
+{
+	if (!sub->set)
+		return;
+	dbus_message_iter_abandon_container(sub->parent, &sub->iter);
+	sub->set = false;
+}
+
+static bool dbus_append_array(struct DBusMessageIter *parent, const uint32_t *value, unsigned int len)
+{
+	__attribute__((__cleanup__(abandon_dbus_container))) struct dbus_iter iter_array = { 0 };
+	unsigned int i;
+
+	if (!open_dbus_container(parent, DBUS_TYPE_ARRAY, DBUS_TYPE_UINT32_AS_STRING, &iter_array))
+		return log_debug(false, "Dbus error opening array container");
+
+	for (i = 0; i < len; i++) {
+		if (!dbus_message_iter_append_basic(&iter_array.iter, DBUS_TYPE_UINT32, &(value[i]))) {
+			return log_debug(false, "Dbus error appending u32 to array");
 		}
-		if (data->job_complete || tries == 5)
+	}
+
+	if (!close_dbus_container(&iter_array))
+		return log_debug(false, "Dbus error closing array container");
+
+	return true;
+}
+
+// systemd wants ssa(sv)a(sa(sv)) ...  so after the a(sv) we have to
+// append an empty a(sa(sv)).
+static bool sd_boilerplate(DBusMessageIter *iter)
+{
+	DBusMessageIter array_iter;
+
+	if (!dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING
+			DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING,
+			&array_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!dbus_message_iter_close_container(iter, &array_iter))
+		return log_debug(false, "Dbus error...");
+
+	return true;
+}
+
+static bool start_scope(DBusConnection *connection, const char *scope_name)
+{
+	const char *fail_name = "fail",
+		   *pids_name = "PIDs",
+		   *delegate_str = "Delegate",
+		   *collect_str = "CollectMode",
+		   *inactive_str = "inactive-or-failed";
+	__attribute__((__cleanup__(abandon_dbus_container))) struct dbus_iter array_iter = { 0 };
+	__attribute__((__cleanup__(abandon_dbus_container))) struct dbus_iter struct_iter = { 0 };
+	__attribute__((__cleanup__(abandon_dbus_container))) struct dbus_iter v_iter = { 0 };
+	DBusMessageIter iter;
+	DBusPendingCall* pending;
+	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
+	uint32_t pid_uint;
+	dbus_bool_t bool_true = true;
+
+	message = dbus_message_new_method_call(DESTINATION, PATH, INTERFACE, "StartTransientUnit");
+	if (!message)
+		return log_debug(false, "Dbus error...");
+
+	dbus_message_iter_init_append (message, &iter);
+	// ss scope_name, fail
+	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &scope_name))
+		return log_debug(false, "Dbus error...");
+	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &fail_name))
+		return log_debug(false, "Dbus error...");
+
+	// a (sv):
+	//  "PIDs", "au", getpid(),
+	//  "Delegate", b, 1
+	// CollectMode, s, inactive-or-failed
+	if (!open_dbus_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING
+			DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING,
+			&array_iter))
+		return log_debug(false, "Dbus error...");
+
+	// "PIDs", "au", getpid()
+	if (!open_dbus_container(&array_iter.iter, DBUS_TYPE_STRUCT, NULL, &struct_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!dbus_message_iter_append_basic(&struct_iter.iter, DBUS_TYPE_STRING, &pids_name))
+		return log_debug(false, "Dbus error...");
+
+	if (!open_dbus_container(&struct_iter.iter, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_UINT32_AS_STRING,
+					&v_iter))
+		return log_debug(false, "Dbus error...");
+
+	pid_uint = getpid();
+	if (!dbus_append_array(&v_iter.iter, &pid_uint, 1))
+		return log_debug(false, "Dbus error...");
+
+	if (!close_dbus_container(&v_iter))
+		return log_debug(false, "Dbus error...");
+	if (!close_dbus_container(&struct_iter))
+		return log_debug(false, "Dbus error...");
+	
+	//  "Delegate", b, 1
+	if (!open_dbus_container(&array_iter.iter, DBUS_TYPE_STRUCT, NULL, &struct_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!dbus_message_iter_append_basic(&struct_iter.iter, DBUS_TYPE_STRING, &delegate_str))
+		return log_debug(false, "Dbus error...");
+
+	if (!open_dbus_container(&struct_iter.iter, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &v_iter))
+		return log_debug(false, "Dbus error...");
+	if (!dbus_message_iter_append_basic(&v_iter.iter, DBUS_TYPE_BOOLEAN, &bool_true))
+		return log_debug(false, "Dbus error...");
+	if (!close_dbus_container(&v_iter))
+		return log_debug(false, "Dbus error...");
+	if (!close_dbus_container(&struct_iter))
+		return log_debug(false, "Dbus error...");
+
+	//  CollectMode, s, inactive-or-failed
+	if (!open_dbus_container(&array_iter.iter, DBUS_TYPE_STRUCT, NULL, &struct_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!dbus_message_iter_append_basic(&struct_iter.iter, DBUS_TYPE_STRING, &collect_str))
+		return log_debug(false, "Dbus error...");
+
+	if (!open_dbus_container(&struct_iter.iter, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &v_iter))
+		return log_debug(false, "Dbus error...");
+	if (!dbus_message_iter_append_basic(&v_iter.iter, DBUS_TYPE_STRING, &inactive_str))
+		return log_debug(false, "Dbus error...");
+	if (!close_dbus_container(&v_iter))
+		return log_debug(false, "Dbus error...");
+	if (!close_dbus_container(&struct_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!close_dbus_container(&array_iter))
+		return log_debug(false, "Dbus error...");
+
+	if (!sd_boilerplate(&iter))
+		return log_debug(false, "Dbus error...");
+
+	// send it
+	if (!dbus_connection_send_with_reply(connection, message, &pending, -1))
+		return log_debug(false, "Dbus error...");
+
+	if (!pending)
+		return log_debug(false, "Dbus error...");
+
+	dbus_connection_flush(connection);
+
+	dbus_pending_call_block(pending);
+
+	dbus_pending_call_unref(pending);
+
+	// Wait on a signal telling us the async scope request is handled
+	// TODO add a timeout
+	while (true) {
+		if (systemd_cgroup_scope_ready(connection, scope_name))
 			break;
-		if (r > 0) {
-			log_trace(stderr, "Debug: we processed an event (%d), but not the one we wanted\n", r);
-			continue;
-		}
-		if (r == 0) // timeout
-			tries++;
+		nanosleep((const struct timespec[]){{0, 1000}}, NULL);
+		continue;
 	}
-	if (!data->job_complete) {
-		return log_error(false, "Error: %s job was never removed", data->scope_name);
+
+	return true;
+}
+
+static DBusConnection *open_systemd(void)
+{
+	__do_free char *user_bus = NULL;
+	char *s = NULL;
+	DBusMessageIter iter;
+	DBusError dbus_error;
+	DBusConnection *connection = NULL;
+	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
+	DBusPendingCall* pending;
+
+	dbus_error_init(&dbus_error);
+	user_bus = strdup("unix:path=/run/user/1000/bus"); // TODO get from $DBUS_SESSION_BUS_ADDRESS
+	if (!user_bus) {
+		return log_error(NULL, "Failed opening user dbus");
 	}
+
+	connection = dbus_connection_open(user_bus, &dbus_error);
+	if (!connection) {
+		DEBUG("Failed opening dbus connection: %s: %s",
+				dbus_error.name, dbus_error.message);
+		dbus_error_free(&dbus_error);
+		return NULL;
+	}
+	dbus_error_free(&dbus_error);
+
+	TRACE("Saying hello to systemd");
+	//message = dbus_message_new_method_call(DESTINATION, PATH, INTERFACE, "Hello");
+	message = dbus_message_new_method_call("org.freedesktop.DBus",
+						"/org/freedesktop/DBus",
+						"org.freedesktop.DBus",
+						"Hello");
+	if (!message) {
+		ERROR("Failed saying hello to systemd");
+		goto bad;
+	}
+	if (!dbus_connection_send_with_reply(connection, message, &pending, -1)) {
+		ERROR("Failed sending hello message to systemd");
+		goto bad;
+	}
+
+	if (!pending) {
+		ERROR("pending was NULL after saying hello to systemd");
+		goto bad;
+	}
+
+	dbus_connection_flush(connection);
+
+	dbus_message_unref(message);
+	message = NULL;
+
+	TRACE("Waiting systemd Hello for reply");
+
+	dbus_pending_call_block(pending);
+
+	message = dbus_pending_call_steal_reply(pending);
+	if (!message) {
+		ERROR("Failed stealing reply from systemd");
+		goto bad;
+	}
+
+	dbus_pending_call_unref(pending);
+
+	if (!dbus_message_iter_init(message, &iter)) {
+		ERROR("Failed parsing reply from systemd");
+		goto bad;
+	}
+
+	if (DBUS_TYPE_STRING != dbus_message_iter_get_arg_type(&iter)) {
+		ERROR("systemd's reply was %d not DBUS_TYPE_STRING (%d)", dbus_message_iter_get_arg_type(&iter), DBUS_TYPE_STRING);
+		goto bad;
+	}
+	dbus_message_iter_get_basic(&iter, &s);
+	TRACE("reply came from systemd: '%s'", s);
+
+	return connection;
+
+bad:
+	dbus_connection_unref(connection);
+	return NULL;
+}
+
+static bool enter_scope(char *scope_name, pid_t pid)
+{
+	const char *init_name = "/init";
+	__attribute__((__cleanup__(_dbus_connection_free))) DBusConnection *connection = NULL;
+	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
+	DBusMessageIter iter;
+	DBusPendingCall* pending;
+	uint32_t pid_uint = pid;
+
+	if (!dbus_threads_initialized) {
+		/* tell dbus to do struct locking for thread safety */
+		dbus_threads_init_default();
+		dbus_threads_initialized = true;
+	}
+
+	TRACE("enter_scope: calling open_systemd");
+	connection = open_systemd();
+	if (connection == NULL)
+		return log_error(false, "Failed opening dbus connection");
+
+	TRACE("enter_scope: subscribing to signals");
+	message = dbus_message_new_method_call(DESTINATION, PATH, INTERFACE, "AttachProcessesToUnit");
+	if (!message)
+		return log_debug(false, "Dbus error...");
+
+	dbus_message_iter_init_append (message, &iter);
+	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &scope_name))
+		return log_debug(false, "Dbus error...");
+	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &init_name))
+		return log_debug(false, "Dbus error...");
+	if (!dbus_append_array(&iter, &pid_uint, 1))
+		return log_debug(false, "Dbus error...");
+
+	if (!dbus_connection_send_with_reply(connection, message, &pending, DBUS_TIMEOUT_INFINITE))
+		return log_debug(false, "Dbus error...");
+
+	if (!pending)
+		return log_debug(false, "Dbus error...");
+
+	dbus_connection_flush(connection);
+
+	dbus_pending_call_block(pending);
+
+	dbus_message_unref(message);
+	message = NULL;
+
+	message = dbus_pending_call_steal_reply(pending);
+	if (!message)
+		return log_debug(false, "Dbus error - NULL reply");
+
+	dbus_pending_call_unref(pending);
+
 	return true;
 }
 
@@ -1077,73 +1374,6 @@ static bool string_pure_unified_system(char *contents)
 	}
 
 	return false;
-}
-
-/*
- * Only call get_current_unified_cgroup() when we are in a pure
- * unified (v2-only) cgroup
- */
-static char *get_current_unified_cgroup(void)
-{
-	__do_free char *buf = NULL;
-	__do_free_string_list char **list = NULL;
-	char *p;
-
-	buf = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
-	if (!buf)
-		return NULL;
-
-	if (!string_pure_unified_system(buf))
-		return NULL;
-
-	// 0::/user.slice/user-1000.slice/session-136.scope
-	// Get past the "0::"
-	p = buf;
-	if (strnequal(p, "0::", STRLITERALLEN("0::")))
-		p += STRLITERALLEN("0::");
-
-	return strdup(p);
-}
-
-static bool pure_unified_system(void)
-{
-	__do_free char *buf = NULL;
-
-	buf = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
-	if (!buf)
-		return false;
-
-	return string_pure_unified_system(buf);
-}
-
-#define MEMBER_JOIN "AttachProcessesToUnit"
-static bool enter_scope(char *scope_name, pid_t pid)
-{
-	__attribute__((__cleanup__(sd_bus_unrefp))) sd_bus *bus = NULL;
-	__attribute__((__cleanup__(sd_bus_error_free))) sd_bus_error error = SD_BUS_ERROR_NULL;;
-	__attribute__((__cleanup__(sd_bus_message_unrefp))) sd_bus_message *reply = NULL;
-	__attribute__((__cleanup__(sd_bus_message_unrefp))) sd_bus_message *m = NULL;
-	int r;
-
-	r = sd_bus_open_user(&bus);
-	if (r < 0)
-		return log_error(false, "Failed to connect to user bus: %s", strerror(-r));
-
-	r = sd_bus_message_new_method_call(bus, &m,
-		DESTINATION, PATH, INTERFACE, MEMBER_JOIN);
-	if (r < 0)
-		return log_error(false, "Failed creating sdbus message");
-
-	r = sd_bus_message_append(m, "ssau", scope_name, "/init", 1, pid);
-	if (r < 0)
-		return log_error(false, "Failed setting systemd scope name");
-
-
-	r = sd_bus_call(NULL, m, 0, &error, &reply);
-	if (r < 0)
-		return log_error(false,  "Failed sending sdbus message: %s", error.message);
-
-	return true;
 }
 
 static bool enable_controllers_delegation(int fd_dir, char *cg)
@@ -1183,6 +1413,43 @@ static bool enable_controllers_delegation(int fd_dir, char *cg)
 }
 
 /*
+ * Only call get_current_unified_cgroup() when we are in a pure
+ * unified (v2-only) cgroup
+ */
+static char *get_current_unified_cgroup(void)
+{
+	__do_free char *buf = NULL;
+	__do_free_string_list char **list = NULL;
+	char *p;
+
+	buf = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
+	if (!buf)
+		return NULL;
+
+	if (!string_pure_unified_system(buf))
+		return NULL;
+
+	// 0::/user.slice/user-1000.slice/session-136.scope
+	// Get past the "0::"
+	p = buf;
+	if (strnequal(p, "0::", STRLITERALLEN("0::")))
+		p += STRLITERALLEN("0::");
+
+	return strdup(p);
+}
+
+static bool pure_unified_system(void)
+{
+	__do_free char *buf = NULL;
+
+	buf = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
+	if (!buf)
+		return false;
+
+	return string_pure_unified_system(buf);
+}
+
+/*
  * systemd places us in say .../lxc-1.scope.  We create lxc-1.scope/init,
  * move ourselves to there, then enable controllers in lxc-1.scope
  */
@@ -1212,19 +1479,24 @@ static bool move_and_delegate_unified(char *parent_cgroup)
 	return enable_controllers_delegation(fd_parent, parent_cgroup);
 }
 
+#define JOBREMOVED_RULE \
+	"type='signal',sender='" DESTINATION "',path='" PATH \
+	"',interface='" INTERFACE "',member='JobRemoved'"
+
 static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	__do_free char *full_scope_name = NULL;
+	__do_free char *user_bus = NULL;
 	__do_free char *fs_cg_path = NULL;
-	sd_event *event = NULL;
-	__attribute__((__cleanup__(sd_bus_unrefp))) sd_bus *bus = NULL; // free the bus before the names it references, just to be sure
-	struct sd_callback_data sd_data;
-	int idx = 0;
-	size_t len;
-	int r;
+	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
+	DBusError dbus_error;
+	int idx = 0, r;
+	__attribute__((__cleanup__(_dbus_connection_free))) DBusConnection *connection = NULL;
+	unsigned int len;
 
 	if (geteuid() == 0)
 		return log_info(SYSTEMD_SCOPE_UNSUPP, "Running privileged, not using a systemd unit");
+
 	// Pure_unified_layout() can't be used as that info is not yet setup.  At
 	// the same time, we don't want to calculate current cgroups until after
 	// we optionally enter a new systemd user scope.  So let's just do a quick
@@ -1233,32 +1505,37 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 	if (!pure_unified_system())
 		return log_info(SYSTEMD_SCOPE_UNSUPP, "Not in unified layout, not using a systemd unit");
 
-	r = sd_bus_open_user(&bus);
-	if (r < 0)
-		return log_error(SYSTEMD_SCOPE_FAILED, "Failed to connect to user bus: %s", strerror(-r));
+	if (!dbus_threads_initialized) {
+		/* tell dbus to do struct locking for thread safety */
+		dbus_threads_init_default();
+		dbus_threads_initialized = true;
+	}
 
-	r = sd_bus_call_method_async(bus, NULL, DESTINATION, PATH, INTERFACE, "Subscribe", NULL, NULL, NULL);
-	if (r < 0)
-		return log_error(SYSTEMD_SCOPE_FAILED, "Failed to subscribe to signals: %s", strerror(-r));
+	connection = open_systemd();
+	if (connection == NULL)
+		return log_error(false, "Failed opening dbus connection");
 
-	sd_data.job_complete = false;
-	sd_data.scope_name = NULL;
-	r = sd_bus_match_signal(bus,
-		NULL, // no slot
-		DESTINATION, PATH, INTERFACE, "JobRemoved",
-		systemd_jobremoved_callback, &sd_data);
-	if (r < 0)
-		return log_error(SYSTEMD_SCOPE_FAILED, "Failed to register systemd event loop signal handler: %s", strerror(-r));
+	message = dbus_message_new_method_call(DESTINATION, PATH, INTERFACE, "Subscribe");
+	if (!message)
+		return log_error(SYSTEMD_SCOPE_FAILED, "Failed subscribing to dbus signals");
 
-	// NEXT: create and attach event
-	r = sd_event_new(&event);
-	if (r < 0)
-		return log_error(SYSTEMD_SCOPE_FAILED, "Failed allocating new event: %s\n", strerror(-r));
-	r = sd_bus_attach_event(bus, event, SD_EVENT_PRIORITY_NORMAL);
-	if (r < 0) {
-		// bus won't clean up event since the attach failed
-		sd_event_unrefp(&event);
-		return log_error(SYSTEMD_SCOPE_FAILED, "Failed attaching event: %s\n", strerror(-r));
+	dbus_error_init(&dbus_error);
+
+	if (!dbus_connection_send(connection, message, NULL)) {
+		INFO("error sending signal subscribe message");
+		return log_error(SYSTEMD_SCOPE_FAILED, "error sending signal subscribe message");
+	}
+
+	dbus_connection_flush(connection);
+
+	// subscribe to JobRemoved signal from systemd.  The start_scope()
+	// function will listen for this over connection.
+	dbus_bus_add_match(connection, JOBREMOVED_RULE, &dbus_error);
+	dbus_connection_flush(connection);
+	if (dbus_error_is_set(&dbus_error)) { 
+		ERROR("unpriv_systemd_create_scope: MATCH ERROR (%s)", dbus_error.message);
+		dbus_error_free(&dbus_error);
+		return SYSTEMD_SCOPE_FAILED;
 	}
 
 	// "lxc-" + (conf->name) + "-NN" + ".scope" + '\0'
@@ -1268,11 +1545,11 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 		return syserror("Out of memory");
 
 	do {
+		TRACE("unpriv_systemd_create_scope: trying idx %d", idx);
 		r = strnprintf(full_scope_name, len, "lxc-%s-%d.scope", conf->name, idx);
 		if (r < 0)
-			return log_error_errno(-1, errno, "Failed to build scope name for \"%s\"", conf->name);
-		sd_data.scope_name = full_scope_name;
-		if (start_scope(bus, &sd_data, event)) {
+			return log_error_errno(SYSTEMD_SCOPE_FAILED, errno, "Failed to build scope name for \"%s\"", conf->name);
+		if (start_scope(connection, full_scope_name)) {
 			conf->cgroup_meta.systemd_scope = get_current_unified_cgroup();
 			if (!conf->cgroup_meta.systemd_scope)
 				return log_trace(SYSTEMD_SCOPE_FAILED, "Out of memory");
@@ -1286,13 +1563,14 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 
 	return SYSTEMD_SCOPE_FAILED; // failed, let's try old-school after all
 }
-#else /* !HAVE_LIBSYSTEMD */
+#else /* HAVE_DBUS */
+
 static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
-	TRACE("unpriv_systemd_create_scope: no systemd support");
-	return SYSTEMD_SCOPE_UNSUPP; // not supported
+	return SYSTEMD_SCOPE_UNSUPP;
 }
-#endif /* HAVE_LIBSYSTEMD */
+
+#endif /* HAVE_DBUS */
 
 // Return a duplicate of cgroup path @cg without leading /, so
 // that caller can own+free it and be certain it's not abspath.
@@ -2558,12 +2836,10 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
 	size_t pidstr_len;
-#if HAVE_LIBSYSTEMD
 	__do_free char *scope = NULL;
-#endif
 	ssize_t ret;
 
-#if HAVE_LIBSYSTEMD
+#if HAVE_DBUS
 	scope = lxc_cmd_get_systemd_scope(conf->name, lxcpath);
 	if (scope) {
 		TRACE("%s:%s is running under systemd-created scope '%s'.  Attaching...", lxcpath, conf->name, scope);
@@ -2575,6 +2851,7 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 		TRACE("%s:%s is not running under a systemd-created scope", lxcpath, conf->name);
 	}
 #endif
+
 	if (unprivileged) {
 		ret = lxc_abstract_unix_recv_two_fds(sk, &target_fd0, &target_fd1);
 		if (ret < 0)

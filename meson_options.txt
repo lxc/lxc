@@ -27,9 +27,6 @@ option('systemd-unitdir', type : 'string', value: '',
 option('io-uring-event-loop', type: 'boolean', value: 'false',
        description: 'Enable io-uring based event loop')
 
-option('sd-bus', type: 'feature', value: 'auto',
-       description: 'Enable linking against sd-bus')
-
 # was --{disable,enable}-doc in autotools
 option('man', type: 'boolean', value: 'true',
        description: 'build and install manpages')
@@ -123,3 +120,7 @@ option('memfd-rexec', type : 'boolean', value : 'true',
 
 option('distrosysconfdir', type : 'string', value: '',
        description: 'relative path to sysconfdir for distro default configuration')
+
+option('dbus', type: 'boolean', value: 'true',
+       description: 'use dbus')
+

@@ -20,6 +20,9 @@ jobs:
       matrix:
         sanitizer: [address, undefined, memory]
     steps:
+      - name: Install dependencies not yet listed in ubuntu pkg source
+        run: |
+          sudo apt-get install -qq libdbus-1-dev
       - name: Build Fuzzers (${{ matrix.sanitizer }})
         id: build
         uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master

@@ -18,7 +18,7 @@ apt-get install --yes --no-install-recommends \
     libpam0g-dev libseccomp-dev libselinux1-dev libtool linux-libc-dev \
     llvm lsb-release make openssl pkg-config python3-all-dev \
     python3-setuptools rsync squashfs-tools uidmap unzip uuid-runtime \
-    wget xz-utils systemd-coredump libsystemd-dev
+    wget xz-utils systemd-coredump libdbus-1-dev
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 ARGS="-Dprefix=/usr -Dtests=true -Dpam-cgroup=false -Dwerror=true -Dio-uring-event-loop=false -Db_lto_mode=default -Db_lundef=false"

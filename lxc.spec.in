@@ -74,7 +74,7 @@ Requires: libcgroup
 %endif
 # Note for Suse.  The "docbook2X" BuildRequires does properly
 # match docbook2x on Suse in a case insensitive manner
-BuildRequires: libcap libcap-devel docbook2X graphviz libxslt pkgconfig
+BuildRequires: libcap libcap-devel docbook2X graphviz libxslt pkgconfig dbus-1
 
 #
 # Additional packages for openSUSE and SUSE
