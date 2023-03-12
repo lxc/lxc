@@ -2187,11 +2187,96 @@ struct start_args {
 	char *const *argv;
 };
 
+static int find_exec(const char *file)
+{
+	struct stat statbuf;
+
+	if (stat(file, &statbuf) != 0) {
+		SYSERROR("Failed to stat \"%s\"", file);
+		return -1;
+	}
+	if (!S_ISDIR(statbuf.st_mode) && (statbuf.st_mode & 0111) != 0)
+		return 0;
+
+	SYSERROR("Failed to exec \"%s\"", file);
+	return -1;
+}
+
+static int do_check_start_path(const char *exec_file, char **checked_path)
+{
+	__do_free char *env_path = NULL;
+	char *entry = NULL;
+	char cmdpath[PATH_MAX];
+	int ret;
+
+	if (strchr(exec_file, '/') != NULL) {
+		*checked_path = strdup(exec_file);
+		return find_exec(exec_file);
+	}
+
+	env_path = getenv("PATH");
+	if (env_path == NULL) {
+		WARN("No PATH env found, use default.");
+		env_path = "/bin:/usr/bin";
+	}
+	env_path = strdup(env_path);
+	if (env_path == NULL) {
+		SYSERROR("Out of memory");
+		return -1;
+	}
+
+	lxc_iterate_parts(entry, env_path, ":") {
+		if (is_empty_string(entry))
+			entry = ".";
+
+		ret = strnprintf(cmdpath, sizeof(cmdpath), "%s/%s", entry, exec_file);
+		if (ret < 0)
+			continue;
+
+		if (find_exec(cmdpath) == 0){
+			*checked_path = strdup(cmdpath);
+			return 0;
+		}
+	}
+
+	SYSERROR("Not Found \"%s\"", exec_file);
+	return -1;
+}
+
+// Eacess is simial to unix access(), except for setuid/setgid binaries
+// it check against the effective (rather than real) uid and gid
+static int check_eaccess(const char *exec_file)
+{
+	if (faccessat(AT_FDCWD, exec_file, X_OK, AT_EACCESS) != 0) {
+		if (errno != ENOSYS && errno != EPERM) {
+			SYSERROR("Failed to exec \"%s\"", exec_file);
+			return -1;
+		}
+	}
+
+	// if faccessat not available; check if we are a set[ug]id bianry.
+	if (getuid() == geteuid() && getgid() == getegid()) {
+		if (access(exec_file, X_OK) != 0) {
+			SYSERROR("Failed to exec \"%s\"", exec_file);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static int start(struct lxc_handler *handler, void* data)
 {
 	struct start_args *arg = data;
+	__do_free char *checked_path = NULL;
 
 	NOTICE("Exec'ing \"%s\"", arg->argv[0]);
+
+	if (do_check_start_path(arg->argv[0], &checked_path) != 0)
+		return -1;
+
+	if (check_eaccess(checked_path) != 0)
+		return -1;
 
 	execvp(arg->argv[0], arg->argv);
 	SYSERROR("Failed to exec \"%s\"", arg->argv[0]);
