@@ -159,15 +159,10 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 	socklen_t credsz = sizeof(cred);
 
 	ret = LXC_MAINLOOP_ERROR;
-	clientfd = accept(fd, NULL, 0);
+	clientfd = accept4(fd, NULL, 0, SOCK_CLOEXEC);
 	if (clientfd < 0) {
 		SYSERROR("Failed to accept connection for client file descriptor %d", fd);
 		goto out;
-	}
-
-	if (fcntl(clientfd, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("Failed to set FD_CLOEXEC on client socket connection %d", clientfd);
-		goto err1;
 	}
 
 	if (getsockopt(clientfd, SOL_SOCKET, SO_PEERCRED, &cred, &credsz)) {
