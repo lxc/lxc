@@ -2080,13 +2080,9 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	__do_close int connection = -EBADF;
 	int opt = 1, ret = -1;
 
-	connection = accept(fd, NULL, 0);
+	connection = accept4(fd, NULL, 0, SOCK_CLOEXEC);
 	if (connection < 0)
 		return log_error_errno(LXC_MAINLOOP_ERROR, errno, "Failed to accept connection to run command");
-
-	ret = fcntl(connection, F_SETFD, FD_CLOEXEC);
-	if (ret < 0)
-		return log_error_errno(ret, errno, "Failed to set close-on-exec on incoming command connection");
 
 	ret = setsockopt(connection, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt));
 	if (ret < 0)
@@ -2121,10 +2117,6 @@ int lxc_server_init(const char *name, const char *lxcpath, const char *suffix)
 
 		return log_error_errno(-1, errno, "Failed to create command socket %s", &path[1]);
 	}
-
-	ret = fcntl(fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to set FD_CLOEXEC on command socket file descriptor");
 
 	return log_trace(move_fd(fd), "Created abstract unix socket \"%s\"", &path[1]);
 }
