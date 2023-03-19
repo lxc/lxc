@@ -133,6 +133,11 @@ int main(int argc, char *argv[])
 		goto on_error_stop;
 	}
 
+	if (!c->wait(c, "STOPPED", 5)) {
+		lxc_error("%s\n", "Failed waiting for container \"console-log\" to stop");
+		goto on_error_stop;
+	}
+
 	c->clear_config(c);
 
 	if (!c->load_config(c, NULL)) {
@@ -162,6 +167,11 @@ int main(int argc, char *argv[])
 
 	if (!c->stop(c)) {
 		lxc_error("%s\n", "Failed to stop container \"console-log\"");
+		goto on_error_stop;
+	}
+
+	if (!c->wait(c, "STOPPED", 5)) {
+		lxc_error("%s\n", "Failed waiting for container \"console-log\" to stop");
 		goto on_error_stop;
 	}
 

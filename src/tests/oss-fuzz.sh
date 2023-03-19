@@ -24,7 +24,7 @@ mkdir -p $OUT
 apt-get update -qq
 apt-get install --yes --no-install-recommends \
     build-essential docbook2x doxygen git \
-    wget xz-utils systemd-coredump pkgconf libsystemd-dev
+    wget xz-utils systemd-coredump pkgconf libdbus-1-dev
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 # make sure we have a new enough meson version
@@ -47,6 +47,7 @@ meson setup san_build \
 	-Db_lto=false \
 	-Db_pie=false \
 	-Dthread-safety=false \
+	-Ddbus=false \
 	-Doss-fuzz=true
 ninja -C san_build -v
 
