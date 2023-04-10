@@ -242,10 +242,17 @@ int setproctitle(char *title)
 
 	buf[bytes_read] = '\0';
 
-	/* Skip the first 25 fields, column 26-28 are start_code, end_code,
+	/*
+	 * executable names may contain spaces, so we search backwards for the
+	 * ), which is the kernel's marker for "end of executable name". this
+	 * skips the first two fields.
+	 */
+	buf_ptr = strrchr(buf, ')')+2;
+
+	/* Skip the next 23 fields, column 26-28 are start_code, end_code,
 	 * and start_stack */
-	buf_ptr = strchr(buf, ' ');
-	for (i = 0; i < 24; i++) {
+	buf_ptr = strchr(buf_ptr, ' ');
+	for (i = 0; i < 22; i++) {
 		if (!buf_ptr)
 			return -1;
 		buf_ptr = strchr(buf_ptr + 1, ' ');
