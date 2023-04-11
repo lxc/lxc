@@ -245,20 +245,19 @@ int setproctitle(char *title)
 	/*
 	 * executable names may contain spaces, so we search backwards for the
 	 * ), which is the kernel's marker for "end of executable name". this
-	 * skips the first two fields.
+	 * puts the pointer at the end of the second field.
 	 */
-	buf_ptr = strrchr(buf, ')')+2;
-
-	/* Skip the next 23 fields, column 26-28 are start_code, end_code,
-	 * and start_stack */
-	buf_ptr = strchr(buf_ptr, ' ');
-	for (i = 0; i < 22; i++) {
-		if (!buf_ptr)
-			return -1;
-		buf_ptr = strchr(buf_ptr + 1, ' ');
-	}
+	buf_ptr = strrchr(buf, ')');
 	if (!buf_ptr)
 		return -1;
+
+	/* Skip the space and the next 23 fields, column 26-28 are start_code,
+         * end_code, and start_stack */
+	for (i = 0; i < 24; i++) {
+		buf_ptr = strchr(buf_ptr + 1, ' ');
+		if (!buf_ptr)
+			return -1;
+	}
 
 	i = sscanf(buf_ptr, "%" PRIu64 " %" PRIu64 " %" PRIu64, &start_code, &end_code, &start_stack);
 	if (i != 3)
@@ -266,13 +265,10 @@ int setproctitle(char *title)
 
 	/* Skip the next 19 fields, column 45-51 are start_data to arg_end */
 	for (i = 0; i < 19; i++) {
+		buf_ptr = strchr(buf_ptr + 1, ' ');
 		if (!buf_ptr)
 			return -1;
-		buf_ptr = strchr(buf_ptr + 1, ' ');
 	}
-
-	if (!buf_ptr)
-		return -1;
 
 	i = sscanf(buf_ptr, "%" PRIu64 " %" PRIu64 " %" PRIu64 " %*u %*u %" PRIu64 " %" PRIu64, &start_data,
 		   &end_data, &start_brk, &env_start, &env_end);
