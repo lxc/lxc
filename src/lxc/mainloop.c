@@ -163,6 +163,16 @@ static int __io_uring_arm(struct lxc_async_descr *descr,
 	io_uring_prep_poll_add(sqe, handler->fd, EPOLLIN);
 
 	/*
+	 * FIXME: workaround an issue with false-positive
+	 * io_uring POLL events when multishot mode is enabled.
+	 *
+	 * It's safe to override oneshot argument here, execution
+	 * will go to the same codepath as if kernel lacks IORING_POLL_ADD_MULTI
+	 * mode support.
+	 */
+	oneshot = true;
+
+	/*
 	 * Raise IORING_POLL_ADD_MULTI to set up a multishot poll. The same sqe
 	 * will now produce multiple cqes. A cqe produced from a multishot sqe
 	 * will raise IORING_CQE_F_MORE in cqe->flags.
