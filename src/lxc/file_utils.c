@@ -688,7 +688,7 @@ int open_at_same(int fd_same, int dfd, const char *path, unsigned int o_flags,
 	return move_fd(fd);
 }
 
-int fd_make_nonblocking(int fd)
+int fd_make_blocking(int fd)
 {
 	int flags;
 
@@ -697,6 +697,18 @@ int fd_make_nonblocking(int fd)
 		return -1;
 
 	flags &= ~O_NONBLOCK;
+	return fcntl(fd, F_SETFL, flags);
+}
+
+int fd_make_nonblocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return -1;
+
+	flags |= O_NONBLOCK;
 	return fcntl(fd, F_SETFL, flags);
 }
 

@@ -109,6 +109,7 @@ __hidden extern int open_at_same(int fd_same, int dfd, const char *path,
 				 unsigned int o_flags,
 				 unsigned int resolve_flags, mode_t mode);
 __hidden extern int open_beneath(int dfd, const char *path, unsigned int flags);
+__hidden int fd_make_blocking(int fd);
 __hidden int fd_make_nonblocking(int fd);
 __hidden extern char *read_file_at(int dfd, const char *fnam,
                                    unsigned int o_flags,
