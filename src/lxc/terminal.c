@@ -334,9 +334,12 @@ static int lxc_terminal_ptx_io(struct lxc_terminal *terminal)
 	int r, w, w_log, w_rbuf;
 
 	w = r = lxc_read_nointr(terminal->ptx, buf, sizeof(buf));
-	if (r <= 0)
-		return -1;
+	if (r <= 0) {
+		if (errno == EWOULDBLOCK)
+			return 0;
 
+		return -1;
+	}
 	w_rbuf = w_log = 0;
 	/* write to peer first */
 	if (terminal->peer >= 0)
@@ -370,8 +373,12 @@ static int lxc_terminal_peer_io(struct lxc_terminal *terminal)
 	int r, w;
 
 	w = r = lxc_read_nointr(terminal->peer, buf, sizeof(buf));
-	if (r <= 0)
+	if (r <= 0) {
+		if (errno == EWOULDBLOCK)
+			return 0;
+
 		return -1;
+	}
 
 	w = lxc_write_nointr(terminal->ptx, buf, r);
 	if (w != r)
@@ -415,6 +422,9 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
 	int ret;
 
 	if (terminal->peer >= 0) {
+		if (fd_make_nonblocking(terminal->peer))
+			return log_error_errno(-1, errno, "Failed to make terminal peer fd non-blocking");
+
 		ret = lxc_mainloop_add_handler(terminal->descr, terminal->peer,
 					       lxc_terminal_peer_io_handler,
 					       default_cleanup_handler,
@@ -451,6 +461,9 @@ int lxc_terminal_mainloop_add(struct lxc_async_descr *descr,
 		INFO("Terminal is not initialized");
 		return 0;
 	}
+
+	if (fd_make_nonblocking(terminal->ptx))
+		return log_error_errno(-1, errno, "Failed to make terminal ptx fd non-blocking");
 
 	ret = lxc_mainloop_add_handler(descr, terminal->ptx,
 				       lxc_terminal_ptx_io_handler,
