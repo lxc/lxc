@@ -700,6 +700,18 @@ int fd_make_blocking(int fd)
 	return fcntl(fd, F_SETFL, flags);
 }
 
+int fd_make_nonblocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return -1;
+
+	flags |= O_NONBLOCK;
+	return fcntl(fd, F_SETFL, flags);
+}
+
 #define BATCH_SIZE 50
 static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
 {
