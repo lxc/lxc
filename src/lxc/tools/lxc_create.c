@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 	if (!my_args.lxcpath[0])
 		my_args.lxcpath[0] = lxc_get_global_config_item("lxc.lxcpath");
 
-	if (mkdir_p(my_args.lxcpath[0], 0755))
+	if (lxc_mkdir_p(my_args.lxcpath[0], 0755))
 		exit(EXIT_FAILURE);
 
 	if (geteuid())

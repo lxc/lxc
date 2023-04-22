@@ -456,7 +456,7 @@ int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		return -1;
 	}
 
-	ret = mkdir_p(new->dest, 0755);
+	ret = lxc_mkdir_p(new->dest, 0755);
 	if (ret < 0) {
 		SYSERROR("Failed to create directory \"%s\"", new->dest);
 		return -1;
@@ -645,7 +645,7 @@ int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	ret = mkdir_p(bdev->dest, 0755);
+	ret = lxc_mkdir_p(bdev->dest, 0755);
 	if (ret < 0) {
 		SYSERROR("Failed to create directory \"%s\"", bdev->dest);
 		return -1;

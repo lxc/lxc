@@ -197,7 +197,7 @@ static int do_mkdir(const char *path, mode_t mode)
 }
 
 /* Create directory and (if necessary) its parents. */
-static bool mkdir_parent(const char *root, char *path)
+static bool lxc_mkdir_parent(const char *root, char *path)
 {
 	char *b, orig, *e;
 
@@ -2042,7 +2042,7 @@ static bool cgv1_create_one(struct cgv1_hierarchy *h, const char *cgroup, uid_t 
 			return our_cg;
 		}
 
-		created = mkdir_parent(it->mountpoint, path);
+		created = lxc_mkdir_parent(it->mountpoint, path);
 		if (!created) {
 			free(path);
 			continue;
@@ -2198,7 +2198,7 @@ static bool cgv2_create(const char *cgroup, uid_t uid, gid_t gid, bool *existed)
 		}
 	}
 
-	created = mkdir_parent(v2->mountpoint, path);
+	created = lxc_mkdir_parent(v2->mountpoint, path);
 	if (!created) {
 		free(path);
 		return false;

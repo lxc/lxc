@@ -2770,7 +2770,7 @@ static int set_config_includefiles(const char *key, const char *value,
 		return 0;
 	}
 
-	if (value[strlen(value)-1] == '/' || is_dir(value))
+	if (value[strlen(value)-1] == '/' || lxc_is_dir(value))
 		return do_includedir(value, lxc_conf);
 
 	return lxc_config_read(value, lxc_conf, true);

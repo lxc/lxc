@@ -105,7 +105,7 @@ static char *lxclock_name(const char *p, const char *n)
 	if (ret < 0)
 		return NULL;
 
-	ret = mkdir_p(dest, 0755);
+	ret = lxc_mkdir_p(dest, 0755);
 	if (ret < 0)
 		return NULL;
 

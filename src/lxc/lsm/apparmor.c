@@ -996,14 +996,14 @@ static int load_apparmor_profile(struct lsm_ops *ops, struct lxc_conf *conf, con
 	if (!old_content || old_len != content_len || memcmp(old_content, new_content, content_len) != 0) {
 		char *path;
 
-		ret = mkdir_p(APPARMOR_CACHE_DIR, 0755);
+		ret = lxc_mkdir_p(APPARMOR_CACHE_DIR, 0755);
 		if (ret < 0) {
 			SYSERROR("Error creating AppArmor profile cache directory " APPARMOR_CACHE_DIR);
 			goto out;
 		}
 
 		path = apparmor_dir(conf->name, lxcpath);
-		ret = mkdir_p(path, 0755);
+		ret = lxc_mkdir_p(path, 0755);
 		if (ret < 0) {
 			SYSERROR("Error creating AppArmor profile directory: %s", path);
 			free(path);
