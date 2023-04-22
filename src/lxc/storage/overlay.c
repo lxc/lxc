@@ -50,7 +50,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 	new->dest = must_make_path(lxcpath, cname, "rootfs", NULL);
 
-	ret = mkdir_p(new->dest, 0755);
+	ret = lxc_mkdir_p(new->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", new->dest);
 		return -1;
@@ -68,7 +68,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		delta = must_make_path(lxcpath, cname, LXC_OVERLAY_DELTA_PATH, NULL);
 
-		ret = mkdir_p(delta, 0755);
+		ret = lxc_mkdir_p(delta, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", delta);
 
@@ -83,7 +83,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 */
 		work = must_make_path(lxcpath, cname, LXC_OVERLAY_WORK_PATH, NULL);
 
-		ret = mkdir_p(work, 0755);
+		ret = lxc_mkdir_p(work, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", work);
 
@@ -142,7 +142,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		odelta++;
 		ndelta = must_make_path(lxcpath, cname, LXC_OVERLAY_DELTA_PATH, NULL);
 
-		ret = mkdir_p(ndelta, 0755);
+		ret = lxc_mkdir_p(ndelta, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", ndelta);
 
@@ -150,7 +150,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 * further up.).
 		 */
 		work = must_make_path(lxcpath, cname, LXC_OVERLAY_WORK_PATH, NULL);
-		ret = mkdir_p(work, 0755);
+		ret = lxc_mkdir_p(work, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", ndelta);
 
@@ -191,11 +191,11 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 * don't need to record a dependency. If we would restore would
 		 * also fail.
 		 */
-		clean_old_path = path_simplify(oldpath);
+		clean_old_path = lxc_path_simplify(oldpath);
 		if (!clean_old_path)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to create clean path for \"%s\"", oldpath);
 
-		clean_new_path = path_simplify(lxcpath);
+		clean_new_path = lxc_path_simplify(lxcpath);
 		if (!clean_new_path)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to create clean path for \"%s\"", lxcpath);
 
@@ -271,7 +271,7 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 
 	delta = must_make_path(tmp, LXC_OVERLAY_DELTA_PATH, NULL);
 
-	ret = mkdir_p(delta, 0755);
+	ret = lxc_mkdir_p(delta, 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", delta);
 
@@ -298,7 +298,7 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	if (ret < 0 || (size_t)ret >= len)
 		return log_error_errno(-EIO, EIO, "Failed to create rootfs path");
 
-	ret = mkdir_p(bdev->dest, 0755);
+	ret = lxc_mkdir_p(bdev->dest, 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", bdev->dest);
 
@@ -389,7 +389,7 @@ int ovl_mount(struct lxc_storage *bdev)
 	upper++;
 
 	/* if delta doesn't yet exist, create it */
-	ret = mkdir_p(upper, 0755);
+	ret = lxc_mkdir_p(upper, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", upper);
 		free(dup);
@@ -422,7 +422,7 @@ int ovl_mount(struct lxc_storage *bdev)
 		return -22;
 	}
 
-	ret = mkdir_p(work, 0755);
+	ret = lxc_mkdir_p(work, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", work);
 		free(mntdata);
@@ -623,10 +623,10 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	ret = 0;
 	if (upperdir) {
 		if (!rootfs_path)
-			ret = mkdir_p(upperdir, 0755);
+			ret = lxc_mkdir_p(upperdir, 0755);
 		else if (!strncmp(upperdir, lxcpath, dirlen) &&
 			 strncmp(upperdir, rootfs_dir, rootfslen))
-			ret = mkdir_p(upperdir, 0755);
+			ret = lxc_mkdir_p(upperdir, 0755);
 
 		if (ret < 0)
 			SYSWARN("Failed to create directory \"%s\"", upperdir);
@@ -635,10 +635,10 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	ret = 0;
 	if (workdir) {
 		if (!rootfs_path)
-			ret = mkdir_p(workdir, 0755);
+			ret = lxc_mkdir_p(workdir, 0755);
 		else if (!strncmp(workdir, lxcpath, dirlen) &&
 			 strncmp(workdir, rootfs_dir, rootfslen))
-			ret = mkdir_p(workdir, 0755);
+			ret = lxc_mkdir_p(workdir, 0755);
 
 		if (ret < 0)
 			SYSWARN("Failed to create directory \"%s\"", workdir);

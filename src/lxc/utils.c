@@ -212,7 +212,7 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
-int mkdir_p(const char *dir, mode_t mode)
+int lxc_mkdir_p(const char *dir, mode_t mode)
 {
 	const char *tmp = dir;
 	const char *orig = dir;
@@ -1690,7 +1690,7 @@ static int process_dead(/* takes */ int status_fd)
 	if (dupfd < 0)
 		return -1;
 
-	if (fd_cloexec(dupfd, true) < 0)
+	if (lxc_fd_cloexec(dupfd, true) < 0)
 		return -1;
 
 	f = fdopen(dupfd, "re");

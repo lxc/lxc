@@ -321,7 +321,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate limit cgroup path");
 		}
 
-		tmp = path_simplify(cgroup_base_path);
+		tmp = lxc_path_simplify(cgroup_base_path);
 		if (!tmp)
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to remove extraneous slashes from \"%s\"", cgroup_base_path);
 		free_move_ptr(cgroup_base_path, tmp);
@@ -1224,7 +1224,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		return false;
 	}
 
-	if (mkdir_p(opts->directory, 0700) < 0)
+	if (lxc_mkdir_p(opts->directory, 0700) < 0)
 		goto fail;
 
 	pid = fork();

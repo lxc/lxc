@@ -1319,7 +1319,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * here, ignore errors.
 	 */
 	for (int fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
-		ret = fd_cloexec(fd, false);
+		ret = lxc_fd_cloexec(fd, false);
 		if (ret < 0) {
 			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
 			goto on_error;

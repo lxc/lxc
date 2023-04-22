@@ -187,7 +187,7 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 }
 
 /* taken from systemd */
-char *path_simplify(const char *path)
+char *lxc_path_simplify(const char *path)
 {
 	__do_free char *path_new = NULL;
 	char *f, *t;

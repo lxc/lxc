@@ -293,7 +293,7 @@ bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
 		TRACE("Created zfs dataset \"%s\"", new->src);
 	}
 
-	ret = mkdir_p(new->dest, 0755);
+	ret = lxc_mkdir_p(new->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", new->dest);
 		return false;
@@ -542,7 +542,7 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		return -1;
 	}
 
-	ret = mkdir_p(new->dest, 0755);
+	ret = lxc_mkdir_p(new->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", new->dest);
 		return -1;
@@ -740,7 +740,7 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		TRACE("Created zfs dataset \"%s\"", bdev->src);
 	}
 
-	ret = mkdir_p(bdev->dest, 0755);
+	ret = lxc_mkdir_p(bdev->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", bdev->dest);
 		return -1;

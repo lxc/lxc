@@ -75,7 +75,7 @@ __hidden extern ssize_t lxc_recvmsg_nointr_iov(int sockfd, struct iovec *iov, si
 
 __hidden extern bool file_exists(const char *f);
 __hidden extern int print_to_file(const char *file, const char *content);
-__hidden extern int is_dir(const char *path);
+__hidden extern int lxc_is_dir(const char *path);
 __hidden extern int lxc_count_file_lines(const char *fn);
 __hidden extern int lxc_make_tmpfile(char *template, bool rm);
 
@@ -83,7 +83,7 @@ __hidden extern int lxc_make_tmpfile(char *template, bool rm);
 typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
 __hidden extern bool has_fs_type(const char *path, fs_type_magic magic_val);
 __hidden extern bool fhas_fs_type(int fd, fs_type_magic magic_val);
-__hidden extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
+__hidden extern bool lxc_is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 __hidden extern FILE *fopen_cloexec(const char *path, const char *mode);
 __hidden extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset, size_t count);
 __hidden extern char *file_to_buf(const char *path, size_t *length);
@@ -93,7 +93,7 @@ static inline int fd_to_fd(int from, int to)
 {
 	return __fd_to_fd(from, to) >= 0;
 }
-__hidden extern int fd_cloexec(int fd, bool cloexec);
+__hidden extern int lxc_fd_cloexec(int fd, bool cloexec);
 __hidden extern int lxc_open_dirfd(const char *dir);
 __hidden extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
 __hidden extern FILE *fdopen_at(int dfd, const char *path, const char *mode,
@@ -133,7 +133,7 @@ static inline int dup_cloexec(int fd)
 	if (fd_dup < 0)
 		return -errno;
 
-	if (fd_cloexec(fd_dup, true))
+	if (lxc_fd_cloexec(fd_dup, true))
 		return -errno;
 
 	return move_fd(fd_dup);

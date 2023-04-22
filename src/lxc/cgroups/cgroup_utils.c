@@ -26,7 +26,7 @@ bool unified_cgroup_fd(int fd)
 	struct statfs fs;
 
 	ret = fstatfs(fd, &fs);
-	if (!ret && is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+	if (!ret && lxc_is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
 		return true;
 
 	return false;

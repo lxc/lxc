@@ -391,7 +391,7 @@ static bool lxc_setup_shmount(const char *shmount_path)
 {
 	int ret;
 
-	ret = mkdir_p(shmount_path, 0711);
+	ret = lxc_mkdir_p(shmount_path, 0711);
 	if (ret < 0 && errno != EEXIST) {
 		fprintf(stderr, "Failed to create directory \"%s\"\n", shmount_path);
 		return false;

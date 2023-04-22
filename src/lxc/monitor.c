@@ -54,7 +54,7 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 			free(rundir);
 			return -1;
 		}
-		ret = mkdir_p(fifo_path, 0755);
+		ret = lxc_mkdir_p(fifo_path, 0755);
 		if (ret < 0) {
 			ERROR("Unable to create monitor fifo directory %s", fifo_path);
 			free(rundir);

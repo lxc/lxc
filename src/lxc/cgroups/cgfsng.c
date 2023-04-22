@@ -2445,7 +2445,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		hierarchy_mnt = must_make_path(cgroup_root, h->at_mnt, NULL);
 		path2 = must_make_path(hierarchy_mnt, h->at_base,
 				       ops->container_cgroup, NULL);
-		ret = mkdir_p(path2, 0755);
+		ret = lxc_mkdir_p(path2, 0755);
 		if (ret < 0 && (errno != EEXIST))
 			return false;
 
