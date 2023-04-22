@@ -160,7 +160,7 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	ret = mkdir_p(bdev->dest, 0755);
+	ret = lxc_mkdir_p(bdev->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		ERROR("Failed to create directory \"%s\"", bdev->dest);
 		return -1;

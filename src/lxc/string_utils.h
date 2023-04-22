@@ -188,6 +188,6 @@ static inline const char *fdstr(__s64 fd)
 	     (__iterator = __it);                                               \
 	     __iterator = __it = strtok_r(NULL, __separators, &__p))
 
-__hidden extern char *path_simplify(const char *path);
+__hidden extern char *lxc_path_simplify(const char *path);
 
 #endif /* __LXC_STRING_UTILS_H */

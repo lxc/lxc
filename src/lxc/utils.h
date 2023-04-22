@@ -26,7 +26,7 @@
 /* returns 1 on success, 0 if there were any failures */
 __hidden extern int lxc_rmdir_onedev(const char *path, const char *exclude);
 __hidden extern int get_u16(unsigned short *val, const char *arg, int base);
-__hidden extern int mkdir_p(const char *dir, mode_t mode);
+__hidden extern int lxc_mkdir_p(const char *dir, mode_t mode);
 __hidden extern char *get_rundir(void);
 
 /* Define getline() if missing from the C library */

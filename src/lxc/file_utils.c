@@ -275,7 +275,7 @@ int print_to_file(const char *file, const char *content)
 	return ret;
 }
 
-int is_dir(const char *path)
+int lxc_is_dir(const char *path)
 {
 	int ret;
 	struct stat statbuf;
@@ -332,7 +332,7 @@ int lxc_make_tmpfile(char *template, bool rm)
 	return move_fd(fd);
 }
 
-bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
+bool lxc_is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
 {
 	return (fs->f_type == (fs_type_magic)magic_val);
 }
@@ -346,7 +346,7 @@ bool has_fs_type(const char *path, fs_type_magic magic_val)
 	if (ret < 0)
 		return false;
 
-	return is_fs_type(&sb, magic_val);
+	return lxc_is_fs_type(&sb, magic_val);
 }
 
 bool fhas_fs_type(int fd, fs_type_magic magic_val)
@@ -358,7 +358,7 @@ bool fhas_fs_type(int fd, fs_type_magic magic_val)
 	if (ret < 0)
 		return false;
 
-	return is_fs_type(&sb, magic_val);
+	return lxc_is_fs_type(&sb, magic_val);
 }
 
 FILE *fopen_cloexec(const char *path, const char *mode)
@@ -549,7 +549,7 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 	return f;
 }
 
-int fd_cloexec(int fd, bool cloexec)
+int lxc_fd_cloexec(int fd, bool cloexec)
 {
 	int oflags, nflags;
 

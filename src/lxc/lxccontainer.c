@@ -4159,7 +4159,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 	i = get_next_index(snappath, c->name);
 
-	if (mkdir_p(snappath, 0755) < 0) {
+	if (lxc_mkdir_p(snappath, 0755) < 0) {
 		ERROR("Failed to create snapshot directory %s", snappath);
 		return -1;
 	}
@@ -4174,7 +4174,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
-	if (storage_is_dir(c->lxc_conf)) {
+	if (storage_lxc_is_dir(c->lxc_conf)) {
 		ERROR("Snapshot of directory-backed container requested");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create overlay clone first, snapshot that");
@@ -4608,7 +4608,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 		_exit(EXIT_FAILURE);
 
 	directory_path = dirname(tmp);
-	ret = mkdir_p(directory_path, 0755);
+	ret = lxc_mkdir_p(directory_path, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create path \"%s\"", directory_path);
 		free(tmp);
@@ -4978,7 +4978,7 @@ static int create_mount_target(const char *dest, mode_t st_mode)
 	}
 	destdirname = dirname(dirdup);
 
-	ret = mkdir_p(destdirname, 0755);
+	ret = lxc_mkdir_p(destdirname, 0755);
 	if (ret < 0) {
 		SYSERROR("Failed to create \"%s\"", destdirname);
 		free(dirdup);
@@ -5012,7 +5012,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 	char template[PATH_MAX], path[PATH_MAX];
 	pid_t pid, init_pid;
 	struct stat sb;
-	bool is_dir;
+	bool lxc_is_dir;
 	int ret = -1, fd = -EBADF;
 
 	if (!c || !c->lxc_conf) {
@@ -5043,8 +5043,8 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 		}
 	}
 
-	is_dir = (S_ISDIR(sb.st_mode) != 0);
-	if (is_dir) {
+	lxc_is_dir = (S_ISDIR(sb.st_mode) != 0);
+	if (lxc_is_dir) {
 		sret = mkdtemp(template);
 		if (!sret) {
 			SYSERROR("Could not create shmounts temporary dir");
@@ -5133,7 +5133,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 	if (umount2(template, MNT_DETACH))
 		SYSWARN("Failed to remove temporary mount \"%s\"", template);
 
-	if (is_dir)
+	if (lxc_is_dir)
 		(void)rmdir(template);
 	else
 		(void)unlink(template);

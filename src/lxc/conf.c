@@ -2597,7 +2597,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	}
 
 	if (hasmntopt(mntent, "create=dir")) {
-		ret = mkdir_p(path, 0755);
+		ret = lxc_mkdir_p(path, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", path);
 	}
@@ -2615,7 +2615,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 
 	p2 = dirname(p1);
 
-	ret = mkdir_p(p2, 0755);
+	ret = lxc_mkdir_p(p2, 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create directory \"%s\"", path);
 

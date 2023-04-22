@@ -653,7 +653,7 @@ int set_config_path_item(char **conf_item, const char *value)
 {
 	__do_free char *valdup = NULL;
 
-	valdup = path_simplify(value);
+	valdup = lxc_path_simplify(value);
 	if (!valdup)
 		return -ENOMEM;
 
