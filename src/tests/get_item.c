@@ -509,7 +509,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
-		fprintf(stderr, "%d: failed to create a trusty container\n", __LINE__);
+		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
 	lxc_container_put(c);
