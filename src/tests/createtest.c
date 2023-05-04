@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	c->set_config_item(c, "lxc.net.0.flags", "up");
 
 	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
-		fprintf(stderr, "%d: failed to create a trusty container\n", __LINE__);
+		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
 
