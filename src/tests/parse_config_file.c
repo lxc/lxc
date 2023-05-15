@@ -576,7 +576,14 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.seccomp.profile", "/some/seccomp/file", tmpf, true) < 0) {
+	ret = set_get_compare_clear_save_load(c, "lxc.seccomp.profile", "/some/seccomp/file", tmpf, true);
+
+#if HAVE_SECCOMP
+	if (ret < 0)
+#else
+	if (ret == 0)
+#endif
+	{
 		lxc_error("%s\n", "lxc.seccomp.profile");
 		goto non_test_error;
 	}
