@@ -215,7 +215,7 @@ static int __io_uring_disarm(struct lxc_async_descr *descr,
 		return syserror_set(ENOENT,
 				    "Failed to get submission queue entry");
 
-	io_uring_prep_poll_remove(sqe, handler);
+	io_uring_prep_poll_remove(sqe, PTR_TO_U64(handler));
 	io_uring_sqe_set_data(sqe, handler);
 	ret = io_uring_submit(descr->ring);
 	if (ret < 0)
