@@ -146,7 +146,7 @@ static struct hierarchy *get_hierarchy(const struct cgroup_ops *ops, const char 
 	}
 
 	if (controller)
-		WARN("There is no useable %s controller", controller);
+		INFO("There is no useable %s controller", controller);
 	else
 		WARN("There is no empty unified cgroup hierarchy");
 
