@@ -34,7 +34,7 @@ jobs:
         TARGET: ${{ github.event.pull_request.base.ref }}
       run: |
         set -x
-        [ "${TARGET}" = "master" ] && exit 0
+        [ "${TARGET}" = "main" ] && exit 0
 
         echo "Invalid branch target: ${TARGET}"
         exit 1
