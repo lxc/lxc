@@ -94,6 +94,12 @@ struct lxc_container {
 	 */
 	struct lxc_conf *lxc_conf;
 
+	/*!
+	 * \private
+	 * SO_RCVTIMEO for LXC client_fd socket.
+	 */
+	int rcv_timeout;
+
 	/* public fields */
 	/*! Human-readable string representing last error */
 	char *error_string;
@@ -866,6 +872,17 @@ struct lxc_container {
 	 * \return file descriptor for the running container's seccomp filter
 	 */
 	int (*seccomp_notify_fd_active)(struct lxc_container *c);
+
+	/*!
+	 * \brief Set response receive timeout for LXC commands
+	 *
+	 * \param c Container
+	 * \param timeout Seconds to wait before returning false.
+	 *  (-1 to wait forever).
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*set_timeout)(struct lxc_container *c, int timeout);
 
 	/*!
 	 * \brief Retrieve a pidfd for the container's init process.

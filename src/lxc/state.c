@@ -52,9 +52,9 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
-lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
+lxc_state_t lxc_getstate(const char *name, const char *lxcpath, int timeout)
 {
-	return lxc_cmd_get_state(name, lxcpath);
+	return lxc_cmd_get_state(name, lxcpath, timeout);
 }
 
 static int fillwaitedstates(const char *strstates, lxc_state_t *states)

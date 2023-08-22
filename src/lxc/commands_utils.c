@@ -144,9 +144,10 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 }
 
 int lxc_cmd_connect(const char *name, const char *lxcpath,
-		    const char *hashed_sock_name, const char *suffix)
+		    const char *hashed_sock_name, const char *suffix, int rcv_timeout)
 {
-	int ret, client_fd;
+	int ret;
+	__do_close int client_fd = -EBADF;
 	char path[LXC_AUDS_ADDR_LEN] = {0};
 
 	ret = lxc_make_abstract_socket_name(path, sizeof(path), name, lxcpath,
@@ -159,7 +160,10 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 	if (client_fd < 0)
 		return -1;
 
-	return client_fd;
+	if (lxc_socket_set_timeout(client_fd, rcv_timeout, 0))
+		return log_trace(-1, "Failed to set socket timeout");
+
+	return move_fd(client_fd);
 }
 
 int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,

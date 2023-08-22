@@ -491,7 +491,7 @@ static const char *do_lxcapi_state(struct lxc_container *c)
 	if (!c)
 		return NULL;
 
-	s = lxc_getstate(c->name, c->config_path);
+	s = lxc_getstate(c->name, c->config_path, c->rcv_timeout);
 	return lxc_state2str(s);
 }
 
@@ -501,7 +501,7 @@ static bool is_stopped(struct lxc_container *c)
 {
 	lxc_state_t s;
 
-	s = lxc_getstate(c->name, c->config_path);
+	s = lxc_getstate(c->name, c->config_path, c->rcv_timeout);
 	return (s == STOPPED);
 }
 
@@ -523,7 +523,7 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 	if (!c || !c->lxc_conf)
 		return false;
 
-	s = lxc_getstate(c->name, c->config_path);
+	s = lxc_getstate(c->name, c->config_path, 0);
 	if (s != FROZEN) {
 		ret = cgroup_freeze(c->name, c->config_path, -1);
 		if (ret == -ENOCGROUP2)
@@ -543,7 +543,7 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 	if (!c || !c->lxc_conf)
 		return false;
 
-	s = lxc_getstate(c->name, c->config_path);
+	s = lxc_getstate(c->name, c->config_path, 0);
 	if (s == FROZEN) {
 		ret = cgroup_unfreeze(c->name, c->config_path, -1);
 		if (ret == -ENOCGROUP2)
@@ -5257,6 +5257,21 @@ static int do_lxcapi_seccomp_notify_fd_active(struct lxc_container *c)
 
 WRAP_API(int, lxcapi_seccomp_notify_fd_active)
 
+static bool do_lxcapi_set_timeout(struct lxc_container *c, int timeout)
+{
+	if (!c)
+		return false;
+
+	if (!(timeout > 0 || timeout == -1))
+		return ret_set_errno(-1, -EINVAL);
+
+	c->rcv_timeout = (timeout == -1) ? 0 : timeout;
+
+	return true;
+}
+
+WRAP_API_1(bool, lxcapi_set_timeout, int)
+
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
@@ -5400,6 +5415,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->umount			= lxcapi_umount;
 	c->seccomp_notify_fd		= lxcapi_seccomp_notify_fd;
 	c->seccomp_notify_fd_active	= lxcapi_seccomp_notify_fd_active;
+	c->set_timeout			= lxcapi_set_timeout;
 
 	return c;
 
