@@ -768,51 +768,6 @@ static bool am_single_threaded(void)
 	return count == 1;
 }
 
-static void push_arg(char ***argp, char *arg, int *nargs)
-{
-	char *copy;
-	char **argv;
-
-	copy = must_copy_string(arg);
-
-	do {
-		argv = realloc(*argp, (*nargs + 2) * sizeof(char *));
-	} while (!argv);
-
-	*argp = argv;
-	argv[*nargs] = copy;
-	(*nargs)++;
-	argv[*nargs] = NULL;
-}
-
-static char **split_init_cmd(const char *incmd)
-{
-	__do_free char *copy = NULL;
-	char *p;
-	char **argv;
-	int nargs = 0;
-
-	if (!incmd)
-		return NULL;
-
-	copy = must_copy_string(incmd);
-
-	do {
-		argv = malloc(sizeof(char *));
-	} while (!argv);
-
-	argv[0] = NULL;
-	lxc_iterate_parts (p, copy, " ")
-		push_arg(&argv, p, &nargs);
-
-	if (nargs == 0) {
-		free(argv);
-		return NULL;
-	}
-
-	return argv;
-}
-
 static void free_init_cmd(char **argv)
 {
 	int i = 0;
@@ -934,10 +889,12 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return false;
 
 	if (!argv) {
+		char *cfgcmd = conf->init_cmd;
 		if (useinit && conf->execute_cmd)
-			argv = init_cmd = split_init_cmd(conf->execute_cmd);
-		else
-			argv = init_cmd = split_init_cmd(conf->init_cmd);
+			cfgcmd = conf->execute_cmd;
+
+		if (cfgcmd != NULL)
+			argv = init_cmd = lxc_string_split_quoted(cfgcmd);
 	}
 
 	/* ... otherwise use default_args. */
