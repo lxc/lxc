@@ -1856,7 +1856,7 @@ int fix_stdio_permissions(uid_t uid)
 			continue;
 		}
 
-		ret = fchmod(std_fds[i], 0700);
+		ret = fchmod(std_fds[i], 0600);
 		if (ret) {
 			SYSTRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
 			fret = -1;
