@@ -884,7 +884,7 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.cgroup.dir", "lxd", tmpf, true)) {
+	if (set_get_compare_clear_save_load(c, "lxc.cgroup.dir", "incus", tmpf, true)) {
 		lxc_error("%s\n", "lxc.cgroup.dir");
 		goto non_test_error;
 	}

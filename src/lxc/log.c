@@ -304,9 +304,9 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
  * all fiddle with global variables and locking in various libcs. They cause
  * deadlocks when liblxc is used multi-threaded and no matter how smart you
  * think you are, you __will__ cause trouble using them.
- * (As a short example how this can cause trouble: LXD uses forkstart to fork
+ * (As a short example how this can cause trouble: Incus uses forkstart to fork
  * off a new process that runs the container. At the same time the go runtime
- * LXD relies on does its own multi-threading thing which we can't control. The
+ * Incus relies on does its own multi-threading thing which we can't control. The
  * fork()ing + threading then seems to mess with the locking states in these
  * time functions causing deadlocks.)
  * The current solution is to be good old unix people and use the Epoch as our

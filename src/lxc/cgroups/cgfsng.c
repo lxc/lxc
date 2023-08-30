@@ -3028,7 +3028,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 			 * controller after the container has started and so
 			 * the container doesn't make use of this controller.
 			 *
-			 * Link: https://github.com/lxc/lxd/issues/8577
+			 * Link: https://github.com/canonical/lxd/issues/8577
 			 */
 			TRACE("Skipping unused %s controller", maybe_empty(h->controllers[0]));
 			continue;

@@ -3478,7 +3478,7 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
  * based on those random devices names to the target name.
  *
  * Note that the transient name is based on the type of network device as
- * specified in the LXC config. However, that doesn't mean it's correct. LXD
+ * specified in the LXC config. However, that doesn't mean it's correct. Incus
  * passes veth devices and a range of other network devices (e.g. Infiniband
  * VFs etc.) via LXC_NET_PHYS even though they're not really "physical" in the
  * sense we like to think about it so you might see a veth device being
@@ -3663,7 +3663,7 @@ static bool lxc_delete_network_priv(struct lxc_handler *handler)
 			goto clear_ifindices;
 
 		/* Explicitly delete host veth device to prevent lingering
-		 * devices. We had issues in LXD around this.
+		 * devices. We had issues in Incus around this.
 		 */
 		if (!is_empty_string(netdev->priv.veth_attr.pair))
 			hostveth = netdev->priv.veth_attr.pair;
