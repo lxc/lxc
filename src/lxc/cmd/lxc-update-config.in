@@ -91,12 +91,12 @@ sed -i \
 #
 # lxc.network.type = veth
 # lxc.network.flags = up
-# lxc.network.link = lxdbr0
+# lxc.network.link = lxcbr0
 # lxc.network.name= eth0
 #
 # lxc.network.type = veth
 # lxc.network.flags = up
-# lxc.network.link = lxdbr0
+# lxc.network.link = lxcbr0
 # lxc.network.name = eth1
 
 set +e

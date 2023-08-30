@@ -1093,7 +1093,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
-	 * https://github.com/lxc/lxd/issues/1978.
+	 * https://github.com/canonical/lxd/issues/1978.
 	 */
 	if (handler->ns_unshare_flags & CLONE_NEWNET) {
 		ret = unshare(CLONE_NEWNET);
