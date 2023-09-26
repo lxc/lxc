@@ -5220,7 +5220,7 @@ static bool do_lxcapi_set_timeout(struct lxc_container *c, int timeout)
 		return false;
 
 	if (!(timeout > 0 || timeout == -1))
-		return ret_set_errno(-1, -EINVAL);
+		return false;
 
 	c->rcv_timeout = (timeout == -1) ? 0 : timeout;
 
