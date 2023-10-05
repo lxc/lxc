@@ -465,7 +465,7 @@ static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 			return log_error_errno(-1, EINVAL, "Failed parsing default_pvid of \"%s\"", netdev->link);
 
 		/* If the default PVID on the port is not the specified untagged VLAN, then delete it. */
-		if (default_pvid != netdev->priv.veth_attr.vlan_id) {
+		if (default_pvid != 0 && default_pvid != netdev->priv.veth_attr.vlan_id) {
 			err = lxc_bridge_vlan_del(veth1index, default_pvid);
 			if (err)
 				return log_error_errno(err, errno, "Failed to delete default untagged vlan \"%u\" on \"%s\"", default_pvid, veth1);
