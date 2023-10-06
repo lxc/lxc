@@ -124,8 +124,8 @@ if [ -z "${KVER_MAJOR}" ]; then
     KVER_MINOR="0"
 fi
 
-echo
-echo "--- Namespaces ---"
+echo "
+--- Namespaces ---"
 printf "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
 echo
 printf "Utsname namespace: " && is_enabled CONFIG_UTS_NS
@@ -160,9 +160,9 @@ if [ $KVER_MAJOR -lt 4 ] || { [ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]; };
     printf "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
     echo
 fi
-echo
 
-echo "--- Control groups ---"
+echo "
+--- Control groups ---"
 printf "Cgroups: " && is_enabled CONFIG_CGROUPS
 echo
 printf "Cgroup namespace: " && has_cgroup_ns
@@ -223,9 +223,9 @@ fi
 echo
 
 is_set CONFIG_SMP && printf "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS && echo
-echo
 
-echo "--- Misc ---"
+echo "
+--- Misc ---"
 printf "Veth pair device: " && is_enabled CONFIG_VETH && is_probed veth
 echo
 printf "Macvlan: " && is_enabled CONFIG_MACVLAN && is_probed macvlan
@@ -253,8 +253,8 @@ echo
 printf "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
 echo
 
-echo
-echo "--- Checkpoint/Restore ---"
+echo "
+--- Checkpoint/Restore ---"
 printf "checkpoint restore: " && is_enabled CONFIG_CHECKPOINT_RESTORE
 echo
 printf "CONFIG_FHANDLE: " && is_enabled CONFIG_FHANDLE
@@ -279,8 +279,9 @@ else
     $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
 fi
 
-echo
-echo "Note: Before booting a new kernel, you can check its configuration with:"
-echo
-echo "  CONFIG=/path/to/config $0"
-echo
+echo "
+Note: Before booting a new kernel, you can check its configuration with:
+
+  CONFIG=/path/to/config $0
+
+"
