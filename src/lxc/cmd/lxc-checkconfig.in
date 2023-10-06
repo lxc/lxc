@@ -280,6 +280,7 @@ else
 fi
 
 echo
-echo "Note : Before booting a new kernel, you can check its configuration"
-echo "usage : CONFIG=/path/to/config $0"
+echo "Note: Before booting a new kernel, you can check its configuration with:"
+echo
+echo "  CONFIG=/path/to/config $0"
 echo
