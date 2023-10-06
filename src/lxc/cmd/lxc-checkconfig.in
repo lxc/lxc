@@ -31,13 +31,13 @@ show_enabled() {
     RES=$1
     RET=1
     if [ "$RES" -eq 0 ]; then
-        $SETCOLOR_SUCCESS && echo -n "enabled" && $SETCOLOR_NORMAL
+        $SETCOLOR_SUCCESS && printf "enabled" && $SETCOLOR_NORMAL
         RET=0
     else
         if [ -n "$mandatory" ] && [ "$mandatory" = yes ]; then
-            $SETCOLOR_FAILURE && echo -n "required" && $SETCOLOR_NORMAL
+            $SETCOLOR_FAILURE && printf "required" && $SETCOLOR_NORMAL
         else
-            $SETCOLOR_WARNING && echo -n "missing" && $SETCOLOR_NORMAL
+            $SETCOLOR_WARNING && printf "missing" && $SETCOLOR_NORMAL
         fi
     fi
     return $RET
@@ -65,9 +65,9 @@ is_probed() {
         return
     fi
     if lsmod | grep -wm1 "^${1}" > /dev/null; then
-        echo -n ", loaded"
+        printf ", loaded"
     else
-        echo -n ", not loaded"
+        printf ", not loaded"
     fi
 }
 
@@ -126,15 +126,15 @@ fi
 
 echo
 echo "--- Namespaces ---"
-echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
+printf "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
 echo
-echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
+printf "Utsname namespace: " && is_enabled CONFIG_UTS_NS
 echo
-echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
+printf "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
 echo
-echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
+printf "Pid namespace: " && is_enabled CONFIG_PID_NS yes
 echo
-echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+printf "User namespace: " && is_enabled CONFIG_USER_NS
 echo
 if is_set CONFIG_USER_NS; then
     if command -v newuidmap >/dev/null 2>&1; then
@@ -154,18 +154,18 @@ if is_set CONFIG_USER_NS; then
         echo "newgidmap is not installed"
     fi
 fi
-echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+printf "Network namespace: " && is_enabled CONFIG_NET_NS
 echo
 if [ $KVER_MAJOR -lt 4 ] || { [ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]; }; then
-    echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+    printf "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
     echo
 fi
 echo
 
 echo "--- Control groups ---"
-echo -n "Cgroups: " && is_enabled CONFIG_CGROUPS
+printf "Cgroups: " && is_enabled CONFIG_CGROUPS
 echo
-echo -n "Cgroup namespace: " && has_cgroup_ns
+printf "Cgroup namespace: " && has_cgroup_ns
 echo
 
 print_cgroups() {
@@ -188,33 +188,33 @@ done
 if [ "${CGROUP_V2_MNTS}" != "/sys/fs/cgroup" ]; then
     CGROUP_SYSTEMD_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep -F "/systemd")
     if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
-        echo -n "Cgroup v1 systemd controller: "
+        printf "Cgroup v1 systemd controller: "
         $SETCOLOR_FAILURE && echo "missing" && $SETCOLOR_NORMAL
     fi
 
     CGROUP_FREEZER_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep -F "/freezer")
     if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
-        echo -n "Cgroup v1 freezer controller: "
+        printf "Cgroup v1 freezer controller: "
         $SETCOLOR_FAILURE && echo "missing" && $SETCOLOR_NORMAL
     fi
 
     CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
     if [ -f "$CGROUP_MNT_PATH/cgroup.clone_children" ]; then
-        echo -n "Cgroup v1 clone_children flag: " &&
+        printf "Cgroup v1 clone_children flag: " &&
         $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
     fi
 fi
 
-echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
+printf "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
 echo
 
-echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
+printf "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
 echo
 
-echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
+printf "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
 echo
 
-echo -n "Cgroup memory controller: "
+printf "Cgroup memory controller: "
 if { [ $KVER_MAJOR -ge 3 ] && [ $KVER_MINOR -ge 6 ]; } || [ $KVER_MAJOR -gt 3 ]; then
     is_enabled CONFIG_MEMCG
 else
@@ -222,56 +222,56 @@ else
 fi
 echo
 
-is_set CONFIG_SMP && echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS && echo
+is_set CONFIG_SMP && printf "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS && echo
 echo
 
 echo "--- Misc ---"
-echo -n "Veth pair device: " && is_enabled CONFIG_VETH && is_probed veth
+printf "Veth pair device: " && is_enabled CONFIG_VETH && is_probed veth
 echo
-echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN && is_probed macvlan
+printf "Macvlan: " && is_enabled CONFIG_MACVLAN && is_probed macvlan
 echo
-echo -n "Vlan: " && is_enabled CONFIG_VLAN_8021Q && is_probed 8021q
+printf "Vlan: " && is_enabled CONFIG_VLAN_8021Q && is_probed 8021q
 echo
-echo -n "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
+printf "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
 echo
-echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
+printf "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
 if { [ $KVER_MAJOR -gt 3 ] && [ $KVER_MINOR -gt 6 ]; } && [ $KVER_MAJOR -lt 5 ]; then
     echo
-    echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
+    printf "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
     echo
-    echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+    printf "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
 fi
 echo
-echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
+printf "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
 echo
-echo -n "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv6
+printf "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv6
 echo
-echo -n "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM && is_probed xt_CHECKSUM
+printf "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM && is_probed xt_CHECKSUM
 echo
-echo -n "CONFIG_NETFILTER_XT_MATCH_COMMENT: " && is_enabled CONFIG_NETFILTER_XT_MATCH_COMMENT && is_probed xt_comment
+printf "CONFIG_NETFILTER_XT_MATCH_COMMENT: " && is_enabled CONFIG_NETFILTER_XT_MATCH_COMMENT && is_probed xt_comment
 echo
-echo -n "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
+printf "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
 echo
 
 echo
 echo "--- Checkpoint/Restore ---"
-echo -n "checkpoint restore: " && is_enabled CONFIG_CHECKPOINT_RESTORE
+printf "checkpoint restore: " && is_enabled CONFIG_CHECKPOINT_RESTORE
 echo
-echo -n "CONFIG_FHANDLE: " && is_enabled CONFIG_FHANDLE
+printf "CONFIG_FHANDLE: " && is_enabled CONFIG_FHANDLE
 echo
-echo -n "CONFIG_EVENTFD: " && is_enabled CONFIG_EVENTFD
+printf "CONFIG_EVENTFD: " && is_enabled CONFIG_EVENTFD
 echo
-echo -n "CONFIG_EPOLL: " && is_enabled CONFIG_EPOLL
+printf "CONFIG_EPOLL: " && is_enabled CONFIG_EPOLL
 echo
-echo -n "CONFIG_UNIX_DIAG: " && is_enabled CONFIG_UNIX_DIAG
+printf "CONFIG_UNIX_DIAG: " && is_enabled CONFIG_UNIX_DIAG
 echo
-echo -n "CONFIG_INET_DIAG: " && is_enabled CONFIG_INET_DIAG
+printf "CONFIG_INET_DIAG: " && is_enabled CONFIG_INET_DIAG
 echo
-echo -n "CONFIG_PACKET_DIAG: " && is_enabled CONFIG_PACKET_DIAG
+printf "CONFIG_PACKET_DIAG: " && is_enabled CONFIG_PACKET_DIAG
 echo
-echo -n "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
+printf "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
 echo
-echo -n "File capabilities: "
+printf "File capabilities: "
 if [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ]; then
     is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
     echo
