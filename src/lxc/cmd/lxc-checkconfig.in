@@ -72,7 +72,7 @@ is_probed() {
     fi
 }
 
-if type lxc-start >/dev/null 2>&1; then
+if command -v lxc-start >/dev/null; then
     echo "LXC version $(lxc-start --version)"
 fi
 
