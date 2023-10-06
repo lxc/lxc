@@ -120,12 +120,12 @@ fi
 
 if [ -z "${KVER_MAJOR}" ]; then
     echo "WARNING: Unable to detect version from configuration, assuming latest"
-    echo ""
+    echo
     KVER_MAJOR="100"
     KVER_MINOR="0"
 fi
 
-echo ""
+echo
 echo "--- Namespaces ---"
 echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
 echo
@@ -190,15 +190,13 @@ if [ "${CGROUP_V2_MNTS}" != "/sys/fs/cgroup" ]; then
     CGROUP_SYSTEMD_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep -F "/systemd")
     if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
         echo -n "Cgroup v1 systemd controller: "
-        $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
-        echo
+        $SETCOLOR_FAILURE && echo "missing" && $SETCOLOR_NORMAL
     fi
 
     CGROUP_FREEZER_MNTPT=$(echo "$CGROUP_V1_MNTS" | grep -F "/freezer")
     if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
         echo -n "Cgroup v1 freezer controller: "
-        $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
-        echo
+        $SETCOLOR_FAILURE && echo "missing" && $SETCOLOR_NORMAL
     fi
 
     CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
