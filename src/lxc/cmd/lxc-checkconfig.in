@@ -34,7 +34,7 @@ show_enabled() {
         $SETCOLOR_SUCCESS && echo -n "enabled" && $SETCOLOR_NORMAL
         RET=0
     else
-        if [ ! -z "$mandatory" ] && [ "$mandatory" = yes ]; then
+        if [ -n "$mandatory" ] && [ "$mandatory" = yes ]; then
             $SETCOLOR_FAILURE && echo -n "required" && $SETCOLOR_NORMAL
         else
             $SETCOLOR_WARNING && echo -n "missing" && $SETCOLOR_NORMAL
