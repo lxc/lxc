@@ -64,8 +64,7 @@ is_probed() {
     if [ ! -f /proc/modules ]; then
         return
     fi
-    lsmod | grep -wm1 "^${1}" > /dev/null
-    if [ $? -eq 0 ]; then
+    if lsmod | grep -wm1 "^${1}" > /dev/null; then
         echo -n ", loaded"
     else
         echo -n ", not loaded"
