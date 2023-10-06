@@ -5,8 +5,8 @@ export LC_ALL=C.UTF-8
 export LANGUAGE=en
 
 # Allow environment variables to override config
-: ${CONFIG:=/proc/config.gz}
-: ${MODNAME:=configs}
+: "${CONFIG:=/proc/config.gz}"
+: "${MODNAME:=configs}"
 
 GREP="grep"
 
@@ -30,7 +30,7 @@ is_set() {
 show_enabled() {
     RES=$1
     RET=1
-    if [ $RES -eq 0 ]; then
+    if [ "$RES" -eq 0 ]; then
         $SETCOLOR_SUCCESS && echo -n "enabled" && $SETCOLOR_NORMAL
         RET=0
     else
@@ -46,7 +46,7 @@ show_enabled() {
 is_enabled() {
     mandatory=$2
 
-    is_set $1
+    is_set "$1"
     show_enabled $?
 }
 
@@ -84,27 +84,27 @@ if [ ! -f $CONFIG ]; then
     [ -f "${HEADERS_CONFIG}" ] && CONFIG=${HEADERS_CONFIG}
     [ -f "${BOOT_CONFIG}" ] && CONFIG=${BOOT_CONFIG}
     if [ ! -f "$CONFIG" ]; then
-        MODULEFILE=$(modinfo -k $KVER -n $MODNAME 2> /dev/null)
+        MODULEFILE="$(modinfo -k "$KVER" -n "$MODNAME" 2> /dev/null)"
         # don't want to modprobe, so give user a hint
         # although scripts/extract-ikconfig could be used to extract contents without loading kernel module
         # http://svn.pld-linux.org/trac/svn/browser/geninitrd/trunk/geninitrd?rev=12696#L327
     fi
-    if [ ! -f $CONFIG ]; then
-        echo "$(basename $0): unable to retrieve kernel configuration" >&2
+    if [ ! -f "$CONFIG" ]; then
+        echo "$(basename "$0"): unable to retrieve kernel configuration" >&2
         echo >&2
         if [ -f "$MODULEFILE" ]; then
             echo "Try modprobe $MODNAME module, or" >&2
         fi
         echo "Try recompiling with IKCONFIG_PROC, installing the kernel headers," >&2
         echo "or specifying the kernel configuration path with:" >&2
-        echo "  CONFIG=<path> $(basename $0)" >&2
+        echo "  CONFIG=<path> $(basename "$0")" >&2
         exit 1
     else
         echo "Kernel configuration found at $CONFIG"
     fi
 fi
 
-if gunzip -tq < $CONFIG 2>/dev/null; then
+if gunzip -tq < "$CONFIG" 2>/dev/null; then
     GREP="zgrep"
 fi
 
@@ -200,7 +200,7 @@ if [ "${CGROUP_V2_MNTS}" != "/sys/fs/cgroup" ]; then
     fi
 
     CGROUP_MNT_PATH=$(echo "$CGROUP_V1_MNTS" | head -n 1)
-    if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
+    if [ -f "$CGROUP_MNT_PATH/cgroup.clone_children" ]; then
         echo -n "Cgroup v1 clone_children flag: " &&
         $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
     fi
