@@ -4577,6 +4577,8 @@ define_cleanup_function(struct list_head *, __lxc_free_idmap);
 
 int lxc_clear_idmaps(struct lxc_conf *c)
 {
+	c->root_nsuid_map = NULL;
+	c->root_nsgid_map = NULL;
 	return lxc_free_idmap(&c->id_map);
 }
 
