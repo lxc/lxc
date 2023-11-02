@@ -285,7 +285,7 @@ _lxc_attach() {
             ;;
         --arch | -a )
             # https://github.com/lxc/lxc/blob/stable-4.0/src/tests/arch_parse.c#L37
-            COMPREPLY=( $( compgen -W 'arm armel armhf armv7l athlon i386 i486 i586 i686 linux32 mips mipsel ppc powerpc x86 aarch64 amd64 arm64 linux64 mips64 mips64el ppc64 ppc64el ppc64le powerpc64 riscv64 s390x x86_64' -- "${cur}" ) )
+            COMPREPLY=( $( compgen -W 'arm armel armhf armv7l athlon i386 i486 i586 i686 linux32 mips mipsel ppc powerpc x86 aarch64 amd64 arm64 linux64 loongarch64 mips64 mips64el ppc64 ppc64el ppc64le powerpc64 riscv64 s390x x86_64' -- "${cur}" ) )
             return
             ;;
         --elevated-privileges | -e )

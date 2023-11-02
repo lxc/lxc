@@ -110,6 +110,7 @@ features. This includes (but isn't limited to):
 - riscv64
 - s390x
 - armvl7, arm64
+- loongarch64
 
 LXC also supports at least the following C standard libraries:
 

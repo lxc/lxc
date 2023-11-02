@@ -37,10 +37,11 @@
 #endif
 
 static const char *const arches[] = {
-    "arm",   "armel",	"armhf",   "armv7l",	"athlon",  "i386",   "i486",
-    "i586",  "i686",	"linux32", "mips",	"mipsel",  "ppc",    "powerpc",
-    "x86",   "aarch64", "amd64",   "arm64",	"linux64", "mips64", "mips64el",
-    "ppc64", "ppc64el", "ppc64le", "powerpc64", "riscv64", "s390x",  "x86_64",
+    "arm",       "armel",    "armhf",    "armv7l",   "athlon",     "i386",         "i486",
+    "i586",      "i686",     "linux32",  "mips",     "mipsel",     "ppc",          "powerpc",
+    "x86",       "aarch64",  "amd64",    "arm64",    "linux64",    "loongarch64",  "mips64",
+    "mips64el",  "ppc64",    "ppc64el",  "ppc64le",  "powerpc64",  "riscv64",      "s390x",
+    "x86_64",
 };
 
 static bool parse_valid_architectures(void)
