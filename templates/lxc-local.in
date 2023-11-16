@@ -62,12 +62,14 @@ in_userns() {
 
 usage() {
   cat <<EOF
-LXC container image downloader
+LXC local template script.
+Creates a container from a local tarball.
+The metadata tarball is optional, but if present, it must contain a 'config' file.
 
 Special arguments:
 [ -h | --help ]: Print this help message and exit.
-[ -m | --metadata ]: Path to the metadata for the image.
-[ -f | --fstree ]: Path to the filesystem tree for the image.
+[ -m | --metadata ]: Path to the image metadata, should be a tar.xz containing the 'config' file.
+[ -f | --fstree ]: Path to the image filesystem tree, should be a tar.xz containing the root filesystem.
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -79,6 +81,7 @@ EOF
   return 0
 }
 
+# Show usage and exit if invalid arguments are passed
 if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
   usage
   exit 1
