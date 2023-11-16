@@ -29,6 +29,7 @@ LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
 LXC_METADATA=
+LXC_FSTREE=
 MODE="system"
 COMPAT_LEVEL=5
 
@@ -74,6 +75,7 @@ Special arguments:
 [ -h | --help ]: Print this help message and exit.
 [ -m | --metadata ]: Path to the image metadata, should be a tar.xz containing the 'config' file.
 [ -f | --fstree ]: Path to the image filesystem tree, should be a tar.xz containing the root filesystem.
+[ --no-dev ]: Exclude /dev from the fstree tarball.
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -86,7 +88,7 @@ EOF
 }
 
 # Show usage and exit if invalid arguments are passed
-if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
+if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,no-dev:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
   usage
   exit 1
 fi
@@ -100,6 +102,7 @@ while :; do
     --rootfs)      LXC_ROOTFS="$2"; shift 2;;
     -m|--metadata) LXC_METADATA="$2"; shift 2;;
     -f|--fstree)   LXC_FSTREE="$2"; shift 2;;
+    --no-dev)      EXCLUDES="${EXCLUDES} --exclude=./dev/*"; shift 1;;
     --mapped-uid)  LXC_MAPPED_UID="$2"; shift 2;;
     --mapped-gid)  LXC_MAPPED_GID="$2"; shift 2;;
     *)             break;;
@@ -278,18 +281,29 @@ process_templates() {
 unpack_metadata() {
   # Unpack file that contains the container metadata
   # If the file does not exist, just warn and continue.
-  if [ -n "${LXC_METADATA}" ] && [ -f "${LXC_METADATA}" ]; then
-    if tar Jxf "${LXC_METADATA}" -C "${LOCAL_TEMP}"; then
-      echo "Unpacked metadata file: ${LXC_METADATA}"
-      process_excludes
-      process_config
-      process_fstab
-      process_templates
-    else
-      echo "Unable to unpack metadata file: ${LXC_METADATA}" 2>&1
-      exit 1
-    fi
+  if [ -z "${LXC_METADATA}" ]; then
+    echo "Metadata file was not passed" 2>&1
+    return
   fi
+
+  if [ ! -f "${LXC_METADATA}" ]; then
+    echo "Metadata file does not exist: ${LXC_METADATA}" 2>&1
+    return
+  fi
+
+  echo "Using metadata file: ${LXC_METADATA}"
+
+  if ! tar Jxf "${LXC_METADATA}" -C "${LOCAL_TEMP}"; then
+    echo "Unable to unpack metadata file: ${LXC_METADATA}" 2>&1
+    exit 1
+  fi
+
+  echo "Unpacked metadata file: ${LXC_METADATA}"
+
+  process_excludes
+  process_config
+  process_fstab
+  process_templates
 }
 
 set_utsname() {
@@ -305,13 +319,25 @@ prepare_rootfs() {
 
 unpack_rootfs() {
   # Unpack the rootfs
-  echo "Unpacking the rootfs to: ${LXC_ROOTFS}"
+  if [ -z "${LXC_FSTREE}" ]; then
+    echo "ERROR: Rootfs file was not passed" 2>&1
+    exit 1
+  fi
+  if [ ! -f "${LXC_FSTREE}" ]; then
+    echo "ERROR: Rootfs file does not exist: ${LXC_FSTREE}" 2>&1
+    exit 1
+  fi
+  echo "Using rootfs file: ${LXC_FSTREE}"
 
   # Do not surround ${EXCLUDES} by quotes. This does not work. The solution could
   # use array but this is not POSIX compliant. The only POSIX compliant solution
   # is to use a function wrapper, but the latter can't be used here as the args
   # are dynamic. We thus need to ignore the warning brought by shellcheck.
   # shellcheck disable=SC2086
+  if [ -n "${EXCLUDES}" ]; then
+    echo "Excludes: ${EXCLUDES}"
+  fi
+
   tar --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
 
   prepare_rootfs
