@@ -95,11 +95,6 @@ prep() {
         error "${0##*}: usage failed, continuing with defaults"
     fi
 
-    [ "$create_etc_init" -eq 0 ] ||
-        echo "#upstart needs help for overlayfs (LP: #1213925)." > \
-            "$root_d/etc/init/.overlayfs-upstart-helper" ||
-        { error "failed to create /etc/init in overlay"; return 1; }
-
     local seed_d=""
     seed_d="$root_d/var/lib/cloud/seed/nocloud-net"
 
