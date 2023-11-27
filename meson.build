@@ -886,7 +886,6 @@ subdir('config/etc')
 subdir('config/init/common')
 subdir('config/init/systemd')
 subdir('config/init/sysvinit')
-subdir('config/init/upstart')
 if want_selinux
     subdir('config/selinux')
 endif

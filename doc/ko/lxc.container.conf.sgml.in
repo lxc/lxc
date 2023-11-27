@@ -449,19 +449,6 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	    <para>
               <!--
-	      <option>none:</option> will cause the container to share
-	      the host's network namespace.  This means the host
-	      network devices are usable in the container.  It also
-	      means that if both the container and host have upstart as
-	      init, 'halt' in a container (for instance) will shut down the
-	      host.
-              -->
-              <option>none:</option> 호스트의 네트워크 네임스페이스를 공유한다. 이렇게 하면 호스트의 네트워크 장치를 컨테이너 내에서 사용가능하다.
-              컨테이너와 호스트 둘다 init에서 upstart를 사용하는 경우, (예를 들어) 컨테이너에서 'halt'를 하면, 호스트의 것도 종료된다.
-	    </para>
-
-	    <para>
-              <!--
 	      <option>empty:</option> will create only the loopback
 	      interface.
               -->
