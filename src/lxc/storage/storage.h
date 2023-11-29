@@ -98,7 +98,7 @@ struct lxc_storage {
  *                  trust the config file. If the config file key
  *                  lxc.rootfs.path is set to <storage type>:<container path>
  *                  the confile parser will have split this into <storage type>
- *                  and <container path> and set the <bdev_type> member in the
+ *                  and <container path> and set the <__bdev_type> member in the
  *                  lxc_rootfs struct to <storage type> and the <path> member
  *                  will be set to a clean <container path> without the <storage
  *                  type> prefix. This is the new, clean way of handling storage

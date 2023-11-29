@@ -536,16 +536,21 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 	struct stat st;
 	struct statfs stfs;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
+	const char *type;
 
 	ret = lxc_storage_prepare(conf);
 	if (ret)
 		return syserror_set(-EINVAL, "Failed to prepare rootfs storage");
+	type = rootfs->storage->type;
+
+	if (!type)
+		return syserror_set(-EINVAL, "Storage type neither set nor automatically detected");
 
 	if (!is_empty_string(rootfs->mnt_opts.userns_path)) {
 		if (!rootfs->path)
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supported with separate rootfs for container");
 
-		if (rootfs->bdev_type && !strequal(rootfs->bdev_type, "dir"))
+		if (type && !strequal(type, "dir"))
 			return syserror_set(-EINVAL, "Idmapped rootfs currently only supports the \"dir\" storage driver");
 	}
 
@@ -555,14 +560,12 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 	if (userns)
 		return log_trace(0, "Not pinning because container runs in user namespace");
 
-	if (rootfs->bdev_type) {
-		if (strequal(rootfs->bdev_type, "overlay") ||
-		    strequal(rootfs->bdev_type, "overlayfs"))
-			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
+	if (strequal(type, "overlay") ||
+	    strequal(type, "overlayfs"))
+		return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
 
-		if (strequal(rootfs->bdev_type, "zfs"))
-			return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
-	}
+	if (strequal(type, "zfs"))
+		return log_trace_errno(0, EINVAL, "Not pinning on ZFS filesystem");
 
 	dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
 	if (dfd_path < 0)
@@ -4831,8 +4834,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (current_config == conf)
 		current_config = NULL;
 	lxc_terminal_conf_free(&conf->console);
+	free(conf->rootfs.__bdev_type);
 	free(conf->rootfs.mount);
-	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.path);
 	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);

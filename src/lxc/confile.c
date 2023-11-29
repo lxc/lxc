@@ -2795,14 +2795,14 @@ static int set_config_rootfs_path(const char *key, const char *value,
 		return ret_errno(ENOMEM);
 
 	/* Split <storage type>:<container path> into <storage type> and
-	 * <container path>. Set "rootfs.bdev_type" to <storage type> and
+	 * <container path>. Set "rootfs.__bdev_type" to <storage type> and
 	 * "rootfs.path" to <container path>.
 	 */
 	tmp = strchr(dup, ':');
 	if (tmp) {
 		*tmp = '\0';
 
-		ret = set_config_path_item(&lxc_conf->rootfs.bdev_type, dup);
+		ret = set_config_path_item(&lxc_conf->rootfs.__bdev_type, dup);
 		if (ret < 0)
 			return ret_errno(ENOMEM);
 
