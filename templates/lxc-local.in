@@ -28,9 +28,14 @@ LXC_TEMPLATE_CONFIG=@LXCTEMPLATECONFIG@
 LXC_NAME=
 LXC_PATH=
 LXC_ROOTFS=
-LXC_CONFIG=
+LXC_METADATA=
+LXC_FSTREE=
 MODE="system"
 COMPAT_LEVEL=5
+
+EXCLUDES=""
+TEMPLATE_FILES="${LXC_PATH}/config"
+
 
 # Make sure the usual locations are in PATH
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -62,12 +67,15 @@ in_userns() {
 
 usage() {
   cat <<EOF
-LXC container image downloader
+LXC local template script.
+Creates a container from a local tarball.
+The metadata tarball is optional, but if present, it must contain a 'config' file.
 
 Special arguments:
 [ -h | --help ]: Print this help message and exit.
-[ -m | --metadata ]: Path to the metadata for the image.
-[ -f | --fstree ]: Path to the filesystem tree for the image.
+[ -m | --metadata ]: Path to the image metadata, should be a tar.xz containing the 'config' file.
+[ -f | --fstree ]: Path to the image filesystem tree, should be a tar.xz containing the root filesystem.
+[ --no-dev ]: Exclude /dev from the fstree tarball.
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -79,7 +87,8 @@ EOF
   return 0
 }
 
-if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
+# Show usage and exit if invalid arguments are passed
+if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,no-dev:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
   usage
   exit 1
 fi
@@ -91,8 +100,9 @@ while :; do
     --name)        LXC_NAME="$2"; shift 2;;
     --path)        LXC_PATH="$2"; shift 2;;
     --rootfs)      LXC_ROOTFS="$2"; shift 2;;
-    -m|--metadata) LXC_CONFIG="$2"; shift 2;;
+    -m|--metadata) LXC_METADATA="$2"; shift 2;;
     -f|--fstree)   LXC_FSTREE="$2"; shift 2;;
+    --no-dev)      EXCLUDES="${EXCLUDES} --exclude=./dev/*"; shift 1;;
     --mapped-uid)  LXC_MAPPED_UID="$2"; shift 2;;
     --mapped-gid)  LXC_MAPPED_GID="$2"; shift 2;;
     *)             break;;
@@ -131,6 +141,13 @@ if [ "${USERNS}" != "no" ]; then
 fi
 
 relevant_file() {
+  # Reads the supplied file name from LOCAL_TEMP..
+  # If the file exists in $LOCAL_TEMP/$FILENAME.$COMPAT_LEVEL, it will be used.
+  #   The default COMPAT_LEVEL is 5.
+  # If the file exists in $LOCAL_TEMP/$FILENAME-$MODE, it will be used.
+  #   The default MODE is "system".
+  # If a mode or compatibility level specific file does not exist, the
+  # passed file name will be used.
   FILE_PATH="${LOCAL_TEMP}/$1"
 
   if [ -e "${FILE_PATH}-${MODE}" ]; then
@@ -144,130 +161,229 @@ relevant_file() {
   echo "${FILE_PATH}"
 }
 
-
-# Unpack the rootfs
-echo "Unpacking the rootfs"
-
-# Create temporary directory to
-if ! command -V mktemp >/dev/null 2>&1; then
-  LOCAL_TEMP=/tmp/lxc-local.$$
-  mkdir -p "${LOCAL_TEMP}"
-else
-  LOCAL_TEMP=$(mktemp -d)
-fi
-
-# Unpack file that contains meta.tar.xz
-if ! tar Jxf "${LXC_CONFIG}" -C "${LOCAL_TEMP}"; then
-  echo "ERROR: Invalid metadata file" 2>&1
-  exit 1
-fi
-
-EXCLUDES=""
-excludelist=$(relevant_file excludes)
-if [ -f "${excludelist}" ]; then
-    while read -r line; do
-        EXCLUDES="${EXCLUDES} --exclude=${line}"
-    done < "${excludelist}"
-fi
-
-# Do not surround ${EXCLUDES} by quotes. This does not work. The solution could
-# use array but this is not POSIX compliant. The only POSIX compliant solution
-# is to use a function wrapper, but the latter can't be used here as the args
-# are dynamic. We thus need to ignore the warning brought by shellcheck.
-# shellcheck disable=SC2086
-tar  --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
-
-mkdir -p "${LXC_ROOTFS}/dev/pts/"
-
-# Setup the configuration
-# Setup the configuration
-configfile="$(relevant_file config)"
-if [ ! -e "${configfile}" ]; then
-    echo "ERROR: meta tarball is missing the configuration file" 1>&2
-    exit 1
-fi
-
-## Extract all the network config entries
-sed -i -e "/lxc.net.0/{w ${LXC_PATH}/config-network" -e "d}" "${LXC_PATH}/config"
-
-## Extract any other config entry
-sed -i -e "/lxc./{w ${LXC_PATH}/config-auto" -e "d}" "${LXC_PATH}/config"
-
-## Append the defaults
-{
-  echo ""
-  echo "# Distribution configuration"
-  cat "$configfile"
-} >> "${LXC_PATH}/config"
-
-## Add the container-specific config
-{
-  echo ""
-  echo "# Container specific configuration"
-  if [ -e "${LXC_PATH}/config-auto" ]; then
-    cat "${LXC_PATH}/config-auto"
-    rm "${LXC_PATH}/config-auto"
+create_build_dir() {
+  # Create temporary build directory.
+  # If mktemp is not available, use /tmp/lxc-local.$$
+  if ! command -V mktemp >/dev/null 2>&1; then
+    LOCAL_TEMP=/tmp/lxc-local.$$
+    mkdir -p "${LOCAL_TEMP}"
+  else
+    LOCAL_TEMP=$(mktemp -d)
   fi
-} >> "${LXC_PATH}/config"
 
-fstab="$(relevant_file fstab)"
-if [ -e "${fstab}" ]; then
-  echo "lxc.mount.fstab = ${LXC_PATH}/fstab" >> "${LXC_PATH}/config"
-fi
-echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_PATH}/config"
+  echo "Using local temporary directory ${LOCAL_TEMP}"
+}
 
-## Re-add the previously removed network config
-if [ -e "${LXC_PATH}/config-network" ]; then
+process_excludes() {
+  # If the file ${LXC_PATH}/excludes exists, it will be used as a list of
+  # files to exclude from the tarball.
+  excludelist=$(relevant_file excludes)
+  if [ -f "${excludelist}" ]; then
+    while read -r line; do
+      EXCLUDES="${EXCLUDES} --exclude=${line}"
+    done < "${excludelist}"
+  fi
+}
+
+extract_config() {
+  # lxc-create will automatically create a config file at ${LXC_PATH}/config.
+  # This function extracts the network config, and any remaining lxc config
+  # The extracted config is stored in ${LXC_PATH}/config-network and ${LXC_PATH}/config-extra
+  # The config will be merged later.
+
+  # Extract all the network config entries
+  sed -i -e "/lxc.net.0/{w ${LXC_PATH}/config-network" -e "d}" "${LXC_PATH}/config"
+
+  if [ -e "${LXC_PATH}/config-network" ]; then
+    echo "Extracted network config to: ${LXC_PATH}/config-network"
+    cat "${LXC_PATH}/config-network"
+  fi
+
+  # Extract any other config entry
+  sed -i -e "/lxc./{w ${LXC_PATH}/config-extra" -e "d}" "${LXC_PATH}/config"
+
+  if [ -e "${LXC_PATH}/config-extra" ]; then
+    echo "Extracted additional config to: ${LXC_PATH}/config-extra"
+    cat "${LXC_PATH}/config-extra"
+  fi
+}
+
+add_container_config() {
+  # Adds the contents of the supplied metadata config to the container config
   {
     echo ""
-    echo "# Network configuration"
-    cat "${LXC_PATH}/config-network"
-    rm "${LXC_PATH}/config-network"
+    echo "# Distribution configuration"
+    cat "$configfile"
   } >> "${LXC_PATH}/config"
-fi
+}
 
-TEMPLATE_FILES="${LXC_PATH}/config"
+add_extra_config() {
+  # Add the container-specific config
+  {
+    echo ""
+    echo "# Container specific configuration"
+    if [ -e "${LXC_PATH}/config-extra" ]; then
+      cat "${LXC_PATH}/config-extra"
+      rm "${LXC_PATH}/config-extra"
+    fi
+  } >> "${LXC_PATH}/config"
+}
 
-# Setup the fstab
-if [ -e "${fstab}" ]; then
-  cp "${fstab}" "${LXC_PATH}/fstab"
-  TEMPLATE_FILES="${TEMPLATE_FILES};${LXC_PATH}/fstab"
-fi
+add_network_config() {
+  # Re-add the previously removed network config
+  if [ -e "${LXC_PATH}/config-network" ]; then
+    {
+      echo ""
+      echo "# Network configuration"
+      cat "${LXC_PATH}/config-network"
+      rm "${LXC_PATH}/config-network"
+    } >> "${LXC_PATH}/config"
+  fi
+}
 
-# Look for extra templates
-if [ -e "$(relevant_file templates)" ]; then
-  while read -r line; do
-    fullpath="${LXC_ROOTFS}/${line}"
-    [ ! -e "${fullpath}" ] && continue
-    TEMPLATE_FILES="${TEMPLATE_FILES};${fullpath}"
-  done < "$(relevant_file templates)"
-fi
+process_config() {
+  # Process the supplied config file if it exists.
+  configfile="$(relevant_file config)"
+  if [ ! -e "${configfile}" ]; then
+    echo "ERROR: metadata tarball is missing the configuration file" 1>&2
+    return
+  fi
+
+  extract_config
+  add_container_config
+  add_extra_config
+  add_network_config
+}
+
+process_fstab() {
+  # Process the supplied fstab file if it exists.
+  # Add the fstab file to template files so substitions can be made.
+  fstab="$(relevant_file fstab)"
+  if [ -e "${fstab}" ]; then
+    echo "lxc.mount.fstab = ${LXC_PATH}/fstab" >> "${LXC_PATH}/config"
+    cp "${fstab}" "${LXC_PATH}/fstab"
+    TEMPLATE_FILES="${TEMPLATE_FILES};${LXC_PATH}/fstab"
+  fi
+}
+
+process_templates() {
+  # Look for extra templates
+  template="$(relevant_file template)"
+  if [ -e "${template}" ]; then
+    while read -r line; do
+      fullpath="${LXC_ROOTFS}/${line}"
+      [ ! -e "${fullpath}" ] && continue
+      TEMPLATE_FILES="${TEMPLATE_FILES};${fullpath}"
+    done < "${template}"
+  fi
+}
+
+unpack_metadata() {
+  # Unpack file that contains the container metadata
+  # If the file does not exist, just warn and continue.
+  if [ -z "${LXC_METADATA}" ]; then
+    echo "Metadata file was not passed" 2>&1
+    return
+  fi
+
+  if [ ! -f "${LXC_METADATA}" ]; then
+    echo "Metadata file does not exist: ${LXC_METADATA}" 2>&1
+    return
+  fi
+
+  echo "Using metadata file: ${LXC_METADATA}"
+
+  if ! tar Jxf "${LXC_METADATA}" -C "${LOCAL_TEMP}"; then
+    echo "Unable to unpack metadata file: ${LXC_METADATA}" 2>&1
+    exit 1
+  fi
+
+  echo "Unpacked metadata file: ${LXC_METADATA}"
+
+  process_excludes
+  process_config
+  process_fstab
+  process_templates
+}
+
+set_utsname() {
+  # Set the container's hostname
+  echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_PATH}/config"
+}
+
+prepare_rootfs() {
+  # Additional configuration that must be done on the rootfs.
+  # Always add /dev/pts as /dev may be excluded.
+  mkdir -p "${LXC_ROOTFS}/dev/pts/"
+}
+
+unpack_rootfs() {
+  # Unpack the rootfs
+  if [ -z "${LXC_FSTREE}" ]; then
+    echo "ERROR: Rootfs file was not passed" 2>&1
+    exit 1
+  fi
+  if [ ! -f "${LXC_FSTREE}" ]; then
+    echo "ERROR: Rootfs file does not exist: ${LXC_FSTREE}" 2>&1
+    exit 1
+  fi
+  echo "Using rootfs file: ${LXC_FSTREE}"
+
+  # Do not surround ${EXCLUDES} by quotes. This does not work. The solution could
+  # use array but this is not POSIX compliant. The only POSIX compliant solution
+  # is to use a function wrapper, but the latter can't be used here as the args
+  # are dynamic. We thus need to ignore the warning brought by shellcheck.
+  # shellcheck disable=SC2086
+  if [ -n "${EXCLUDES}" ]; then
+    echo "Excludes: ${EXCLUDES}"
+  fi
+
+  tar --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
+
+  prepare_rootfs
+}
+
+replace_template_vars() {
+  # Replace variables in all templates
+  OLD_IFS=${IFS}
+  IFS=";"
+  for file in ${TEMPLATE_FILES}; do
+    [ ! -f "${file}" ] && continue
+
+    sed -i "s#LXC_NAME#${LXC_NAME}#g" "${file}"
+    sed -i "s#LXC_PATH#${LXC_PATH}#g" "${file}"
+    sed -i "s#LXC_ROOTFS#${LXC_ROOTFS}#g" "${file}"
+    sed -i "s#LXC_TEMPLATE_CONFIG#${LXC_TEMPLATE_CONFIG}#g" "${file}"
+    sed -i "s#LXC_HOOK_DIR#${LXC_HOOK_DIR}#g" "${file}"
+  done
+  IFS=${OLD_IFS}
+}
+
+fix_tty() {
+  # prevent mingetty from calling vhangup(2) since it fails with userns on CentOS / Oracle
+  if [ -f "${LXC_ROOTFS}/etc/init/tty.conf" ]; then
+    echo "Patching ${LXC_ROOTFS}/etc/init/tty.conf to prevent mingetty from calling vhangup."
+    sed -i 's|mingetty|mingetty --nohangup|' "${LXC_ROOTFS}/etc/init/tty.conf"
+  fi
+}
+
+display_creation_message() {
+  if [ -e "$(relevant_file create-message)" ]; then
+    echo ""
+    echo "---"
+    cat "$(relevant_file create-message)"
+  fi
+}
 
 
-# Replace variables in all templates
-OLD_IFS=${IFS}
-IFS=";"
-for file in ${TEMPLATE_FILES}; do
-  [ ! -f "${file}" ] && continue
+create_build_dir
+unpack_metadata
+unpack_rootfs
 
-  sed -i "s#LXC_NAME#${LXC_NAME}#g" "${file}"
-  sed -i "s#LXC_PATH#${LXC_PATH}#g" "${file}"
-  sed -i "s#LXC_ROOTFS#${LXC_ROOTFS}#g" "${file}"
-  sed -i "s#LXC_TEMPLATE_CONFIG#${LXC_TEMPLATE_CONFIG}#g" "${file}"
-  sed -i "s#LXC_HOOK_DIR#${LXC_HOOK_DIR}#g" "${file}"
-done
-IFS=${OLD_IFS}
+set_utsname
+replace_template_vars
+fix_tty
 
-# prevent mingetty from calling vhangup(2) since it fails with userns on CentOS / Oracle
-if [ -f "${LXC_ROOTFS}/etc/init/tty.conf" ]; then
-  sed -i 's|mingetty|mingetty --nohangup|' "${LXC_ROOTFS}/etc/init/tty.conf"
-fi
-
-
-if [ -e "$(relevant_file create-message)" ]; then
-  echo ""
-  echo "---"
-  cat "$(relevant_file create-message)"
-fi
+display_creation_message
 
 exit 0
