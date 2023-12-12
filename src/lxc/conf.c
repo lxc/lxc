@@ -2390,6 +2390,10 @@ int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 	if (*mntopts_new)
 		opts->data = move_ptr(mntopts_new);
 
+	// Use MS_SLAVE as default mount propagation.
+	if (opts->attr.propagation == 0)
+		opts->attr.propagation = MS_SLAVE;
+
 	return 0;
 }
 
@@ -3936,29 +3940,60 @@ static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 	 */
 	move_fd(memfd);
 
+	char p_mount[PATH_MAX], p_path[PATH_MAX];
+	bool p_mount_shared, p_path_shared;
+
+	p_mount[0] = '\0';
+	p_path[0] = '\0';
+
 	while (getline(&line, &len, f) != -1) {
 		char *opts, *target;
+		bool shared;
+
+		TRACE("mountinfo: %s", line);
 
 		target = get_field(line, 4);
 		if (!target)
 			continue;
 
 		opts = get_field(target, 2);
-		if (!opts)
-			continue;
-
 		null_endofword(opts);
-		if (!strstr(opts, "shared"))
-			continue;
+
+		if (opts && strstr(opts, "shared"))
+			shared = true;
 
 		null_endofword(target);
-		ret = mount(NULL, target, NULL, MS_SLAVE, NULL);
-		if (ret < 0) {
-			SYSERROR("Failed to recursively turn old root mount tree into dependent mount. Continuing...");
-			continue;
+
+		// Find parent mount of rootfs->path (longest prefix match)
+		if ((strnequal(rootfs->path, target, strlen(target))) &&
+		    (strlen(target) > strlen(p_path))) {
+			(void)strlcpy(p_path, target, sizeof(p_path));
+			p_path_shared = shared;
+		}
+
+		// Find parent mount of rootfs->mount (longest prefix match)
+		if ((strnequal(rootfs->mount, target, strlen(target))) &&
+		    (strlen(target) > strlen(p_mount))) {
+			(void)strlcpy(p_mount, target, sizeof(p_mount));
+			p_mount_shared = shared;
 		}
 	}
-	TRACE("Turned all mount table entries into dependent mount");
+
+	if (p_path_shared) {
+		DEBUG("Change mount propagation for \"%s\" to private (lxc.rootfs.path parent)", p_path);
+		ret = mount(NULL, p_path, NULL, MS_SLAVE, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to change mount propagation for \"%s\" to private (lxc.rootfs.path parent)", p_path);
+		}
+	}
+
+	if (p_mount_shared) {
+		DEBUG("Change mount propagation for \"%s\" to private (lxc.rootfs.mount parent)", p_mount);
+		ret = mount(NULL, p_mount, NULL, MS_SLAVE, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to change mount propagation for \"%s\" to private (lxc.rootfs.mount parent)", p_mount);
+		}
+	}
 }
 
 /* This does the work of remounting / if it is shared, calling the container
