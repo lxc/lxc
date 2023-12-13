@@ -1326,6 +1326,12 @@ static int do_start(void *data)
 	setsid();
 
 	if (handler->conf->init_cwd) {
+		struct stat st;
+		if (stat(handler->conf->init_cwd, &st) < 0 && lxc_mkdir_p(handler->conf->init_cwd, 0755) < 0) {
+			SYSERROR("Try to create directory \"%s\" as workdir failed", handler->conf->init_cwd);
+			goto out_warn_father;
+		}
+
 		ret = chdir(handler->conf->init_cwd);
 		if (ret < 0) {
 			SYSERROR("Could not change directory to \"%s\"",
