@@ -82,6 +82,8 @@ struct mntent *getmntent_r(FILE *stream, struct mntent *mp, char *buffer, int bu
 	do {
 		char *end_ptr;
 
+		memset((void *)buffer, 0x0, (size_t bufsiz));
+
 		if (!fgets(buffer, bufsiz, stream))
 			return NULL;
 
