@@ -42,6 +42,7 @@ DOWNLOAD_URL=
 DOWNLOAD_USE_CACHE="false"
 DOWNLOAD_VARIANT="default"
 DOWNLOAD_TEMP=
+DOWNLOAD_VERBOSE="false"
 
 LXC_MAPPED_GID=
 LXC_MAPPED_UID=
@@ -70,6 +71,9 @@ wget_wrapper() {
 }
 
 download_file() {
+  if [ "${DOWNLOAD_VERBOSE}" = "true" ]; then
+    echo "Download file: https://${DOWNLOAD_SERVER}$1"
+  fi
   if ! wget_wrapper --user-agent="lxc/@PACKAGE_VERSION@ compat:${DOWNLOAD_COMPAT_LEVEL}" -T 30 -q "https://${DOWNLOAD_SERVER}/$1" -O "$2" >/dev/null 2>&1; then
     if [ "$3" = "noexit" ]; then
       return 1
@@ -135,6 +139,7 @@ Optional arguments:
 [ --server <server> ]: Image server (default: "images.linuxcontainers.org")
 [ --flush-cache ]: Flush the local copy (if present)
 [ --force-cache ]: Force the use of the local copy even if expired
+[ --verbose ]: Print more information about what is happening
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -148,7 +153,7 @@ EOF
 }
 
 if ! options=$(getopt -o d:r:a:hl -l dist:,release:,arch:,help,list,variant:,\
-server:,flush-cache,force-cache,name:,path:,\
+server:,flush-cache,force-cache,verbose,name:,path:,\
 rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
   usage
   exit 1
@@ -166,6 +171,7 @@ while :; do
     --server)      DOWNLOAD_SERVER="$2"; shift 2;;
     --flush-cache) DOWNLOAD_FLUSH_CACHE="true"; shift 1;;
     --force-cache) DOWNLOAD_FORCE_CACHE="true"; shift 1;;
+    --verbose)     DOWNLOAD_VERBOSE="true"; shift 1;;
     --name)        LXC_NAME="$2"; shift 2;;
     --path)        LXC_PATH="$2"; shift 2;;
     --rootfs)      LXC_ROOTFS="$2"; shift 2;;
