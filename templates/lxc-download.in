@@ -241,7 +241,7 @@ if [ "${DOWNLOAD_LIST_IMAGES}" = "true" ] || [ "${DOWNLOAD_INTERACTIVE}" = "true
   # Parse it
   echo ""
   echo "---"
-  printf "DIST\tRELEASE\tARCH\tVARIANT\tBUILD\n"
+  printf "%-15s  %-10s  %-5s  %-7s  %-14s\n" "DIST" "RELEASE" "ARCH" "VARIANT" "BUILD"
   echo "---"
   while IFS=';' read -r f1 f2 f3 f4 f5 f6; do
     [ -n "${DOWNLOAD_DIST}" ] && [ "$f1" != "${DOWNLOAD_DIST}" ] && continue
@@ -250,7 +250,7 @@ if [ "${DOWNLOAD_LIST_IMAGES}" = "true" ] || [ "${DOWNLOAD_INTERACTIVE}" = "true
     [ -n "${DOWNLOAD_VARIANT}" ] && [ "$f4" != "${DOWNLOAD_VARIANT}" ] && continue
     [ -z "${f5}" ] || [ -z "${f6}" ] && continue
 
-    printf "%s\t%s\t%s\t%s\t%s\n" "${f1}" "${f2}" "${f3}" "${f4}" "${f5}"
+    printf "%-15s  %-10s  %-5s  %-7s  %-14s\n" "${f1}" "${f2}" "${f3}" "${f4}" "${f5}"
     unset f1 f2 f3 f4 f5 f6
   done < "${DOWNLOAD_TEMP}/index"
   echo "---"
