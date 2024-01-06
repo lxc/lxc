@@ -366,7 +366,7 @@ if [ "${DOWNLOAD_USE_CACHE}" = "false" ]; then
     mkdir -p "${LXC_CACHE_PATH}"
     mv "${DOWNLOAD_TEMP}/rootfs.tar.xz" "${LXC_CACHE_PATH}"
     if ! tar Jxf "${DOWNLOAD_TEMP}/meta.tar.xz" -C "${LXC_CACHE_PATH}"; then
-      echo "ERROR: Invalid rootfs tarball." 2>&1
+      echo "ERROR: Invalid meta tarball." 2>&1
       exit 1
     fi
 
