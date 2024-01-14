@@ -50,6 +50,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_keyctl 5241
 		#endif
+	#elif defined __loongarch64
+		#define __NR_keyctl 219
 	#else
 		#define -1
 		#warning "__NR_keyctl not defined for your architecture"
@@ -87,6 +89,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64
 			#define __NR_memfd_create 5314
 		#endif
+	#elif defined __loongarch64
+		#define __NR_memfd_create 279
 	#else
 		#define -1
 		#warning "__NR_memfd_create not defined for your architecture"
@@ -122,6 +126,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_pivot_root 5151
 		#endif
+	#elif defined __loongarch64
+		#define __NR_pivot_root 41
 	#else
 		#define -1
 		#warning "__NR_pivot_root not defined for your architecture"
@@ -157,6 +163,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_setns 5303
 		#endif
+	#elif defined __loongarch64
+		#define __NR_setns 268
 	#else
 		#define -1
 		#warning "__NR_setns not defined for your architecture"
@@ -192,6 +200,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_sethostname 5165
 		#endif
+	#elif defined __loongarch64
+		#define __NR_sethostname 161
 	#else
 		#define -1
 		#warning "__NR_sethostname not defined for your architecture"
@@ -259,6 +269,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_signalfd4 5283
 		#endif
+	#elif defined __loongarch64
+		#define __NR_signalfd4 74
 	#else
 		#define -1
 		#warning "__NR_signalfd4 not defined for your architecture"
@@ -294,6 +306,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_unshare 5262
 		#endif
+	#elif defined __loongarch64
+		#define __NR_unshare 97
 	#else
 		#define -1
 		#warning "__NR_unshare not defined for your architecture"
@@ -329,6 +343,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_bpf 5315
 		#endif
+	#elif defined __loongarch64
+		#define __NR_bpf 280
 	#else
 		#define -1
 		#warning "__NR_bpf not defined for your architecture"
@@ -364,6 +380,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_faccessat 5259
 		#endif
+	#elif defined __loongarch64
+		#define __NR_faccessat 48
 	#else
 		#define -1
 		#warning "__NR_faccessat not defined for your architecture"
@@ -419,6 +437,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_seccomp 5312
 		#endif
+	#elif defined __loongarch64
+		#define __NR_seccomp 277
 	#else
 		#define -1
 		#warning "__NR_seccomp not defined for your architecture"
@@ -454,6 +474,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_gettid 5178
 		#endif
+	#elif defined __loongarch64
+		#define __NR_gettid 178
 	#else
 		#define -1
 		#warning "__NR_gettid not defined for your architecture"
@@ -493,6 +515,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_execveat 5316
 		#endif
+	#elif defined __loongarch64
+		#define __NR_execveat 281
 	#else
 		#define -1
 		#warning "__NR_execveat not defined for your architecture"
@@ -732,6 +756,8 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_personality (132 + 5000)
 		#endif
+	#elif defined __loongarch64
+		#define __NR_personality 92
 	#else
 		#define -1
 		#warning "__NR_personality not defined for your architecture"
