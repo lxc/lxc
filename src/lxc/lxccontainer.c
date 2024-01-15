@@ -5428,7 +5428,7 @@ int list_defined_containers(const char *lxcpath, char ***names,
 	__do_closedir DIR *dir = NULL;
 	size_t array_len = 0, name_array_len = 0, ct_array_len = 0;
 	struct dirent *direntp;
-	struct lxc_container *c;
+	struct lxc_container *c = NULL;
 
 	if (!lxcpath)
 		lxcpath = lxc_global_config_value("lxc.lxcpath");
