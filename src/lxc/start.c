@@ -1400,7 +1400,7 @@ static int do_start(void *data)
 	 * we switched to root in the new user namespace further above. Only
 	 * drop groups if we can, so ensure that we have necessary privilege.
 	 */
-	if (list_empty(&handler->conf->id_map)) {
+	if (!container_uses_namespace(handler, CLONE_NEWUSER)) {
 		#if HAVE_LIBCAP
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif

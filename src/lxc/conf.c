@@ -620,7 +620,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	int ret;
 	const char *path_source;
 
-	if (list_empty(&handler->conf->id_map))
+	if (!container_uses_namespace(handler, CLONE_NEWUSER))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -4117,7 +4117,7 @@ static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
 	int dfd_idmapped = -EBADF;
 	int ret;
 
-	if (list_empty(&handler->conf->id_map))
+	if (!container_uses_namespace(handler, CLONE_NEWUSER))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
