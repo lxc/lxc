@@ -1565,7 +1565,7 @@ static int core_scheduling(struct lxc_handler *handler)
 	if (!conf->sched_core)
 		return log_trace(0, "No new core scheduling domain requested");
 
-	if (!(handler->ns_clone_flags & CLONE_NEWPID))
+	if (!container_uses_namespace(handler, CLONE_NEWPID))
 		return syserror_set(-EINVAL, "Core scheduling currently requires a separate pid namespace");
 
 	ret = core_scheduling_cookie_create_threadgroup(handler->pid);
@@ -1641,7 +1641,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	data_sock0 = handler->data_sock[0];
 	data_sock1 = handler->data_sock[1];
 
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_find_gateway_addresses(handler);
 		if (ret) {
 			ERROR("Failed to find gateway addresses");
@@ -1685,7 +1685,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			.exit_signal = SIGCHLD,
 		};
 
-		if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
+		if (container_uses_namespace(handler, CLONE_NEWCGROUP)) {
 			cgroup_fd = cgroup_unified_fd(cgroup_ops);
 			if (cgroup_fd >= 0) {
 				handler->clone_flags	|= CLONE_INTO_CGROUP;
@@ -1840,7 +1840,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		TRACE("Allocated new network namespace id");
 
 	/* Create the network configuration. */
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_create_network(handler);
 		if (ret < 0) {
 			ERROR("Failed to create the network");
@@ -1870,7 +1870,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_network_send_to_child(handler);
 		if (ret < 0) {
 			SYSERROR("Failed to send veth names to child");
@@ -1986,7 +1986,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	return 0;
 
 out_delete_net:
-	if (handler->ns_clone_flags & CLONE_NEWNET)
+	if (container_uses_namespace(handler, CLONE_NEWNET))
 		lxc_delete_network(handler);
 
 out_abort:
