@@ -620,7 +620,7 @@ int lxc_rootfs_prepare_parent(struct lxc_handler *handler)
 	int ret;
 	const char *path_source;
 
-	if (list_empty(&handler->conf->id_map))
+	if (!container_uses_namespace(handler, CLONE_NEWUSER))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -4117,7 +4117,7 @@ static int lxc_rootfs_prepare_child(struct lxc_handler *handler)
 	int dfd_idmapped = -EBADF;
 	int ret;
 
-	if (list_empty(&handler->conf->id_map))
+	if (!container_uses_namespace(handler, CLONE_NEWUSER))
 		return 0;
 
 	if (is_empty_string(rootfs->mnt_opts.userns_path))
@@ -4290,7 +4290,7 @@ int lxc_sync_fds_parent(struct lxc_handler *handler)
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to receive tty info from child process");
 
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_network_recv_name_and_ifindex_from_child(handler);
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to receive names and ifindices for network devices from child");
@@ -4320,7 +4320,7 @@ int lxc_sync_fds_child(struct lxc_handler *handler)
 	if (ret < 0)
 		return syserror_ret(ret, "Failed to send tty file descriptors to parent");
 
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
 		if (ret < 0)
 			return syserror_ret(ret, "Failed to send network device names and ifindices to parent");
@@ -4382,7 +4382,7 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to setup container keyring");
 	}
 
-	if (handler->ns_clone_flags & CLONE_NEWNET) {
+	if (container_uses_namespace(handler, CLONE_NEWNET)) {
 		ret = lxc_network_recv_from_parent(handler);
 		if (ret < 0)
 			return log_error(-1, "Failed to receive veth names from parent");

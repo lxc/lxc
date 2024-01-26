@@ -564,7 +564,7 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	 * monitor is root we can assume that it is privileged enough to remove
 	 * the cgroups it created when the container started.
 	 */
-	if (!list_empty(&handler->conf->id_map) && !handler->am_root) {
+	if (container_uses_namespace(handler, CLONE_NEWUSER) && !handler->am_root) {
 		struct generic_userns_exec_data wrap = {
 			.conf			= handler->conf,
 			.path_prune		= ops->container_limit_cgroup,
