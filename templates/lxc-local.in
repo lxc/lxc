@@ -338,7 +338,7 @@ unpack_rootfs() {
     echo "Excludes: ${EXCLUDES}"
   fi
 
-  tar --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
+  tar --anchored ${EXCLUDES} --numeric-owner --xattrs-include='*' -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
 
   prepare_rootfs
 }

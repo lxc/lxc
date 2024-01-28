@@ -414,7 +414,7 @@ fi
 if [ "${IS_BSD_TAR}" = "true" ]; then
   tar ${EXCLUDES} --numeric-owner -xpJf "${LXC_CACHE_PATH}/rootfs.tar.xz" -C "${LXC_ROOTFS}"
 else
-  tar  --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_CACHE_PATH}/rootfs.tar.xz" -C "${LXC_ROOTFS}"
+  tar --anchored ${EXCLUDES} --numeric-owner --xattrs-include='*' -xpJf "${LXC_CACHE_PATH}/rootfs.tar.xz" -C "${LXC_ROOTFS}"
 fi
 
 mkdir -p "${LXC_ROOTFS}/dev/pts/"
