@@ -34,8 +34,8 @@ cleanup() {
 		lxc-destroy -n usernic-c1
 
 		sed -i '/usernic-user/d' /run/lxc/nics /etc/lxc/lxc-usernet
-		ifconfig usernic-br0 down
-		ifconfig usernic-br1 down
+		ip link set usernic-br0 down
+		ip link set usernic-br1 down
 		brctl delbr usernic-br0
 		brctl delbr usernic-br1
 
@@ -80,42 +80,15 @@ lxc.idmap = u 0 910000 10000
 lxc.idmap = g 0 910000 10000
 EOF
 
-if command -v cgm >/dev/null 2>&1; then
-	cgm create all usernic-user
-	cgm chown all usernic-user $(id -u usernic-user) $(id -g usernic-user)
-	cgm movepid all usernic-user $$
-elif [ -e /sys/fs/cgroup/cgmanager/sock ]; then
-	for d in $(cut -d : -f 2 /proc/self/cgroup); do
-		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
-			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Create \
-			string:$d string:usernic-user >/dev/null
-
-		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
-			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.Chown \
-			string:$d string:usernic-user int32:$(id -u usernic-user) int32:$(id -g usernic-user) >/dev/null
-
-		dbus-send --print-reply --address=unix:path=/sys/fs/cgroup/cgmanager/sock \
-			--type=method_call /org/linuxcontainers/cgmanager org.linuxcontainers.cgmanager0_0.MovePid \
-			string:$d string:usernic-user int32:$$ >/dev/null
-	done
-else
-	for d in /sys/fs/cgroup/*; do
-		[ "$d" = "/sys/fs/cgroup/unified" ] && continue
-		[ -f $d/cgroup.clone_children ] && echo 1 > $d/cgroup.clone_children
-		[ ! -d $d/lxctest ] && mkdir $d/lxctest
-		chown -R usernic-user: $d/lxctest
-		echo $$ > $d/lxctest/tasks
-	done
-fi
-
 mkdir -p /run/user/$(id -u usernic-user)
 chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 
 # Create two test bridges
 brctl addbr usernic-br0
 brctl addbr usernic-br1
-ifconfig usernic-br0 0.0.0.0 up
-ifconfig usernic-br1 0.0.0.0 up
+ip link set usernic-br0 up
+ip link set usernic-br1 up
+
 
 # Create three containers
 run_cmd "lxc-create -t busybox -n b1"
