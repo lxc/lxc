@@ -34,8 +34,8 @@ cleanup() {
 		lxc-destroy -n usernic-c1
 
 		sed -i '/usernic-user/d' /run/lxc/nics /etc/lxc/lxc-usernet
-		ifconfig usernic-br0 down
-		ifconfig usernic-br1 down
+		ip link set usernic-br0 down
+		ip link set usernic-br1 down
 		brctl delbr usernic-br0
 		brctl delbr usernic-br1
 
@@ -114,8 +114,9 @@ chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 # Create two test bridges
 brctl addbr usernic-br0
 brctl addbr usernic-br1
-ifconfig usernic-br0 0.0.0.0 up
-ifconfig usernic-br1 0.0.0.0 up
+ip link set usernic-br0 up
+ip link set usernic-br1 up
+
 
 # Create three containers
 run_cmd "lxc-create -t busybox -n b1"
