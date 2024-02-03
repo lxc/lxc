@@ -223,6 +223,18 @@ getcwd() {
   return
 }
 
+is_same_mountpoint() {
+  local path1="$1"
+  local path2="$2"
+  local mount1
+  local mount2
+
+  # make sure bind mounts are covered
+  mount1=$(df --output=target "$path1" | tail -n 1)
+  mount2=$(df --output=target "$path2" | tail -n 1)
+  [ "$mount1" = "$mount2" ]
+}
+
 usage() {
   cat <<EOF
 LXC container template for OCI images
@@ -332,6 +344,14 @@ if [ "${OCI_USE_CACHE}" = "true" ]; then
 else
   DOWNLOAD_BASE="$OCI_DIR"
 fi
+
+if [ "${OCI_USE_CACHE}" = "true" ]; then
+  if ! is_same_mountpoint "$LXC_PATH" "$DOWNLOAD_BASE"; then
+    OCI_USE_CACHE="false"
+    DOWNLOAD_BASE="$OCI_DIR"
+  fi
+fi
+
 mkdir -p "${DOWNLOAD_BASE}"
 
 # Trap all exit signals
