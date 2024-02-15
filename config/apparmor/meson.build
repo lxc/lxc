@@ -14,4 +14,11 @@ if libapparmor.found()
         output: 'usr.bin.lxc-start',
         install: true,
         install_dir: join_paths(sysconfdir, 'apparmor.d'))
+
+    configure_file(
+        configuration: dummy_config_data,
+        input: 'usr.bin.lxc-copy',
+        output: 'usr.bin.lxc-copy',
+        install: true,
+        install_dir: join_paths(sysconfdir, 'apparmor.d'))
 endif
