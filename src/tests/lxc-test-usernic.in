@@ -36,8 +36,8 @@ cleanup() {
 		sed -i '/usernic-user/d' /run/lxc/nics /etc/lxc/lxc-usernet
 		ip link set usernic-br0 down
 		ip link set usernic-br1 down
-		brctl delbr usernic-br0
-		brctl delbr usernic-br1
+		ip link del usernic-br0
+		ip link del usernic-br1
 
 		run_cmd "lxc-stop -n b1 -k"
 		pkill -u $(id -u usernic-user) -9
@@ -84,8 +84,8 @@ mkdir -p /run/user/$(id -u usernic-user)
 chown -R usernic-user: /run/user/$(id -u usernic-user) /home/usernic-user
 
 # Create two test bridges
-brctl addbr usernic-br0
-brctl addbr usernic-br1
+ip link add name usernic-br0 type bridge
+ip link add name usernic-br1 type bridge
 ip link set usernic-br0 up
 ip link set usernic-br1 up
 
