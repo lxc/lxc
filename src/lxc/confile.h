@@ -77,11 +77,11 @@ __hidden extern int lxc_config_read(const char *file, struct lxc_conf *conf, boo
 
 __hidden extern int append_unexp_config_line(const char *line, struct lxc_conf *conf);
 
-__hidden extern int lxc_config_define_add(struct lxc_list *defines, char *arg);
+extern int lxc_config_define_add(struct lxc_list *defines, char *arg);
 
-__hidden extern bool lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c);
+extern bool lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c);
 
-__hidden extern void lxc_config_define_free(struct lxc_list *defines);
+extern void lxc_config_define_free(struct lxc_list *defines);
 
 #define LXC_ARCH_UNCHANGED 0xffffffffL
 /*
