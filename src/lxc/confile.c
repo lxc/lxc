@@ -3297,51 +3297,6 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 	return ret_errno(EINVAL);
 }
 
-int lxc_fill_elevated_privileges(char *flaglist, unsigned int *flags)
-{
-	unsigned int flags_tmp = 0;
-	char *token;
-	struct {
-		const char *token;
-		int flag;
-	} all_privs[] = {
-		{ "CGROUP", LXC_ATTACH_MOVE_TO_CGROUP    },
-		{ "CAP",    LXC_ATTACH_DROP_CAPABILITIES },
-		{ "LSM",    LXC_ATTACH_LSM_EXEC          },
-		{ NULL,     0                            }
-	};
-
-	if (!flaglist) {
-		/*
-		 * For the sake of backward compatibility, keep all privileges
-		 * if no specific privileges are specified.
-		 */
-		for (unsigned int i = 0; all_privs[i].token; i++)
-			flags_tmp |= all_privs[i].flag;
-
-		*flags = flags_tmp;
-		return 0;
-	}
-
-	lxc_iterate_parts(token, flaglist, "|") {
-		bool valid_token = false;
-
-		for (unsigned int i = 0; all_privs[i].token; i++) {
-			if (!strequal(all_privs[i].token, token))
-				continue;
-
-			valid_token = true;
-			flags_tmp |= all_privs[i].flag;
-		}
-
-		if (!valid_token)
-			return syserror_set(-EINVAL, "Invalid elevated privilege \"%s\" requested", token);
-	}
-
-	*flags = flags_tmp;
-	return 0;
-}
-
 /* Write out a configuration file. */
 int write_config(int fd, const struct lxc_conf *conf)
 {

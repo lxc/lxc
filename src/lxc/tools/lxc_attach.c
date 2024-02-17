@@ -46,6 +46,7 @@ __attribute__((constructor)) static void lxc_attach_rexec(void)
 #endif
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static int lxc_fill_elevated_privileges(char *flaglist, unsigned int *flags);
 static int add_to_simple_array(char ***array, ssize_t *capacity, char *value);
 static bool stdfd_is_pty(void);
 static int lxc_attach_create_log_file(const char *log_file);
@@ -210,6 +211,51 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
                 break;
 	}
 
+	return 0;
+}
+
+static int lxc_fill_elevated_privileges(char *flaglist, unsigned int *flags)
+{
+	unsigned int flags_tmp = 0;
+	char *token;
+	struct {
+		const char *token;
+		int flag;
+	} all_privs[] = {
+		{ "CGROUP", LXC_ATTACH_MOVE_TO_CGROUP    },
+		{ "CAP",    LXC_ATTACH_DROP_CAPABILITIES },
+		{ "LSM",    LXC_ATTACH_LSM_EXEC          },
+		{ NULL,     0                            }
+	};
+
+	if (!flaglist) {
+		/*
+		 * For the sake of backward compatibility, keep all privileges
+		 * if no specific privileges are specified.
+		 */
+		for (unsigned int i = 0; all_privs[i].token; i++)
+			flags_tmp |= all_privs[i].flag;
+
+		*flags = flags_tmp;
+		return 0;
+	}
+
+	lxc_iterate_parts(token, flaglist, "|") {
+		bool valid_token = false;
+
+		for (unsigned int i = 0; all_privs[i].token; i++) {
+			if (!strequal(all_privs[i].token, token))
+				continue;
+
+			valid_token = true;
+			flags_tmp |= all_privs[i].flag;
+		}
+
+		if (!valid_token)
+			return syserror_set(-EINVAL, "Invalid elevated privilege \"%s\" requested", token);
+	}
+
+	*flags = flags_tmp;
 	return 0;
 }
 
