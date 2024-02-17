@@ -61,6 +61,8 @@ lxc_log_define(utils, lxc);
  */
 extern bool btrfs_try_remove_subvol(const char *path);
 
+#ifdef IN_LIBLXC
+
 static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			    const char *exclude, int level, bool onedev)
 {
@@ -192,6 +194,8 @@ extern int lxc_rmdir_onedev(const char *path, const char *exclude)
 
 	return _recursive_rmdir(path, mystat.st_dev, exclude, 0, onedev);
 }
+
+#endif /* IN_LIBLXC */
 
 /* borrowed from iproute2 */
 extern int get_u16(unsigned short *val, const char *arg, int base)

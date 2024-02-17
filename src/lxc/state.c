@@ -52,6 +52,8 @@ lxc_state_t lxc_str2state(const char *state)
 	return -1;
 }
 
+#ifdef IN_LIBLXC
+
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath, int timeout)
 {
 	return lxc_cmd_get_state(name, lxcpath, timeout);
@@ -117,3 +119,5 @@ int lxc_wait(const char *lxcname, const char *states, int timeout,
 
 	return 0;
 }
+
+#endif /* IN_LIBLXC */

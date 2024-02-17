@@ -157,7 +157,7 @@ liblxc_static = static_library(
     install: true,
     include_directories: liblxc_includes,
     dependencies: [threads] + liblxc_dependency_headers,
-    c_args: '-fvisibility=default')
+    c_args: ['-fvisibility=default', '-DIN_LIBLXC'])
 
 lxc_functions = configure_file(
     configuration: conf,
