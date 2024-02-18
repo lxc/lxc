@@ -88,7 +88,7 @@ extern void lxc_config_define_free(struct lxc_list *defines);
  * Parse personality of the container. Returns 0 if personality is valid,
  * negative errno otherwise.
  */
-__hidden extern int lxc_config_parse_arch(const char *arch, signed long *persona);
+extern int lxc_config_parse_arch(const char *arch, signed long *persona);
 
 __hidden extern int lxc_clear_config_item(struct lxc_conf *c, const char *key);
 
