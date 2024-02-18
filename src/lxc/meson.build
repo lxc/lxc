@@ -86,6 +86,8 @@ liblxc_sources = files(
     'file_utils.h',
     'freezer.c',
     'hlist.h',
+    'idmap_utils.c',
+    'idmap_utils.h',
     'initutils.c',
     'initutils.h',
     'list.h',

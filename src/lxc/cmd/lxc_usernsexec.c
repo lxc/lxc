@@ -22,6 +22,7 @@
 #include "compiler.h"
 #include "conf.h"
 #include "hlist.h"
+#include "idmap_utils.h"
 #include "list.h"
 #include "log.h"
 #include "macro.h"

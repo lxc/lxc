@@ -578,9 +578,6 @@ struct lxc_conf {
 	__u64 sched_core_cookie;
 };
 
-__hidden extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf, size_t buf_size)
-    __access_r(3, 4);
-
 extern thread_local struct lxc_conf *current_config;
 
 __hidden extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
@@ -592,7 +589,6 @@ __hidden extern void lxc_storage_put(struct lxc_conf *conf);
 __hidden extern int lxc_rootfs_init(struct lxc_conf *conf, bool userns);
 __hidden extern int lxc_rootfs_prepare_parent(struct lxc_handler *handler);
 __hidden extern int lxc_idmapped_mounts_parent(struct lxc_handler *handler);
-__hidden extern int lxc_map_ids(struct list_head *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 __hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
@@ -611,8 +607,6 @@ __hidden extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const c
 __hidden extern int lxc_setup(struct lxc_handler *handler);
 __hidden extern int lxc_setup_parent(struct lxc_handler *handler);
 __hidden extern int setup_resource_limits(struct lxc_conf *conf, pid_t pid);
-__hidden extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
-__hidden extern int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype);
 __hidden extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 				  const char *fn_name);
 __hidden extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,

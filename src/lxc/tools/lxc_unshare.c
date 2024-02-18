@@ -21,6 +21,7 @@
 
 #include "arguments.h"
 #include "caps.h"
+#include "idmap_utils.h"
 #include "list.h"
 #include "log.h"
 #include "namespace.h"
