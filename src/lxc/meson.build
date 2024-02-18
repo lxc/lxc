@@ -141,6 +141,49 @@ liblxc_sources = files(
     'uuid.c',
     'uuid.h')
 
+# subset of liblxc sources for internal users like tools/commands/tests
+liblxc_ext_sources = files(
+    'caps.c',
+    'caps.h',
+    'compiler.h',
+    'error.c',
+    'error.h',
+    'error_utils.h',
+    'file_utils.c',
+    'file_utils.h',
+    'hlist.h',
+    'idmap_utils.c',
+    'idmap_utils.h',
+    'initutils.c',
+    'initutils.h',
+    'list.h',
+    'log.c',
+    'log.h',
+    'mainloop.c',
+    'mainloop.h',
+    'namespace.c',
+    'namespace.h',
+    'network.c',
+    'network.h',
+    'nl.c',
+    'nl.h',
+    'parse.c',
+    'parse.h',
+    'open_utils.h',
+    'rexec.c',
+    'rexec.h',
+    'rtnl.c',
+    'rtnl.h',
+    'open_utils.h',
+    'process_utils.c',
+    'process_utils.h',
+    'string_utils.c',
+    'string_utils.h',
+    'syscall_numbers.h',
+    'syscall_wrappers.h',
+    'utils.c',
+    'utils.h')
+
 if want_apparmor and libapparmor.found()
     liblxc_sources += files('lsm/apparmor.c')
 endif

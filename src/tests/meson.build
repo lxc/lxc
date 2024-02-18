@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
-tests_common_sources = liblxc_sources + include_sources + netns_ifaddrs_sources
+tests_common_sources = liblxc_ext_sources + include_sources + netns_ifaddrs_sources
 
 if want_tests
     test_programs += executable(
@@ -26,9 +26,10 @@ if want_tests
 
     test_programs += executable(
         'lxc-test-attach',
-        files('attach.c') + tests_common_sources,
+        files('attach.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
@@ -47,9 +48,10 @@ if want_tests
 
     test_programs += executable(
         'lxc-test-cgpath',
-        files('cgpath.c') + tests_common_sources,
+        files('cgpath.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
@@ -68,9 +70,10 @@ if want_tests
 
     test_programs += executable(
         'lxc-test-config-jump-table',
-        files('config_jump_table.c') + tests_common_sources,
+        files('config_jump_table.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
@@ -152,16 +155,18 @@ if want_tests
 
     test_programs += executable(
         'lxc-test-locktests',
-        files('locktests.c') + tests_common_sources,
+        files('locktests.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
         'lxc-test-utils',
-        files('lxc-test-utils.c') + tests_common_sources,
+        files('lxc-test-utils.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
@@ -194,9 +199,10 @@ if want_tests
 
     test_programs += executable(
         'lxc-test-parse-config-file',
-        files('parse_config_file.c') + tests_common_sources,
+        files('parse_config_file.c'),
         include_directories: liblxc_includes,
         dependencies: liblxc_dep,
+        link_with: [liblxc_static],
         install: true)
 
     test_programs += executable(
