@@ -38,6 +38,7 @@
 #include "confile_utils.h"
 #include "error.h"
 #include "file_utils.h"
+#include "idmap_utils.h"
 #include "list.h"
 #include "log.h"
 #include "lsm/lsm.h"

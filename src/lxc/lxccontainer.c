@@ -39,6 +39,7 @@
 #include "confile_utils.h"
 #include "criu.h"
 #include "error.h"
+#include "idmap_utils.h"
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"

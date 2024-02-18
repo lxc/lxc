@@ -75,6 +75,10 @@ static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
 }
 #define __do_lxc_pclose __attribute__((__cleanup__(__auto_lxc_pclose__)))
 
+__hidden extern int run_script(const char *name, const char *section, const char *script, ...);
+__hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
+				    const char *script, const char *hookname, char **argsin);
+
 /*
  * wait on a child we forked
  */
@@ -243,6 +247,8 @@ __hidden extern int safe_mount_beneath(const char *beneath, const char *src, con
 __hidden extern int safe_mount_beneath_at(int beneat_fd, const char *src, const char *dst,
 					  const char *fstype, unsigned int flags, const void *data);
 __hidden __lxc_unused int print_r(int fd, const char *path);
+
+__hidden extern uint64_t get_fssize(char *s);
 
 static inline int copy_struct_from_client(__u32 server_size, void *dst,
 					  __u32 client_size, const void *src)
