@@ -36,7 +36,6 @@ __hidden extern int find_fstype_cb(char *buffer, void *data);
 __hidden extern const char *linkderef(const char *path, char *dest);
 __hidden extern bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 					 bool maybesnap);
-__hidden extern uint64_t get_fssize(char *s);
 extern bool lxc_is_valid_storage_type(const char *type);
 __hidden extern int storage_destroy_wrapper(void *data);
 

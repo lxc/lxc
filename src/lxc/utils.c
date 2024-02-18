@@ -2150,3 +2150,37 @@ int print_r(int fd, const char *path)
 		     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, maybe_empty(path));
 	return ret;
 }
+
+uint64_t get_fssize(char *s)
+{
+	uint64_t ret;
+	char *end;
+
+	ret = strtoull(s, &end, 0);
+	if (end == s) {
+		ERROR("Invalid blockdev size '%s', using default size", s);
+		return 0;
+	}
+
+	while (isblank(*end))
+		end++;
+
+	if (*end == '\0') {
+		ret *= 1024ULL * 1024ULL; /* MB by default */
+	} else if (*end == 'b' || *end == 'B') {
+		ret *= 1ULL;
+	} else if (*end == 'k' || *end == 'K') {
+		ret *= 1024ULL;
+	} else if (*end == 'm' || *end == 'M') {
+		ret *= 1024ULL * 1024ULL;
+	} else if (*end == 'g' || *end == 'G') {
+		ret *= 1024ULL * 1024ULL * 1024ULL;
+	} else if (*end == 't' || *end == 'T') {
+		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+	} else {
+		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
+		return 0;
+	}
+
+	return ret;
+}

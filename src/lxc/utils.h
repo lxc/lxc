@@ -248,6 +248,8 @@ __hidden extern int safe_mount_beneath_at(int beneat_fd, const char *src, const 
 					  const char *fstype, unsigned int flags, const void *data);
 __hidden __lxc_unused int print_r(int fd, const char *path);
 
+__hidden extern uint64_t get_fssize(char *s);
+
 static inline int copy_struct_from_client(__u32 server_size, void *dst,
 					  __u32 client_size, const void *src)
 {
