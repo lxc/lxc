@@ -113,7 +113,12 @@ char *lxc_ifname_alnum_case_sensitive(char *template)
 
 	return template;
 }
+
+#ifdef IN_LIBLXC
+
 static const char loop_device[] = "lo";
+
+#endif /* IN_LIBLXC */
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
 {
@@ -171,6 +176,8 @@ static int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest, unsigned int ne
 {
 	return lxc_ip_route_dest(RTM_NEWROUTE, AF_INET6, ifindex, dest, netmask);
 }
+
+#ifdef IN_LIBLXC
 
 static int lxc_ipv4_dest_del(int ifindex, struct in_addr *dest, unsigned int netmask)
 {
@@ -1284,6 +1291,8 @@ static netdev_configure_server_cb netdev_configure_server[LXC_NET_MAXCONFTYPE + 
 	[LXC_NET_NONE]    = netdev_configure_server_none,
 };
 
+#endif /* IN_LIBLXC */
+
 static int __netdev_configure_container_common(struct lxc_netdev *netdev)
 {
 	char current_ifname[IFNAMSIZ];
@@ -1371,6 +1380,8 @@ static netdev_configure_container_cb netdev_configure_container[LXC_NET_MAXCONFT
 	[LXC_NET_EMPTY]   = netdev_configure_container_empty,
 	[LXC_NET_NONE]    = netdev_configure_container_none,
 };
+
+#ifdef IN_LIBLXC
 
 static int netdev_shutdown_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
@@ -1512,6 +1523,8 @@ static netdev_shutdown_server_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_EMPTY]   = netdev_shutdown_server_empty,
 	[LXC_NET_NONE]    = netdev_shutdown_server_none,
 };
+
+#endif /* IN_LIBLXC */
 
 static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
 {
@@ -2377,6 +2390,8 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 	return proc_sys_net_write(path, flag ? "1" : "0");
 }
 
+#ifdef IN_LIBLXC
+
 static int lxc_is_ip_neigh_proxy_enabled(const char *ifname, int family)
 {
 	int ret;
@@ -2394,6 +2409,8 @@ static int lxc_is_ip_neigh_proxy_enabled(const char *ifname, int family)
 
 	return lxc_read_file_expect(path, buf, 1, "1");
 }
+
+#endif /* IN_LIBLXC */
 
 int lxc_neigh_proxy_on(const char *name, int family)
 {
@@ -2917,6 +2934,8 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 
 	return 0;
 }
+
+#ifdef IN_LIBLXC
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
 static int lxc_create_network_unpriv_exec(const char *lxcpath,
@@ -3447,6 +3466,8 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
 	return 0;
 }
 
+#endif /* IN_LIBLXC */
+
 /*
  * LXC moves network devices into the target namespace based on their created
  * name. The created name can either be randomly generated for e.g. veth
@@ -3583,6 +3604,8 @@ static int network_requires_advanced_setup(int type)
 
 	return true;
 }
+
+#ifdef IN_LIBLXC
 
 static int lxc_create_network_unpriv(struct lxc_handler *handler)
 {
@@ -3725,6 +3748,8 @@ clear_ifindices:
 
 	return true;
 }
+
+#endif /* IN_LIBLXC */
 
 int lxc_requests_empty_network(struct lxc_handler *handler)
 {
@@ -4169,6 +4194,8 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 	return 0;
 }
 
+#ifdef IN_LIBLXC
+
 void lxc_delete_network(struct lxc_handler *handler)
 {
 	bool bret;
@@ -4189,6 +4216,8 @@ void lxc_delete_network(struct lxc_handler *handler)
 	else
 		DEBUG("Deleted network devices");
 }
+
+#endif /* IN_LIBLXC */
 
 int lxc_netns_set_nsid(int fd)
 {
@@ -4319,6 +4348,8 @@ int lxc_netns_get_nsid(int fd)
 	return -1;
 }
 
+#ifdef IN_LIBLXC
+
 int lxc_create_network(struct lxc_handler *handler)
 {
 	int ret;
@@ -4333,3 +4364,5 @@ int lxc_create_network(struct lxc_handler *handler)
 
 	return lxc_create_network_unpriv(handler);
 }
+
+#endif /* IN_LIBLXC */
