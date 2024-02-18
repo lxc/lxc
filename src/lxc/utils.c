@@ -533,6 +533,207 @@ int lxc_pclose(struct lxc_popen_FILE *fp)
 	return wstatus;
 }
 
+static int run_buffer(char *buffer)
+{
+	__do_free char *output = NULL;
+	__do_lxc_pclose struct lxc_popen_FILE *f = NULL;
+	int fd, ret;
+
+	f = lxc_popen(buffer);
+	if (!f)
+		return log_error_errno(-1, errno, "Failed to popen() %s", buffer);
+
+	output = zalloc(LXC_LOG_BUFFER_SIZE);
+	if (!output)
+		return log_error_errno(-1, ENOMEM, "Failed to allocate memory for %s", buffer);
+
+	fd = fileno(f->f);
+	if (fd < 0)
+		return log_error_errno(-1, errno, "Failed to retrieve underlying file descriptor");
+
+	for (int i = 0; i < 10; i++) {
+		ssize_t bytes_read;
+
+		bytes_read = lxc_read_nointr(fd, output, LXC_LOG_BUFFER_SIZE - 1);
+		if (bytes_read > 0) {
+			output[bytes_read] = '\0';
+			DEBUG("Script %s produced output: %s", buffer, output);
+			continue;
+		}
+
+		break;
+	}
+
+	ret = lxc_pclose(move_ptr(f));
+	if (ret == -1)
+		return log_error_errno(-1, errno, "Script exited with error");
+	else if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)
+		return log_error(-1, "Script exited with status %d", WEXITSTATUS(ret));
+	else if (WIFSIGNALED(ret))
+		return log_error(-1, "Script terminated by signal %d", WTERMSIG(ret));
+
+	return 0;
+}
+
+int run_script_argv(const char *name, unsigned int hook_version,
+		    const char *section, const char *script,
+		    const char *hookname, char **argv)
+{
+	__do_free char *buffer = NULL;
+	int buf_pos, i, ret;
+	size_t size = 0;
+
+	if (hook_version == 0)
+		INFO("Executing script \"%s\" for container \"%s\", config section \"%s\"",
+		     script, name, section);
+	else
+		INFO("Executing script \"%s\" for container \"%s\"", script, name);
+
+	for (i = 0; argv && argv[i]; i++)
+		size += strlen(argv[i]) + 1;
+
+	size += STRLITERALLEN("exec");
+	size++;
+	size += strlen(script);
+	size++;
+
+	if (size > INT_MAX)
+		return -EFBIG;
+
+	if (hook_version == 0) {
+		size += strlen(hookname);
+		size++;
+
+		size += strlen(name);
+		size++;
+
+		size += strlen(section);
+		size++;
+
+		if (size > INT_MAX)
+			return -EFBIG;
+	}
+
+	buffer = zalloc(size);
+	if (!buffer)
+		return -ENOMEM;
+
+	if (hook_version == 0)
+		buf_pos = strnprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
+	else
+		buf_pos = strnprintf(buffer, size, "exec %s", script);
+	if (buf_pos < 0)
+		return log_error_errno(-1, errno, "Failed to create command line for script \"%s\"", script);
+
+	if (hook_version == 1) {
+		ret = setenv("LXC_HOOK_TYPE", hookname, 1);
+		if (ret < 0) {
+			return log_error_errno(-1, errno, "Failed to set environment variable: LXC_HOOK_TYPE=%s", hookname);
+		}
+		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", hookname);
+
+		ret = setenv("LXC_HOOK_SECTION", section, 1);
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to set environment variable: LXC_HOOK_SECTION=%s", section);
+		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
+
+		if (strequal(section, "net")) {
+			char *parent;
+
+			if (!argv || !argv[0])
+				return -1;
+
+			ret = setenv("LXC_NET_TYPE", argv[0], 1);
+			if (ret < 0)
+				return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_TYPE=%s", argv[0]);
+			TRACE("Set environment variable: LXC_NET_TYPE=%s", argv[0]);
+
+			parent = argv[1] ? argv[1] : "";
+
+			if (strequal(argv[0], "macvlan")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0)
+					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PARENT=%s", parent);
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strequal(argv[0], "phys")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0)
+					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PARENT=%s", parent);
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strequal(argv[0], "veth")) {
+				char *peer = argv[2] ? argv[2] : "";
+
+				ret = setenv("LXC_NET_PEER", peer, 1);
+				if (ret < 0)
+					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PEER=%s", peer);
+				TRACE("Set environment variable: LXC_NET_PEER=%s", peer);
+
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0)
+					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PARENT=%s", parent);
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			}
+		}
+	}
+
+	for (i = 0; argv && argv[i]; i++) {
+		size_t len = size - buf_pos;
+
+		ret = strnprintf(buffer + buf_pos, len, " %s", argv[i]);
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to create command line for script \"%s\"", script);
+		buf_pos += ret;
+	}
+
+	return run_buffer(buffer);
+}
+
+int run_script(const char *name, const char *section, const char *script, ...)
+{
+	__do_free char *buffer = NULL;
+	int ret;
+	char *p;
+	va_list ap;
+	size_t size = 0;
+
+	INFO("Executing script \"%s\" for container \"%s\", config section \"%s\"",
+	     script, name, section);
+
+	va_start(ap, script);
+	while ((p = va_arg(ap, char *)))
+		size += strlen(p) + 1;
+	va_end(ap);
+
+	size += STRLITERALLEN("exec");
+	size += strlen(script);
+	size += strlen(name);
+	size += strlen(section);
+	size += 4;
+
+	if (size > INT_MAX)
+		return -1;
+
+	buffer = must_realloc(NULL, size);
+	ret = strnprintf(buffer, size, "exec %s %s %s", script, name, section);
+	if (ret < 0)
+		return -1;
+
+	va_start(ap, script);
+	while ((p = va_arg(ap, char *))) {
+		int len = size - ret;
+		int rc;
+		rc = strnprintf(buffer + ret, len, " %s", p);
+		if (rc < 0) {
+			va_end(ap);
+			return -1;
+		}
+		ret += rc;
+	}
+	va_end(ap);
+
+	return run_buffer(buffer);
+}
+
 int randseed(bool srand_it)
 {
 	__do_fclose FILE *f = NULL;

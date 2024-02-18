@@ -75,6 +75,10 @@ static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
 }
 #define __do_lxc_pclose __attribute__((__cleanup__(__auto_lxc_pclose__)))
 
+__hidden extern int run_script(const char *name, const char *section, const char *script, ...);
+__hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
+				    const char *script, const char *hookname, char **argsin);
+
 /*
  * wait on a child we forked
  */

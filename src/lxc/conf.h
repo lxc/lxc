@@ -30,6 +30,7 @@
 #include "string_utils.h"
 #include "syscall_wrappers.h"
 #include "terminal.h"
+#include "utils.h"
 
 #if HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -619,9 +620,6 @@ __hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(const struct list_head *mount,
 						bool include_nesting_helpers);
-__hidden extern int run_script(const char *name, const char *section, const char *script, ...);
-__hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
-				    const char *script, const char *hookname, char **argsin);
 
 __hidden extern bool has_cap(__u32 cap, struct lxc_conf *conf);
 static inline bool lxc_wants_cap(__u32 cap, struct lxc_conf *conf)
