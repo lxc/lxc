@@ -237,7 +237,7 @@ int lxc_create_main(int argc, char *argv[])
 	/* Final check whether the user gave use a valid bdev type. */
 	if (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) != 0 &&
 	    strncmp(my_args.bdevtype, "_unset", strlen(my_args.bdevtype)) != 0 &&
-	    !is_valid_storage_type(my_args.bdevtype)) {
+	    !lxc_is_valid_storage_type(my_args.bdevtype)) {
 		ERROR("%s is not a valid backing storage type", my_args.bdevtype);
 		exit(EXIT_FAILURE);
 	}

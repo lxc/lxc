@@ -442,7 +442,7 @@ uint64_t get_fssize(char *s)
 	return ret;
 }
 
-bool is_valid_storage_type(const char *type)
+bool lxc_is_valid_storage_type(const char *type)
 {
 	if (strcmp(type, "dir") == 0 ||
 	    strcmp(type, "btrfs") == 0 ||
