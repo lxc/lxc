@@ -164,7 +164,7 @@ static bool lookup_user(const char *oparg, uid_t *uid)
 
 	if (sscanf(oparg, "%u", uid) < 1) {
 		/* not a uid -- perhaps a username */
-		if (sscanf(oparg, "%s", name) < 1) {
+		if (strlen(name) >= PATH_MAX || sscanf(oparg, "%s", name) < 1) {
 			free(buf);
 			return false;
 		}
