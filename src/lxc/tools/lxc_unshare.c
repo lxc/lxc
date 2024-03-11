@@ -144,7 +144,6 @@ static int get_namespace_flags(char *namespaces)
 
 static bool lookup_user(const char *oparg, uid_t *uid)
 {
-	char name[PATH_MAX];
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
@@ -164,17 +163,12 @@ static bool lookup_user(const char *oparg, uid_t *uid)
 
 	if (sscanf(oparg, "%u", uid) < 1) {
 		/* not a uid -- perhaps a username */
-		if (strlen(name) >= PATH_MAX || sscanf(oparg, "%s", name) < 1) {
-			free(buf);
-			return false;
-		}
-
-		ret = getpwnam_r(name, &pwent, buf, bufsize, &pwentp);
+		ret = getpwnam_r(oparg, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
 				SYSERROR("Could not find matched password record");
 
-			SYSERROR("Invalid username \"%s\"", name);
+			SYSERROR("Invalid username \"%s\"", oparg);
 			free(buf);
 			return false;
 		}
