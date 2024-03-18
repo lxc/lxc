@@ -109,7 +109,7 @@ features. This includes (but isn't limited to):
 - ppc, ppc64, ppc64le
 - riscv64
 - s390x
-- armvl7, arm64
+- armv7l, arm64
 - loongarch64
 
 LXC also supports at least the following C standard libraries:
