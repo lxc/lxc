@@ -23,25 +23,39 @@
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
 
-static int push_vargs(char *data, int data_length, char ***output)
+/**
+ * Transforms null separated string elements into an array of pointers to these
+ * elements.
+ * @param[in] data - null separated string elements
+ * @param[in] data_length - length of data
+ * @param[out] output - NULL terminated array of pointers to a copy of elements
+ *                      passed in data. Data are copied behind the array and the
+ *                      whole output resides in one chunk of memory and should
+ *                      be freed with free(*output).
+ * @return Number of elements returned or -EINVAL if data or output is NULL or
+ *         if *output is not NULL.
+ */
+static int push_vargs(const char *data, int data_length, char ***output)
 {
-	int num = 0;
-	char *cur = data;
+	int i, j, nmemb;
+	char *end;
 
-	if (!data || *output)
-		return -1;
+	if (!data || !output || *output)
+		return -EINVAL;
 
-	*output = must_realloc(NULL, sizeof(**output));
+	for (nmemb = i = 0; i < data_length; i++)
+		if (!data[i]) nmemb++;
 
-	while (cur < data + data_length) {
-		num++;
-		*output = must_realloc(*output, (num + 1) * sizeof(**output));
+	*output = must_realloc(NULL, (nmemb + 1) * sizeof(char*) + data_length);
+	end = (char *)&(*output)[nmemb + 1];
+	memcpy(end, data, data_length);
 
-		(*output)[num - 1] = cur;
-		cur += strlen(cur) + 1;
-	}
-	(*output)[num] = NULL;
-	return num;
+	(*output)[0] = end;
+	for (i = j = 0; i < data_length; i++)
+		if (!end[i]) (*output)[++j] = &end[i + 1];
+	(*output)[j] = NULL;
+
+	return nmemb;
 }
 
 static int parse_argv(char ***argv)
@@ -55,11 +69,7 @@ static int parse_argv(char ***argv)
 		return -1;
 
 	ret = push_vargs(cmdline, cmdline_size, argv);
-	if (ret <= 0)
-		return -1;
-
-	move_ptr(cmdline);
-	return 0;
+	return ret <= 0 ? -1 : 0;
 }
 
 static int is_memfd(void)
@@ -171,7 +181,7 @@ extern char **environ;
 
 int lxc_rexec(const char *memfd_name)
 {
-	__do_free_string_list char **argv = NULL;
+	__do_free char **argv = NULL;
 	int ret;
 
 	ret = is_memfd();
