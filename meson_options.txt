@@ -124,3 +124,11 @@ option('distrosysconfdir', type : 'string', value: '',
 option('dbus', type: 'boolean', value: 'true',
        description: 'use dbus')
 
+option('specfile', type : 'boolean', value: true,
+       description: 'whether to prepare RPM spec')
+
+option('install-init-files', type : 'boolean', value: true,
+       description: 'whether to install init files for local init (e.g. systemd units)')
+
+option('install-state-dirs', type : 'boolean', value: true,
+       description: 'whether to create state directories on install')
