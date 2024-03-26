@@ -545,7 +545,10 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path, 0);
-	if (s == FROZEN) {
+	// Prevent lxc from unexpectedly exiting when executing freeze,
+	// causing the container to be in the FREEZING state,
+	// making normal life cycle management impossible.
+	if (s == FROZEN || s == FREEZING) {
 		ret = cgroup_unfreeze(c->name, c->config_path, -1);
 		if (ret == -ENOCGROUP2)
 			ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
