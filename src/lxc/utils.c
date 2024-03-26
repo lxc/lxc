@@ -2073,13 +2073,15 @@ int fix_stdio_permissions(uid_t uid)
 
 bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res)
 {
-	if (base > 0 && base > (int64_t)(INT64_MAX / mult))
-		return false;
+	int64_t tmp;
 
-	if (base < 0 && base < (int64_t)(INT64_MIN / mult))
-		return false;
+	tmp = base * mult;
 
-	*res = (int64_t)(base * mult);
+	if (base == (tmp / (int64_t)mult)) {
+		*res = tmp;
+		return false;
+	}
+
 	return true;
 }
 
