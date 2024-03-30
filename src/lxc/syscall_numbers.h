@@ -53,7 +53,6 @@
 	#elif defined __loongarch64
 		#define __NR_keyctl 219
 	#else
-		#define -1
 		#warning "__NR_keyctl not defined for your architecture"
 	#endif
 #endif
@@ -92,7 +91,6 @@
 	#elif defined __loongarch64
 		#define __NR_memfd_create 279
 	#else
-		#define -1
 		#warning "__NR_memfd_create not defined for your architecture"
 	#endif
 #endif
@@ -129,7 +127,6 @@
 	#elif defined __loongarch64
 		#define __NR_pivot_root 41
 	#else
-		#define -1
 		#warning "__NR_pivot_root not defined for your architecture"
 	#endif
 #endif
@@ -166,7 +163,6 @@
 	#elif defined __loongarch64
 		#define __NR_setns 268
 	#else
-		#define -1
 		#warning "__NR_setns not defined for your architecture"
 	#endif
 #endif
@@ -203,7 +199,6 @@
 	#elif defined __loongarch64
 		#define __NR_sethostname 161
 	#else
-		#define -1
 		#warning "__NR_sethostname not defined for your architecture"
 	#endif
 #endif
@@ -272,7 +267,6 @@
 	#elif defined __loongarch64
 		#define __NR_signalfd4 74
 	#else
-		#define -1
 		#warning "__NR_signalfd4 not defined for your architecture"
 	#endif
 #endif
@@ -309,7 +303,6 @@
 	#elif defined __loongarch64
 		#define __NR_unshare 97
 	#else
-		#define -1
 		#warning "__NR_unshare not defined for your architecture"
 	#endif
 #endif
@@ -346,7 +339,6 @@
 	#elif defined __loongarch64
 		#define __NR_bpf 280
 	#else
-		#define -1
 		#warning "__NR_bpf not defined for your architecture"
 	#endif
 #endif
@@ -383,7 +375,6 @@
 	#elif defined __loongarch64
 		#define __NR_faccessat 48
 	#else
-		#define -1
 		#warning "__NR_faccessat not defined for your architecture"
 	#endif
 #endif
@@ -440,7 +431,6 @@
 	#elif defined __loongarch64
 		#define __NR_seccomp 277
 	#else
-		#define -1
 		#warning "__NR_seccomp not defined for your architecture"
 	#endif
 #endif
@@ -477,7 +467,6 @@
 	#elif defined __loongarch64
 		#define __NR_gettid 178
 	#else
-		#define -1
 		#warning "__NR_gettid not defined for your architecture"
 	#endif
 #endif
@@ -518,7 +507,6 @@
 	#elif defined __loongarch64
 		#define __NR_execveat 281
 	#else
-		#define -1
 		#warning "__NR_execveat not defined for your architecture"
 	#endif
 #endif
@@ -759,7 +747,6 @@
 	#elif defined __loongarch64
 		#define __NR_personality 92
 	#else
-		#define -1
 		#warning "__NR_personality not defined for your architecture"
 	#endif
 #endif
