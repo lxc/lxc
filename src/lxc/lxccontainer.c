@@ -2705,7 +2705,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		/* Here we know that we have or can use an lxc-snapshot file
 		 * using the new format. */
 		if (inc) {
-			fd = open(path, O_APPEND | O_RDWR | O_CLOEXEC);
+			fd = open(path, O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC);
 			if (fd < 0)
 				goto out;
 
@@ -3286,6 +3286,11 @@ static int copy_file(const char *old, const char *new)
 	ssize_t len, ret;
 	char buf[8096];
 	struct stat sbuf;
+
+	if (file_exists(new)) {
+		ERROR("copy destination %s exists", new);
+		return -1;
+	}
 
 	fd_from = open(old, PROTECT_OPEN);
 	if (fd_from < 0)
