@@ -75,7 +75,7 @@ if command -v lxc-start >/dev/null; then
     echo "LXC version $(lxc-start --version)"
 fi
 
-if [ ! -f $CONFIG ]; then
+if [ ! -f "${CONFIG}" ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
     KVER="$(uname -r)"
     HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
@@ -156,7 +156,7 @@ if is_set CONFIG_USER_NS; then
 fi
 printf "Network namespace: " && is_enabled CONFIG_NET_NS
 echo
-if [ $KVER_MAJOR -lt 4 ] || { [ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]; }; then
+if [ "${KVER_MAJOR}" -lt 4 ] || { [ "${KVER_MAJOR}" -eq 4 ] && [ "${KVER_MINOR}" -lt 7 ]; }; then
     printf "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
     echo
 fi
@@ -223,7 +223,7 @@ printf "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
 echo
 
 printf "Cgroup memory controller: "
-if { [ $KVER_MAJOR -ge 3 ] && [ $KVER_MINOR -ge 6 ]; } || [ $KVER_MAJOR -gt 3 ]; then
+if { [ "${KVER_MAJOR}" -ge 3 ] && [ "${KVER_MINOR}" -ge 6 ]; } || [ "${KVER_MAJOR}" -gt 3 ]; then
     is_enabled CONFIG_MEMCG
 else
     is_enabled CONFIG_CGROUP_MEM_RES_CTLR
@@ -243,7 +243,7 @@ echo
 printf "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
 echo
 printf "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
-if { [ $KVER_MAJOR -gt 3 ] && [ $KVER_MINOR -gt 6 ]; } && [ $KVER_MAJOR -lt 5 ]; then
+if { [ "${KVER_MAJOR}" -gt 3 ] && [ "${KVER_MINOR}" -gt 6 ]; } && [ "${KVER_MAJOR}" -lt 5 ]; then
     echo
     printf "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
     echo
@@ -280,7 +280,7 @@ echo
 printf "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
 echo
 printf "File capabilities: "
-if [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ]; then
+if [ "${KVER_MAJOR}" = 2 ] && [ "${KVER_MINOR}" -lt 33 ]; then
     is_enabled CONFIG_SECURITY_FILE_CAPABILITIES
     echo
 else
