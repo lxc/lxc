@@ -85,6 +85,8 @@ Options:\n\
 	.parser   = my_parser,
 	.checker  = NULL,
 	.timeout = 60,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static int list_contains_entry(char *str_ptr, struct lxc_list *p1) {

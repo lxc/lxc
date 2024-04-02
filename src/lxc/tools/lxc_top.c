@@ -116,6 +116,8 @@ Options :\n\
 	.parser   = my_parser,
 	.checker  = NULL,
 	.lxcpath_additional = -1,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static void stdin_tios_restore(void)

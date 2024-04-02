@@ -69,6 +69,8 @@ Options :\n\
 	.parser   = my_parser,
 	.checker  = NULL,
 	.lxcpath_additional = -1,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static void close_fds(struct pollfd *fds, nfds_t nfds)

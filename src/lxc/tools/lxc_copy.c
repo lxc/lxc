@@ -112,6 +112,8 @@ Options :\n\
 	.daemonize = 1,
 	.quiet = false,
 	.tmpfs = false,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num,
