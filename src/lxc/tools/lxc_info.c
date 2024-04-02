@@ -81,6 +81,8 @@ Options :\n\
 	.options  = my_longopts,
 	.parser   = my_parser,
 	.checker  = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static void str_chomp(char *buf)

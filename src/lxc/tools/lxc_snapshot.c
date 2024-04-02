@@ -51,6 +51,8 @@ Options :\n\
 	.parser = my_parser,
 	.checker = NULL,
 	.task = SNAP,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static int do_snapshot(struct lxc_container *c, char *commentfile);
