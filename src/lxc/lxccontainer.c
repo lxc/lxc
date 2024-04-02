@@ -2705,7 +2705,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		/* Here we know that we have or can use an lxc-snapshot file
 		 * using the new format. */
 		if (inc) {
-			fd = open(path, O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC);
+			fd = open(path, O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
 			if (fd < 0)
 				goto out;
 
