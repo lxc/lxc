@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1+ */
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <linux/if.h>
