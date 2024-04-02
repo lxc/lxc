@@ -4726,9 +4726,9 @@ static int get_config_time_offset_boot(const char *key, char *retv, int inlen, s
 		memset(retv, 0, inlen);
 
 	if (c->timens.s_boot) {
-		strprint(retv, inlen, "%" PRId64 " s", c->timens.s_boot);
+		strprint(retv, inlen, "%" PRId64 "s", c->timens.s_boot);
 	} else {
-		strprint(retv, inlen, "%" PRId64 " ns", c->timens.ns_boot);
+		strprint(retv, inlen, "%" PRId64 "ns", c->timens.ns_boot);
 	}
 
 	return fulllen;
