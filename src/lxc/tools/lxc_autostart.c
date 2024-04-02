@@ -504,7 +504,7 @@ int lxc_autostart_main(int argc, char *argv[])
 	toss_list(cmd_groups_list);
 	free(containers);
 
-	if (failed == count)
+	if (failed > 0 && failed == count)
 		exit(EXIT_FAILURE);	/* Total failure */
 	else if (failed > 0)
 		exit(2);	/* Partial failure */
