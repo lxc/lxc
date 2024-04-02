@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: LGPL-2.1+
+
 set -ex
 
 export LC_CTYPE=C.UTF-8

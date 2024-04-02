@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: LGPL-2.1+
+
 # Do an end to end checkpoint and restore with criu.
 
 set -e

@@ -1,13 +1,10 @@
 #!/bin/bash
 
-set -ex
+# SPDX-License-Identifier: LGPL-2.1+
 
-# lxc: linux Container library
-
-# Authors:
-# Serge Hallyn <serge.hallyn@ubuntu.com>
-#
 # This is a regression test for symbolic links
+
+set -ex
 
 dirname=$(mktemp -d)
 fname=$(mktemp)

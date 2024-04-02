@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# SPDX-License-Identifier: LGPL-2.1+
+
 #
 # This is a bash test case to test lxc-usernsexec.
 # It basically supports usring lxc-usernsexec to execute itself
