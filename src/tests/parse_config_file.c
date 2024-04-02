@@ -906,12 +906,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (c->set_config_item(c, "lxc.hook.version", "2")) {
-		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.hook.version\" to \"2\"");
+		lxc_error("%s\n", "Managed to set invalid config item \"lxc.hook.version\" to \"2\"");
 		goto non_test_error;
 	}
 
 	if (!c->set_config_item(c, "lxc.monitor.signal.pdeath", "SIGKILL")) {
-		lxc_error("%s\n", "Failed to set to set invalid config item \"lxc.monitor.signal.pdeath\" to \"SIGKILL\"");
+		lxc_error("%s\n", "Failed to set invalid config item \"lxc.monitor.signal.pdeath\" to \"SIGKILL\"");
 		goto non_test_error;
 	}
 
@@ -921,17 +921,17 @@ int main(int argc, char *argv[])
 	}
 
 	if (c->set_config_item(c, "lxc.notaconfigkey", "invalid")) {
-		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.notaconfigkey\" to \"invalid\"");
+		lxc_error("%s\n", "Managed to set invalid config item \"lxc.notaconfigkey\" to \"invalid\"");
 		return -1;
 	}
 
 	if (c->set_config_item(c, "lxc.log.file=", "./")) {
-		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.log.file\" to \"./\"");
+		lxc_error("%s\n", "Managed to set invalid config item \"lxc.log.file\" to \"./\"");
 		return -1;
 	}
 
 	if (c->set_config_item(c, "lxc.hook.versionasdfsadfsadf", "1")) {
-		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.hook.versionasdfsadfsadf\" to \"2\"");
+		lxc_error("%s\n", "Managed to set invalid config item \"lxc.hook.versionasdfsadfsadf\" to \"2\"");
 		goto non_test_error;
 	}
 
