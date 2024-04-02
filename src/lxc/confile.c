@@ -2963,18 +2963,18 @@ static int set_config_time_offset_boot(const char *key, const char *value,
 
 	unit = lxc_trim_whitespace_in_place(buf);
 	if (strequal(unit, "h")) {
-		if (!multiply_overflow(offset, 3600, &lxc_conf->timens.s_boot))
+		if (check_mul_overflow(offset, (typeof(offset))3600, &lxc_conf->timens.s_boot))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "m")) {
-		if (!multiply_overflow(offset, 60, &lxc_conf->timens.s_boot))
+		if (check_mul_overflow(offset, (typeof(offset))60, &lxc_conf->timens.s_boot))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "s")) {
 		lxc_conf->timens.s_boot = offset;
 	} else if (strequal(unit, "ms")) {
-		if (!multiply_overflow(offset, 1000000, &lxc_conf->timens.ns_boot))
+		if (check_mul_overflow(offset, (typeof(offset))1000000, &lxc_conf->timens.ns_boot))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "us")) {
-		if (!multiply_overflow(offset, 1000, &lxc_conf->timens.ns_boot))
+		if (check_mul_overflow(offset, (typeof(offset))1000, &lxc_conf->timens.ns_boot))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "ns")) {
 		lxc_conf->timens.ns_boot = offset;
@@ -3002,18 +3002,18 @@ static int set_config_time_offset_monotonic(const char *key, const char *value,
 
 	unit = lxc_trim_whitespace_in_place(buf);
 	if (strequal(unit, "h")) {
-		if (!multiply_overflow(offset, 3600, &lxc_conf->timens.s_monotonic))
+		if (check_mul_overflow(offset, (typeof(offset))3600, &lxc_conf->timens.s_monotonic))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "m")) {
-		if (!multiply_overflow(offset, 60, &lxc_conf->timens.s_monotonic))
+		if (check_mul_overflow(offset, (typeof(offset))60, &lxc_conf->timens.s_monotonic))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "s")) {
 		lxc_conf->timens.s_monotonic = offset;
 	} else if (strequal(unit, "ms")) {
-		if (!multiply_overflow(offset, 1000000, &lxc_conf->timens.ns_monotonic))
+		if (check_mul_overflow(offset, (typeof(offset))1000000, &lxc_conf->timens.ns_monotonic))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "us")) {
-		if (!multiply_overflow(offset, 1000, &lxc_conf->timens.ns_monotonic))
+		if (check_mul_overflow(offset, (typeof(offset))1000, &lxc_conf->timens.ns_monotonic))
 			return ret_errno(EOVERFLOW);
 	} else if (strequal(unit, "ns")) {
 		lxc_conf->timens.ns_monotonic = offset;

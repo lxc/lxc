@@ -2071,18 +2071,6 @@ int fix_stdio_permissions(uid_t uid)
 	return fret;
 }
 
-bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res)
-{
-	if (base > 0 && base > (int64_t)(INT64_MAX / mult))
-		return false;
-
-	if (base < 0 && base < (int64_t)(INT64_MIN / mult))
-		return false;
-
-	*res = (int64_t)(base * mult);
-	return true;
-}
-
 int print_r(int fd, const char *path)
 {
 	__do_close int dfd = -EBADF, dfd_dup = -EBADF;
