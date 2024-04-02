@@ -940,6 +940,31 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (set_get_compare_clear_save_load(c, "lxc.time.offset.boot", "-1234s", tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.time.offset.boot");
+		goto non_test_error;
+	}
+
+	if (!c->set_config_item(c, "lxc.time.offset.boot", "1000000000000000us")) {
+		lxc_error("%s\n", "Failed to set a valid value (1000000000000000us) to config item \"lxc.time.offset.boot\"");
+		goto non_test_error;
+	}
+
+	if (!c->set_config_item(c, "lxc.time.offset.boot", "-1000000000000000us")) {
+		lxc_error("%s\n", "Failed to set a valid (-1000000000000000us) value to config item \"lxc.time.offset.boot\"");
+		goto non_test_error;
+	}
+
+	if (c->set_config_item(c, "lxc.time.offset.boot", "10000000000000000us")) {
+		lxc_error("%s\n", "Managed to set overflowed value to config item \"lxc.time.offset.boot\"");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load(c, "lxc.time.offset.monotonic", "4321s", tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.time.offset.monotonic");
+		goto non_test_error;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
