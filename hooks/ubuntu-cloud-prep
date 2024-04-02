@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# SPDX-License-Identifier: LGPL-2.1+
+#
 ## If the container being cloned has one or more lxc.hook.clone
 ## specified, then the specified hooks will be called for the new
 ## container.  The arguments passed to the clone hook are:
