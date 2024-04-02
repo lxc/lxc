@@ -160,6 +160,14 @@ if [ $KVER_MAJOR -lt 4 ] || { [ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]; };
     printf "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
     echo
 fi
+echo "Namespace limits:"
+for file in /proc/sys/user/max_*_namespaces; do
+    [ -r "${file}" ] || continue
+
+    ns_name="$(basename "${file}" | sed -e "s/^max_//g" -e "s/_namespaces$//g")"
+    printf "  %s: %s" "${ns_name}" "$(cat "${file}")"
+    echo
+done
 
 echo "
 --- Control groups ---"
