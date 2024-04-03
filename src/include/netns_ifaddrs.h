@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1+ */
+
 #ifndef _LXC_NETNS_IFADDRS_H
 #define _LXC_NETNS_IFADDRS_H
 

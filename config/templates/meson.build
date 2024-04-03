@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 lxc_conf_common_seccomp = configure_file(
     configuration: conf,

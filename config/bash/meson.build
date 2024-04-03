@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 bash_completion = configure_file(
     configuration: conf,

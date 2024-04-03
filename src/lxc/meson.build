@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 liblxcfs_attach_file = configure_file(
     configuration: dummy_config_data,

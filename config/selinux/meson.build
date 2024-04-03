@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 lxc_selinux_if = configure_file(
     configuration: dummy_config_data,

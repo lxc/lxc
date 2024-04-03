@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 if srcconf.get('HAVE_GETSUBOPT') == 0
     include_sources += files(

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 tools_common_sources = files('arguments.c', 'arguments.h') + include_sources + netns_ifaddrs_sources
 

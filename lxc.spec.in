@@ -1,24 +1,7 @@
 #
+# SPDX-License-Identifier: LGPL-2.1+
+#
 # lxc: linux Container library
-#
-# (C) Copyright IBM Corp. 2007, 2008
-#
-# Authors:
-# Daniel Lezcano <daniel.lezcano at free.fr>
-#
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Set with_systemd on distros that use it, so we can install the service
 # file, otherwise the sysvinit script will be installed
@@ -284,34 +267,6 @@ fi
 %{_libdir}/pkgconfig/*
 
 %changelog
-* Tue Oct 22 2013 Dwight Engen <dwight.engen@oracle.com> - 1.0.0-0.1.alpha2
-- fix some rpmlint warnings/errors
-- split lua bits into separate package
-
-* Mon Sep 10 2012 Dwight Engen <dwight.engen@oracle.com> - 0.8.0
-- fix lxc-init moved to libexec
-- .pc moved to _libdir
-- package template files /usr/share/lxc/templates
-
-* Thu Sep  8 2011 Greg Kurz <gkurz@fr.ibm.com> - 0.7.5.1
-- fix installed files for rpmbuild
-- introduce lxc-libs package
-
-* Fri Jul 23 2010 Daniel Lezcano <dlezcano@fr.ibm.com> - 0.7.2
-- set attribute for installed files
-- fix libraries installation
-
-* Tue Mar 24 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.1
-- Removed capability setting, let the user to do that through "lxc-setcap"
-
-* Mon Feb 16 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.0
-- Added more capabilities to the executables
-
-* Sun Jan 25 2009 Daniel Lezcano <daniel.lezcano@free.fr> - 0.6.0
-- Reduced spec file
-
-* Sun Aug 3 2008 Daniel Lezcano <dlezcano@fr.ibm.com> - 0.1.0
-- Initial RPM release.
 
 # Local variables:
 # mode: shell-script
