@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 tests_common_sources = liblxc_ext_sources + include_sources + netns_ifaddrs_sources
 

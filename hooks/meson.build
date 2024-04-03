@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 
 hooks_unmount_namespace_sources = files('unmount-namespace.c')
 if srcconf.get('IS_BIONIC') == 1 or srcconf.get('HAVE_HASMNTOPT') == 0 or srcconf.get('HAVE_SETMNTENT') == 0 or srcconf.get('HAVE_ENDMNTENT') == 0

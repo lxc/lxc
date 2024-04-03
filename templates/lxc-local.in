@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: LGPL-2.1+
 #
 # Client script for LXC container images.
 
