@@ -46,7 +46,7 @@ cmd_lxc_init_static_sources = files(
     '../string_utils.c',
     '../string_utils.h') + include_sources
 
-cmd_lxc_monitord_sources = files('lxc_monitord.c') + include_sources + netns_ifaddrs_sources
+cmd_lxc_monitord_sources = files('lxc_monitord.c')
 cmd_lxc_user_nic_sources = files('lxc_user_nic.c') + cmd_common_sources + netns_ifaddrs_sources
 cmd_lxc_usernsexec_sources = files('lxc_usernsexec.c') + cmd_common_sources + netns_ifaddrs_sources
 
@@ -88,8 +88,8 @@ cmd_programs += executable(
     'lxc-monitord',
     cmd_lxc_monitord_sources,
     include_directories: liblxc_includes,
-    dependencies: liblxc_dep,
-    link_with: [liblxc_static],
+    dependencies: liblxc_dependencies,
+    link_whole: [liblxc_static],
     install: true,
     install_dir: lxclibexec)
 
