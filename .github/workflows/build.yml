@@ -50,6 +50,7 @@ jobs:
           meson setup build \
                 -Dtests=true \
                 -Dpam-cgroup=true \
+                -Dtools-multicall=true \
                 -Dwerror=true \
                 -Db_lto_mode=default
           ninja -C build
