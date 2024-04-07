@@ -723,13 +723,15 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 			SYSERROR("Failed to disable IPv6 link-local addresses for veth pair \"%s\"", veth1);
 			goto out_delete;
 		}
-
-		err = write(disable_ipv6_fd, "1", 1);
-		if (err < 0) {
-			SYSERROR("Failed to disable IPv6 link-local addresses for veth pair \"%s\"", veth1);
-			goto out_delete;
+		else if (disable_ipv6_fd >= 0)
+		{
+			err = write(disable_ipv6_fd, "1", 1);
+			if (err < 0) {
+				SYSERROR("Failed to disable IPv6 link-local addresses for veth pair \"%s\"", veth1);
+				goto out_delete;
+			}
+			close(disable_ipv6_fd);
 		}
-		close(disable_ipv6_fd);
 
 		if (!lxc_nic_exists(netdev->link)) {
 			SYSERROR("Failed to attach \"%s\" to bridge \"%s\", bridge interface doesn't exist", veth1, netdev->link);
