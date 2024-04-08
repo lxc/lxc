@@ -615,10 +615,10 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 
 static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int err, disable_ipv6_fd;
+	int err;
 	unsigned int mtu = 1500;
 	char *veth1, *veth2;
-	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ], path[PATH_MAX];
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 
 	err = validate_veth(netdev);
 	if (err)
@@ -714,6 +714,9 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 	}
 
 	if (!is_empty_string(netdev->link) && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
+		char path[PATH_MAX];
+		__do_close int disable_ipv6_fd = -EBADF;
+
 		/* Disable link-local IPv6 addresses for the host's end of the veth. */
 		snprintf(path, PATH_MAX, "/proc/sys/net/ipv6/conf/%s/disable_ipv6", veth1);
 		disable_ipv6_fd = open(path, O_RDWR);
