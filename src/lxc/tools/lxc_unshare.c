@@ -92,7 +92,6 @@ Options :\n\
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	struct lxc_list *tmplist;
-
 	switch (c) {
 	case 's':
 		args->flags = get_namespace_flags(arg);
@@ -144,6 +143,7 @@ static int get_namespace_flags(char *namespaces)
 
 static bool lookup_user(const char *oparg, uid_t *uid)
 {
+	char name[PATH_MAX];
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
@@ -162,7 +162,17 @@ static bool lookup_user(const char *oparg, uid_t *uid)
 		return false;
 
 	if (sscanf(oparg, "%u", uid) < 1) {
-		/* not a uid -- perhaps a username */
+
+		// be careful with 4095 string literal. only use if PATH_MAX expected val
+		if (PATH_MAX == 4096) {
+			/* not a uid -- perhaps a username */
+			if (sscanf(oparg, "%4095s", name) < 1) {
+			free(buf);
+			return false;
+			}
+		}
+		
+
 		ret = getpwnam_r(oparg, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
