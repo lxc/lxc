@@ -266,7 +266,7 @@
 	</term>
 	<listitem>
 	  <para>
-	    Executes the <replaceable>command</replaceable> with user ID
+	    Executes the <replaceable>command</replaceable> with user ID (use numerical value)
 	    <replaceable>uid</replaceable> inside the container.
 	  </para>
 	</listitem>
@@ -278,7 +278,7 @@
 	</term>
 	<listitem>
 	  <para>
-	    Executes the <replaceable>command</replaceable> with group ID
+	    Executes the <replaceable>command</replaceable> with group ID (use numerical value)
 	    <replaceable>gid</replaceable> inside the container.
 	  </para>
 	</listitem>
