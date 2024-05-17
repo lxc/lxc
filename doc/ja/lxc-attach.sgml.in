@@ -353,10 +353,10 @@
 	<listitem>
 	  <para>
 	    <!--
-	    Executes the <replaceable>command</replaceable> with user ID
+	    Executes the <replaceable>command</replaceable> with user ID (use numerical value)
 	    <replaceable>uid</replaceable> inside the container.
 	    -->
-	    コンテナ内で、ユーザ ID <replaceable>uid</replaceable> で <replaceable>command</replaceable> を実行します。
+	    コンテナ内で、ユーザ ID <replaceable>uid</replaceable> で <replaceable>command</replaceable> を実行します（数値で指定）。
 	  </para>
 	</listitem>
       </varlistentry>
@@ -368,10 +368,10 @@
 	<listitem>
 	  <para>
 	    <!--
-	    Executes the <replaceable>command</replaceable> with group ID
+	    Executes the <replaceable>command</replaceable> with group ID (use numerical value)
 	    <replaceable>gid</replaceable> inside the container.
 	    -->
-	    コンテナ内で、グループ ID <replaceable>gid</replaceable> で <replaceable>command</replaceable> を実行します。
+	    コンテナ内で、グループ ID <replaceable>gid</replaceable> で <replaceable>command</replaceable> を実行します（数値で指定）。
 	  </para>
 	</listitem>
       </varlistentry>
