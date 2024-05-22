@@ -18,7 +18,7 @@ MODE="system"
 COMPAT_LEVEL=5
 
 EXCLUDES=""
-TEMPLATE_FILES="${LXC_PATH}/config"
+TEMPLATE_FILES=""
 
 
 # Make sure the usual locations are in PATH
@@ -169,6 +169,14 @@ process_excludes() {
   fi
 }
 
+record_template_file() {
+  if [ -z "${TEMPLATE_FILES}" ]; then
+    TEMPLATE_FILES="$1"
+  else
+    TEMPLATE_FILES="${TEMPLATE_FILES};$1"
+  fi
+}
+
 extract_config() {
   # lxc-create will automatically create a config file at ${LXC_PATH}/config.
   # This function extracts the network config, and any remaining lxc config
@@ -237,6 +245,7 @@ process_config() {
   add_container_config
   add_extra_config
   add_network_config
+  record_template_file "${LXC_PATH}/config"
 }
 
 process_fstab() {
@@ -246,7 +255,7 @@ process_fstab() {
   if [ -e "${fstab}" ]; then
     echo "lxc.mount.fstab = ${LXC_PATH}/fstab" >> "${LXC_PATH}/config"
     cp "${fstab}" "${LXC_PATH}/fstab"
-    TEMPLATE_FILES="${TEMPLATE_FILES};${LXC_PATH}/fstab"
+    record_template_file "${LXC_PATH}/fstab"
   fi
 }
 
@@ -257,7 +266,7 @@ process_templates() {
     while read -r line; do
       fullpath="${LXC_ROOTFS}/${line}"
       [ ! -e "${fullpath}" ] && continue
-      TEMPLATE_FILES="${TEMPLATE_FILES};${fullpath}"
+      record_template_file "${fullpath}"
     done < "${template}"
   fi
 }
