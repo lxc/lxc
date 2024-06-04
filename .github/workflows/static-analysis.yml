@@ -26,4 +26,5 @@ jobs:
         run: |
           cd config/apparmor/
           ./lxc-generate-aa-rules.py container-rules.base > container-rules
+          cat abstractions/container-base.in container-rules > abstractions/container-base
           git diff --exit-code
