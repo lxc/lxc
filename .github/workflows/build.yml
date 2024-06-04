@@ -15,6 +15,7 @@ jobs:
           - clang
         os:
           - ubuntu-22.04
+          - ubuntu-24.04
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
