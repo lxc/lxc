@@ -1,0 +1,125 @@
+#!/bin/sh
+
+# Allow environment variables to override grep and config
+: ${CONFIG:=/proc/config.gz}
+: ${GREP:=zgrep}
+: ${MODNAME:=configs}
+
+SETCOLOR_SUCCESS="printf \\033[1;32m"
+SETCOLOR_FAILURE="printf \\033[1;31m"
+SETCOLOR_WARNING="printf \\033[1;33m"
+SETCOLOR_NORMAL="printf \\033[0;39m"
+
+is_set() {
+    $GREP "$1=[y|m]" $CONFIG > /dev/null
+    return $?
+}
+
+is_enabled() {
+    mandatory=$2
+
+    is_set $1
+    RES=$?
+
+    if [ $RES -eq 0 ]; then
+        $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+    else
+        if [ ! -z "$mandatory" -a "$mandatory" = yes ]; then
+            $SETCOLOR_FAILURE && echo "required" && $SETCOLOR_NORMAL
+        else
+            $SETCOLOR_WARNING && echo "missing" && $SETCOLOR_NORMAL
+        fi
+    fi
+}
+
+if [ ! -f $CONFIG ]; then
+    echo "Kernel configuration not found at $CONFIG; searching..."
+    KVER="`uname -r`"
+    HEADERS_CONFIG="/lib/modules/$KVER/build/.config"
+    BOOT_CONFIG="/boot/config-$KVER"
+    [ -f "${HEADERS_CONFIG}" ] && CONFIG=${HEADERS_CONFIG}
+    [ -f "${BOOT_CONFIG}" ] && CONFIG=${BOOT_CONFIG}
+    if [ ! -f "$CONFIG" ]; then
+        MODULEFILE=$(modinfo -k $KVER -n $MODNAME 2> /dev/null)
+        # don't want to modprobe, so give user a hint
+        # altho scripts/extract-ikconfig could be used to extract contents without loading kernel module
+        # http://svn.pld-linux.org/trac/svn/browser/geninitrd/trunk/geninitrd?rev=12696#L327
+    fi
+    GREP=grep
+    if [ ! -f $CONFIG ]; then
+        echo "$(basename $0): unable to retrieve kernel configuration" >&2
+        echo >&2
+        if [ -f "$MODULEFILE" ]; then
+            echo "Try modprobe $MODNAME module, or" >&2
+        fi
+        echo "Try recompiling with IKCONFIG_PROC, installing the kernel headers," >&2
+        echo "or specifying the kernel configuration path with:" >&2
+        echo "  CONFIG=<path> $(basename $0)" >&2
+        exit 1
+    else
+        echo "Kernel configuration found at $CONFIG"
+    fi
+fi
+
+echo "--- Namespaces ---"
+echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
+echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
+echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
+echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
+echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+echo
+echo "--- Control groups ---"
+
+print_cgroups() {
+  # print all mountpoints for cgroup filesystems
+  awk '$1 !~ /#/ && $3 == mp { print $2; } ; END { exit(0); } '  "mp=$1" "$2" ;
+}
+
+CGROUP_MNT_PATH=`print_cgroups cgroup /proc/self/mounts | head -n 1`
+KVER_MAJOR=$($GREP '^# Linux.*Kernel Configuration' $CONFIG | \
+    sed -r 's/.* ([0-9])\.[0-9]{1,2}\.[0-9]{1,3}.*/\1/')
+if [ "$KVER_MAJOR" = "2" ]; then
+KVER_MINOR=$($GREP '^# Linux.*Kernel Configuration' $CONFIG | \
+    sed -r 's/.* 2.6.([0-9]{2}).*/\1/')
+else
+KVER_MINOR=$($GREP '^# Linux.*Kernel Configuration' $CONFIG | \
+    sed -r 's/.* [0-9]\.([0-9]{1,3})\.[0-9]{1,3}.*/\1/')
+fi
+
+echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS yes
+
+if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
+    echo -n "Cgroup clone_children flag: " &&
+    $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+else
+    echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS yes
+fi
+echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
+echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
+echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
+echo -n "Cgroup memory controller: "
+if [ $KVER_MAJOR -ge 3 -a $KVER_MINOR -ge 6 ]; then
+    is_enabled CONFIG_MEMCG
+else
+    is_enabled CONFIG_CGROUP_MEM_RES_CTLR
+fi
+is_set CONFIG_SMP && echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS
+echo
+echo "--- Misc ---"
+echo -n "Veth pair device: " && is_enabled CONFIG_VETH
+echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN
+echo -n "Vlan: " && is_enabled CONFIG_VLAN_8021Q
+echo -n "File capabilities: " && \
+    ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
+       is_enabled CONFIG_SECURITY_FILE_CAPABILITIES ) || \
+    ( ( [ "${KVER_MAJOR}" = "2" ] && [ ${KVER_MINOR} -gt 32 ] ) || \
+         [ ${KVER_MAJOR} -gt 2 ] && $SETCOLOR_SUCCESS && \
+         echo "enabled" && $SETCOLOR_NORMAL )
+
+echo
+echo "Note : Before booting a new kernel, you can check its configuration"
+echo "usage : CONFIG=/path/to/config $0"
+echo
+
