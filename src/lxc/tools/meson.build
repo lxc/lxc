@@ -36,7 +36,7 @@ if want_tools
 endif
 
 if want_tools_multicall
-    tools_all_sources = files('lxc_multicall.c') + tools_common_sources_for_dynamic_link
+    tools_all_sources = files('lxc_multicall.c') + files('arguments.c', 'arguments.h')
     foreach cmd : tools_commands
         tools_all_sources += files('lxc_' + cmd + '.c')
     endforeach
@@ -45,8 +45,8 @@ if want_tools_multicall
         'lxc',
         tools_all_sources,
         include_directories: liblxc_includes,
-        dependencies: liblxc_dep,
-        link_with: [liblxc_static],
+        dependencies: liblxc_dependencies,
+        link_whole: [liblxc_static],
         install: true)
 
     if want_tools == false
