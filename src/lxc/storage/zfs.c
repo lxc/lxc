@@ -500,12 +500,20 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 	 */
 	dataset_len = strlen(dataset);
 	len = 4 + dataset_len + 1 + strlen(cname) + 1;
+
+/* see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=104069 */
+#pragma GCC diagnostic push
+#if defined __GNUC__ && __GNUC__ >= 12
+#pragma GCC diagnostic ignored "-Wuse-after-free"
+#endif
 	new->src = realloc(dataset, len);
 	if (!new->src) {
 		ERROR("Failed to reallocate memory");
 		free(dataset);
 		return -1;
 	}
+#pragma GCC diagnostic pop
+
 	memmove(new->src + 4, new->src, dataset_len);
 	memmove(new->src, "zfs:", 4);
 

@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,4 +26,5 @@ jobs:
         run: |
           cd config/apparmor/
           ./lxc-generate-aa-rules.py container-rules.base > container-rules
+          cat abstractions/container-base.in container-rules > abstractions/container-base
           git diff --exit-code

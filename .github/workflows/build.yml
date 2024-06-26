@@ -15,6 +15,11 @@ jobs:
           - clang
         os:
           - ubuntu-22.04
+          - ubuntu-24.04
+        # temporary workaround for https://bugs.launchpad.net/ubuntu/+source/llvm-toolchain-18/+bug/2064187
+        exclude:
+          - compiler: clang
+            os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
