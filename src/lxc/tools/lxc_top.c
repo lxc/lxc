@@ -276,27 +276,33 @@ examples:
 	Total 149327872
 */
 static void stat_get_blk_stats(struct lxc_container *c, const char *item,
-			      struct blkio_stats *stats) {
+			      struct blkio_stats *stats, bool *success) {
 	char buf[4096];
 	int i, len;
 	char **lines, **cols;
+	*success = true; 
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0 || (size_t)len >= sizeof(buf)) {
 		fprintf(stderr, "Unable to read cgroup item %s\n", item);
+		*success = false; 
 		return;
 	}
 
 	lines = lxc_string_split_and_trim(buf, '\n');
-	if (!lines)
+	if (!lines) {
+		*success = false; 
 		return;
+	}
 
 	memset(stats, 0, sizeof(struct blkio_stats));
 
 	for (i = 0; lines[i]; i++) {
 		cols = lxc_string_split_and_trim(lines[i], ' ');
-		if (!cols)
+		if (!cols) {
+			*success = false; 
 			goto out;
+		}
 
 		if (strncmp(cols[1], "Read", strlen(cols[1])) == 0)
 			stats->read += strtoull(cols[2], NULL, 0);
@@ -314,21 +320,53 @@ out:
 	return;
 }
 
+static void try_cgroup2(struct lxc_container *c, u_int64_t *stat, const char* path_cgroup1, const char* path_cgroup2, 
+	const char* match, bool call_match) {
+	
+	int ret_cgroup2; 
+	
+	if (call_match) {
+		ret_cgroup2 = stat_match_get_int(c, path_cgroup2, match, 1); 
+		if (ret_cgroup2 < 0) {
+			*stat = stat_match_get_int(c, path_cgroup1, match, 1);
+		}
+		
+	} else {
+		ret_cgroup2 = stat_get_int(c, path_cgroup2); 
+		
+		if (ret_cgroup2 < 0) {
+			*stat = stat_get_int(c, path_cgroup1);
+		} else {
+			*stat = ret_cgroup2; 
+		}
+	}
+}
+
+
 static void stats_get(struct lxc_container *c, struct container_stats *ct, struct stats *total)
 {
 	ct->c = c;
-	ct->stats->mem_used      = stat_get_int(c, "memory.usage_in_bytes");
-	ct->stats->mem_limit     = stat_get_int(c, "memory.limit_in_bytes");
-	ct->stats->memsw_used    = stat_get_int(c, "memory.memsw.usage_in_bytes");
-	ct->stats->memsw_limit   = stat_get_int(c, "memory.memsw.limit_in_bytes");
+
+	// handle stat_get_int cases
+	try_cgroup2(c, &(ct->stats->mem_used), "memory.usage_in_bytes", "memory.current", NULL, false);
+	try_cgroup2(c, &(ct->stats->mem_limit), "memory.limit_in_bytes", "memory.max", NULL, false);
+	try_cgroup2(c, &(ct->stats->memsw_used), "memory.memsw.usage_in_bytes", "memory.swap.current", NULL, false);
+	try_cgroup2(c, &(ct->stats->memsw_limit), "memory.memsw.limit_in_bytes", "memory.swap.max", NULL, false);
+	try_cgroup2(c, &(ct->stats->cpu_use_nanos), "cpuacct.usage", "cpu.stat", NULL, false);
+	try_cgroup2(c, &(ct->stats->cpu_use_user), "cpuacct.stat", "cpu.stat", "user", true); 
+	try_cgroup2(c, &(ct->stats->cpu_use_sys), "cpuacct.stat", "cpu.stat", "system", true); 
+
+	// singular cgroup2 case for get blk stats
+	bool success; 
+	stat_get_blk_stats(c, "io.stat", &ct->stats->io_service_bytes, &success);
+	if (!success) {
+		stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes, &success);
+	}
+
+	// paths only exist in cgroup1
 	ct->stats->kmem_used     = stat_get_int(c, "memory.kmem.usage_in_bytes");
 	ct->stats->kmem_limit    = stat_get_int(c, "memory.kmem.limit_in_bytes");
-	ct->stats->cpu_use_nanos = stat_get_int(c, "cpuacct.usage");
-	ct->stats->cpu_use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
-	ct->stats->cpu_use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
-
-	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
-	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
+	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced, &success);
 
 	if (total) {
 		total->mem_used      = total->mem_used      + ct->stats->mem_used;
