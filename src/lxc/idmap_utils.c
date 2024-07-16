@@ -162,13 +162,13 @@ int lxc_map_ids(struct list_head *idmap, pid_t pid)
 	 */
 	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
 	if (uidmap == -ENOENT)
-		WARN("newuidmap binary is missing");
+		INFO("newuidmap binary is missing");
 	else if (!uidmap)
 		WARN("newuidmap is lacking necessary privileges");
 
 	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
 	if (gidmap == -ENOENT)
-		WARN("newgidmap binary is missing");
+		INFO("newgidmap binary is missing");
 	else if (!gidmap)
 		WARN("newgidmap is lacking necessary privileges");
 
