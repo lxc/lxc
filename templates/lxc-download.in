@@ -147,7 +147,7 @@ eval set -- "$options"
 
 while :; do
   case "$1" in
-    -h|--help)     usage && exit 1;;
+    -h|--help)     usage && exit 0;;
     -l|--list)     DOWNLOAD_LIST_IMAGES="true"; shift 1;;
     -d|--dist)     DOWNLOAD_DIST="$2"; shift 2;;
     -r|--release)  DOWNLOAD_RELEASE="$2"; shift 2;;
@@ -247,7 +247,7 @@ if [ "${DOWNLOAD_LIST_IMAGES}" = "true" ] || [ "${DOWNLOAD_INTERACTIVE}" = "true
   echo "---"
 
   if [ "${DOWNLOAD_LIST_IMAGES}" = "true" ]; then
-    exit 1
+    exit 0
   fi
 
   # Interactive mode
