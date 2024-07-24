@@ -281,21 +281,21 @@ examples:
 	8:0 Total 149327872
 	Total 149327872
 */
-static void stat_get_blk_stats(struct lxc_container *c, const char *item,
+static int cg1_get_blk_stats(struct lxc_container *c, const char *item,
 			      struct blkio_stats *stats) {
 	char buf[4096];
 	int i, len;
 	char **lines, **cols;
+	int ret = -1;
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0 || (size_t)len >= sizeof(buf)) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
-		return;
+		return ret;
 	}
 
 	lines = lxc_string_split_and_trim(buf, '\n');
 	if (!lines)
-		return;
+		return ret;
 
 	memset(stats, 0, sizeof(struct blkio_stats));
 
@@ -314,10 +314,50 @@ static void stat_get_blk_stats(struct lxc_container *c, const char *item,
 
 		lxc_free_array((void **)cols, free);
 	}
-
+	ret = 0;
 out:
 	lxc_free_array((void **)lines, free);
-	return;
+	return ret;
+}
+
+static int cg2_get_blk_stats(struct lxc_container *c, const char *item,
+			      struct blkio_stats *stats) {
+	char buf[4096];
+	int i, j, len;
+	char **lines, **cols;
+	int ret = -1;
+
+	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
+	if (len <= 0 || (size_t)len >= sizeof(buf)) {
+		return ret;
+	}
+
+	lines = lxc_string_split_and_trim(buf, '\n');
+	if (!lines)
+		return ret;
+
+	memset(stats, 0, sizeof(struct blkio_stats));
+
+	for (i = 0; lines[i]; i++) {
+		cols = lxc_string_split_and_trim(lines[i], ' ');
+		if (!cols)
+			goto out;
+
+		for (j = 0; cols[j]; j++) {
+			if (strncmp(cols[j], "rbytes=", 7) == 0) {
+				stats->read += strtoull(&cols[j][7], NULL, 0);
+			} else if (strncmp(cols[j], "wbytes=", 7) == 0) {
+				stats->write += strtoull(&cols[j][7], NULL, 0);
+			}
+		}
+
+		lxc_free_array((void **)cols, free);
+	}
+	stats->total = stats->read + stats->write;
+	ret = 0;
+out:
+	lxc_free_array((void **)lines, free);
+	return ret;
 }
 
 static int cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
@@ -376,8 +416,14 @@ static void stats_get(struct lxc_container *c, struct container_stats *ct, struc
 		}
 	}
 
-	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
-	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
+	if (cg1_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes) < 0) {
+		if (cg2_get_blk_stats(c, "io.stat", &ct->stats->io_service_bytes) < 0) {
+			fprintf(stderr, "Unable to read IO stats\n");
+		}
+	} else {
+		/* only with cgroups v1 */
+		cg1_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
+	}
 
 	if (total) {
 		total->mem.used       += ct->stats->mem.used;
