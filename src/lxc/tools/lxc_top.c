@@ -22,7 +22,6 @@
 #include "mainloop.h"
 #include "utils.h"
 
-#define USER_HZ   100
 #define ESC       "\033"
 #define TERMCLEAR ESC "[H" ESC "[J"
 #define TERMNORM  ESC "[0m"
@@ -70,6 +69,7 @@ static int sort_reverse = 0;
 static struct termios oldtios;
 static struct container_stats *container_stats = NULL;
 static int ct_alloc_cnt = 0;
+static long user_hz = 0;
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -357,8 +357,8 @@ static int cg2_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
 	/* convert microseconds to nanoseconds */
 	cpu->use_nanos = stat_match_get_int(c, "cpu.stat", "usage_usec", 1) * 1000;
 
-	cpu->use_user  = stat_match_get_int(c, "cpu.stat", "user_usec", 1) * USER_HZ / 1000000;
-	cpu->use_sys   = stat_match_get_int(c, "cpu.stat", "system_usec", 1) * USER_HZ / 1000000;
+	cpu->use_user  = stat_match_get_int(c, "cpu.stat", "user_usec", 1) * user_hz / 1000000;
+	cpu->use_sys   = stat_match_get_int(c, "cpu.stat", "system_usec", 1) * user_hz / 1000000;
 	return cpu->use_nanos > 0 ? 0 : -1;
 }
 
@@ -448,8 +448,8 @@ static void stats_print(const char *name, const struct stats *stats,
 		printf("%-18.18s %12.2f %12.2f %12.2f %36s %10s",
 		       name,
 		       (float)stats->cpu.use_nanos / 1000000000,
-		       (float)stats->cpu.use_sys  / USER_HZ,
-		       (float)stats->cpu.use_user / USER_HZ,
+		       (float)stats->cpu.use_sys  / user_hz,
+		       (float)stats->cpu.use_user / user_hz,
 		       iosb_str,
 		       mem_used_str);
 
@@ -639,6 +639,11 @@ int lxc_top_main(int argc, char *argv[])
 	atexit(stdin_tios_restore);
 	signal(SIGINT, sig_handler);
 	signal(SIGQUIT, sig_handler);
+
+	user_hz = sysconf(_SC_CLK_TCK);
+	if (user_hz == 0) {
+		user_hz = 100;
+	}
 
 	if (lxc_mainloop_open(&descr)) {
 		fprintf(stderr, "Failed to create mainloop\n");
