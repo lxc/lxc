@@ -212,7 +212,6 @@ static uint64_t stat_get_int(struct lxc_container *c, const char *item)
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		return 0;
 	}
 
@@ -322,7 +321,7 @@ out:
 	return;
 }
 
-static void cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
+static int cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 {
 	mem->used       = stat_get_int(c, "memory.usage_in_bytes");
 	mem->limit      = stat_get_int(c, "memory.limit_in_bytes");
@@ -330,6 +329,20 @@ static void cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 	mem->swap_limit = stat_get_int(c, "memory.memsw.limit_in_bytes");
 	mem->kmem_used  = stat_get_int(c, "memory.kmem.usage_in_bytes");
 	mem->kmem_limit = stat_get_int(c, "memory.kmem.limit_in_bytes");
+	return mem->used > 0 ? 0 : -1;
+}
+
+static int cg2_mem_stats(struct lxc_container *c, struct mem_stats *mem)
+{
+	mem->used       = stat_get_int(c, "memory.current");
+	mem->limit      = stat_get_int(c, "memory.max");
+	mem->swap_used  = stat_get_int(c, "memory.swap.current");
+	mem->swap_limit = stat_get_int(c, "memory.swap.max");
+	/* TODO: find the kernel usage */
+	mem->kmem_used  = 0;
+	/* does not exist in cgroup v2 */
+	mem->kmem_limit = 0;
+	return mem->used > 0 ? 0 : -1;
 }
 
 static void cg1_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
@@ -342,7 +355,11 @@ static void cg1_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
 static void stats_get(struct lxc_container *c, struct container_stats *ct, struct stats *total)
 {
 	ct->c = c;
-	cg1_mem_stats(c, &ct->stats->mem);
+	if (cg1_mem_stats(c, &ct->stats->mem) < 0) {
+		if (cg2_mem_stats(c, &ct->stats->mem) < 0) {
+			fprintf(stderr, "Unable to read memory stats\n");
+		}
+	}
 	cg1_cpu_stats(c, &ct->stats->cpu);
 	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
 	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
