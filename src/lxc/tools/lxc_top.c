@@ -230,7 +230,6 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		goto out;
 	}
 
@@ -345,11 +344,22 @@ static int cg2_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 	return mem->used > 0 ? 0 : -1;
 }
 
-static void cg1_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
+static int cg1_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
 {
 	cpu->use_nanos = stat_get_int(c, "cpuacct.usage");
 	cpu->use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
 	cpu->use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
+	return cpu->use_nanos > 0 ? 0 : -1;
+}
+
+static int cg2_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
+{
+	/* convert microseconds to nanoseconds */
+	cpu->use_nanos = stat_match_get_int(c, "cpu.stat", "usage_usec", 1) * 1000;
+
+	cpu->use_user  = stat_match_get_int(c, "cpu.stat", "user_usec", 1) * USER_HZ / 1000000;
+	cpu->use_sys   = stat_match_get_int(c, "cpu.stat", "system_usec", 1) * USER_HZ / 1000000;
+	return cpu->use_nanos > 0 ? 0 : -1;
 }
 
 static void stats_get(struct lxc_container *c, struct container_stats *ct, struct stats *total)
@@ -360,7 +370,12 @@ static void stats_get(struct lxc_container *c, struct container_stats *ct, struc
 			fprintf(stderr, "Unable to read memory stats\n");
 		}
 	}
-	cg1_cpu_stats(c, &ct->stats->cpu);
+	if (cg1_cpu_stats(c, &ct->stats->cpu) < 0) {
+		if (cg2_cpu_stats(c, &ct->stats->cpu) < 0) {
+			fprintf(stderr, "Unable to read CPU stats\n");
+		}
+	}
+
 	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
 	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
 
