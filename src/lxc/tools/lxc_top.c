@@ -373,14 +373,13 @@ static int cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 
 static int cg2_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 {
-	mem->used       = stat_get_int(c, "memory.current");
-	mem->limit      = stat_get_int(c, "memory.max");
-	mem->swap_used  = stat_get_int(c, "memory.swap.current");
-	mem->swap_limit = stat_get_int(c, "memory.swap.max");
-	/* TODO: find the kernel usage */
-	mem->kmem_used  = 0;
+	mem->used          = stat_get_int(c, "memory.current");
+	mem->limit         = stat_get_int(c, "memory.max");
+	mem->swap_used     = stat_get_int(c, "memory.swap.current");
+	mem->swap_limit    = stat_get_int(c, "memory.swap.max");
+	mem->kmem_used     = stat_match_get_int(c, "memory.stat", "kernel", 1);
 	/* does not exist in cgroup v2 */
-	mem->kmem_limit = 0;
+	// mem->kmem_limit = 0;
 	return mem->used > 0 ? 0 : -1;
 }
 
