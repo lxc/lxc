@@ -41,10 +41,18 @@ struct cpu_stats {
 };
 
 struct mem_stats {
+	union {
+		struct {
+			uint64_t swap_used;
+			uint64_t swap_limit;
+		}; /* v2 only */
+		struct {
+			uint64_t memsw_used;
+			uint64_t memsw_limit;
+		}; /* v1 only */
+	};
 	uint64_t used;
 	uint64_t limit;
-	uint64_t swap_used;
-	uint64_t swap_limit;
 	uint64_t kmem_used;
 	uint64_t kmem_limit;
 };
@@ -362,12 +370,12 @@ out:
 
 static int cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
 {
-	mem->used       = stat_get_int(c, "memory.usage_in_bytes");
-	mem->limit      = stat_get_int(c, "memory.limit_in_bytes");
-	mem->swap_used  = stat_get_int(c, "memory.memsw.usage_in_bytes");
-	mem->swap_limit = stat_get_int(c, "memory.memsw.limit_in_bytes");
-	mem->kmem_used  = stat_get_int(c, "memory.kmem.usage_in_bytes");
-	mem->kmem_limit = stat_get_int(c, "memory.kmem.limit_in_bytes");
+	mem->used        = stat_get_int(c, "memory.usage_in_bytes");
+	mem->limit       = stat_get_int(c, "memory.limit_in_bytes");
+	mem->memsw_used  = stat_get_int(c, "memory.memsw.usage_in_bytes");
+	mem->memsw_limit = stat_get_int(c, "memory.memsw.limit_in_bytes");
+	mem->kmem_used   = stat_get_int(c, "memory.kmem.usage_in_bytes");
+	mem->kmem_limit  = stat_get_int(c, "memory.kmem.limit_in_bytes");
 	return mem->used > 0 ? 0 : -1;
 }
 
@@ -423,6 +431,7 @@ static void stats_get(struct lxc_container *c, struct container_stats *ct, struc
 		/* only with cgroups v1 */
 		cg1_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
 	}
+
 
 	if (total) {
 		total->mem.used       += ct->stats->mem.used;
