@@ -732,7 +732,7 @@ int lxc_top_main(int argc, char *argv[])
 			stats_print_header(&total);
 		}
 
-		for (i = 0; i < active_cnt && i < (ct_print_cnt || batch); i++) {
+		for (i = 0; i < active_cnt && ((i < ct_print_cnt) || batch); i++) {
 			stats_print(container_stats[i].c->name, container_stats[i].stats, &total);
 			printf("\n");
 		}
