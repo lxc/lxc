@@ -496,7 +496,7 @@ struct lxc_container {
 	bool (*set_cgroup_item)(struct lxc_container *c, const char *subsys, const char *value);
 
 	/*!
-	 * \brief Determine full path to the containers configuration file.
+	 * \brief Determine full path to the containers configuration directory.
 	 * Each container can have a custom configuration path. However
 	 * by default it will be set to either the \c LXCPATH configure
 	 * variable, or the lxcpath value in the \c LXC_GLOBAL_CONF configuration
@@ -506,19 +506,17 @@ struct lxc_container {
 	 *
 	 * \param c Container.
 	 *
-	 * \return Static string representing full path to configuration
-	 * file.
+	 * \return Static string representing full path to configuration directory.
 	 *
 	 * \note Returned string must not be freed.
 	 */
 	const char *(*get_config_path)(struct lxc_container *c);
 
 	/*!
-	 * \brief Set the full path to the containers configuration
-	 * file.
+	 * \brief Set the full path to the containers configuration directory.
 	 *
 	 * \param c Container.
-	 * \param path Full path to configuration file.
+	 * \param path Full path to configuration directory.
 	 *
 	 * \return \c true on success, else \c false.
 	 */
