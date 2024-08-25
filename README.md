@@ -128,11 +128,7 @@ version `4.*.*`.
 
 The LXC project has a good reputation in handling security issues quickly and
 efficiently. If you think you've found a potential security issue, please
-report it by e-mail to all of the following persons:
-
-- serge (at) hallyn (dot) com
-- stgraber (at) ubuntu (dot) com
-- brauner (at) kernel (dot) org
+report it by e-mail to security (at) linuxcontainers (dot) org.
 
 For further details please have a look at
 
