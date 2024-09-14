@@ -503,7 +503,7 @@ int func (void) {
 }
 '''
 
-have_func_strerror_r_char_p = cc.compiles(code, name : 'strerror_r() returns char *')
+have_func_strerror_r_char_p = cc.compiles(code, args : '-Wno-error=unused-command-line-argument', name : 'strerror_r() returns char *')
 endif
 
 srcconf.set10('STRERROR_R_CHAR_P', have_func_strerror_r_char_p)
