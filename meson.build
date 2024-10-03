@@ -204,7 +204,6 @@ possible_cc_flags = [
     '-Wunused-but-set-variable',
     '-Wno-unused-parameter',
     '-Wfloat-equal',
-    '-Wsuggest-attribute=noreturn',
     '-Werror=return-type',
     '-Werror=incompatible-pointer-types',
     '-Wformat=2',
