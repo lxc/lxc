@@ -20,7 +20,7 @@ done
 LOCALSTATEDIR=@LOCALSTATEDIR@
 LXC_TEMPLATE_CONFIG=@LXCTEMPLATECONFIG@
 LXC_HOOK_DIR=@LXCHOOKDIR@
-MOUNT_HELPER="atomfs"
+MOUNT_HELPER=""
 MOUNTED_WORKDIR=""
 
 # Some useful functions
@@ -60,6 +60,12 @@ in_userns() {
 
 getconfigpath() {
   local basedir="$1" mfpath="$2" cdigest=""
+  mtdigest=$(jq -c -r '.config.mediaType' < "$mfpath")
+  if [ "$mtdigest" = "application/vnd.oci.empty.v1+json" ]; then
+    echo ""
+    return 0
+  fi
+
   # Ok we have the image config digest, now get the config ref from the manifest.
   # shellcheck disable=SC2039
   cdigest=$(jq -c -r '.config.digest' < "$mfpath")
@@ -113,6 +119,10 @@ getep() {
   fi
 
   configpath="$1"
+  if [ "${configpath}" = "" ]; then
+    echo "/bin/sh"
+    return
+  fi
 
   ep=$(jq -c '.config.Entrypoint[]?'< "${configpath}" | tr '\n' ' ')
   cmd=$(jq -c '.config.Cmd[]?'< "${configpath}" | tr '\n' ' ')
@@ -136,6 +146,9 @@ getenv() {
   fi
 
   configpath="$1"
+  if [ "${configpath}" = "" ]; then
+    return
+  fi
 
   env=$(jq -c -r '.config.Env[]'< "${configpath}")
 
@@ -160,6 +173,12 @@ getuidgid() {
   passwdpath="${rootpath}/etc/passwd"
   grouppath="${rootpath}/etc/group"
 
+  if [ "${configpath}" = "" ]; then
+    user=0
+    group=0
+    echo "${user:-0} ${group:-0}"
+    return
+  fi
   usergroup=$(jq -c -r '.config.User' < "${configpath}")
   # shellcheck disable=SC2039
   usergroup=(${usergroup//:/ })
@@ -200,6 +219,10 @@ getcwd() {
   fi
 
   configpath="$1"
+  if [ "${configpath}" = "" ]; then
+    echo "/"
+    return
+  fi
 
   cwd=$(jq -c -r '.config.WorkingDir // "/"' < "${configpath}")
 
@@ -232,13 +255,16 @@ Required arguments:
 Optional arguments:
 [ --username <username> ]: The username for the registry
 [ --password <password> ]: The password for the registry
-[ --mount-helper <command> ]: program that will be used to mount. default is 'atomfs'
+[ --mount-helper <command> ]: program that will be used to mount. default will be detected from mediatype
 
      mount-helper is expected to support being called with 'mount'
      and 'umount' subcommands as below:
 
-        mount-helper mount oci:<oci_dir>:<oci_name> <mountpoint>
+        mount-helper mount --persist <upperdir> <oci_dir>:<oci_name> <mountpoint>
         mount-helper umount <mountpoint>
+
+     The --persist <upperdir> flag tells the mount helper to create a writable overlay, with a read-only
+     filesystem as lowerdir and <upperdir> as upperdir, where <upperdir> is a filesystem path
 
 LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
@@ -371,6 +397,15 @@ echo "mfpath=$mfpath conf=$OCI_CONF_FILE" 1>&2
 echo "mediatype=$mediatype" >&2
 
 case "$mediatype" in
+  application/vnd.*.image.layer.squashfs*)
+    MOUNT_HELPER="atomfs"
+    ;;
+  application/vnd.puzzlefs.image.rootfs.*)
+    MOUNT_HELPER="puzzlefs"
+    ;;
+esac
+
+case "$mediatype" in
   #application/vnd.oci.image.layer.v1.tar+gzip
   application/vnd.oci.image.layer.v1.tar*)
     echo "Unpacking tar rootfs" 2>&1
@@ -386,13 +421,18 @@ case "$mediatype" in
     find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
     ;;
   #application/vnd.stacker.image.layer.squashfs+zstd+verity
-  application/vnd.*.image.layer.squashfs*)
+  application/vnd.*.image.layer.squashfs*|application/vnd.puzzlefs.image.rootfs.*)
+    if [ -z "${MOUNT_HELPER}" ]; then
+      echo "MOUNT_HELPER not detected for $mediatype"
+      exit 1
+    fi
     if ! command -v "${MOUNT_HELPER}" >/dev/null 2>&1; then
       echo "media type $mediatype requires $MOUNT_HELPER" >&2
       exit 1
     fi
-    echo "$MOUNT_HELPER mount ${OCI_DIR}:${OCI_NAME} $LXC_ROOTFS" >&2
-    "$MOUNT_HELPER" mount "${OCI_DIR}:${OCI_NAME}" "$LXC_ROOTFS"
+    MOUNT_HELPER_UPPERDIR="$LXC_PATH/upper"
+    echo "$MOUNT_HELPER mount --persist ${MOUNT_HELPER_UPPERDIR} ${OCI_DIR}:${OCI_NAME} $LXC_ROOTFS" >&2
+    "$MOUNT_HELPER" mount --persist "${MOUNT_HELPER_UPPERDIR}" "${OCI_DIR}:${OCI_NAME}" "$LXC_ROOTFS"
     MOUNTED_WORKDIR="$LXC_ROOTFS"
     ;;
   *)
@@ -407,10 +447,10 @@ echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
 
 case "$mediatype" in
-  application/vnd.*.image.layer.squashfs*)
+  application/vnd.*.image.layer.squashfs*|application/vnd.puzzlefs.image.rootfs.*)
     echo "lxc.hook.version = 1" >> "${LXC_CONF_FILE}"
     # shellcheck disable=SC2016
-    echo "lxc.hook.pre-mount = $MOUNT_HELPER mount" \
+    echo "lxc.hook.pre-mount = $MOUNT_HELPER mount --persist ${MOUNT_HELPER_UPPERDIR}" \
         '${LXC_ROOTFS_PATH}/../oci:${LXC_NAME} ${LXC_ROOTFS_PATH}' \
         >> "${LXC_CONF_FILE}";;
 esac
