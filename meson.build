@@ -204,7 +204,6 @@ possible_cc_flags = [
     '-Wunused-but-set-variable',
     '-Wno-unused-parameter',
     '-Wfloat-equal',
-    '-Wsuggest-attribute=noreturn',
     '-Werror=return-type',
     '-Werror=incompatible-pointer-types',
     '-Wformat=2',
@@ -249,6 +248,9 @@ if cc.get_id() == 'clang'
             '-Wno-gnu-variable-sized-type-not-at-end',
     ]
 endif
+possible_cc_flags += [
+    '-ffat-lto-objects',
+]
 
 if meson.version().version_compare('>=0.46')
     add_project_link_arguments(cc.get_supported_link_arguments(possible_link_flags), language: 'c')
