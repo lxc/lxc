@@ -1455,7 +1455,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		if (!list_empty(&conf->id_map)) {
 			int extraargs, hostuid_mapped, hostgid_mapped;
 			char **n2;
-			char txtuid[20], txtgid[20];
+			char *txtuid = NULL, *txtgid = NULL;
 			struct id_map *map;
 			int n2args = 1;
 
@@ -1556,6 +1556,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			/* note n2[n2args-1] is NULL */
 			n2[n2args - 5] = "--mapped-uid";
 
+			txtuid = malloc(20);
+			if (!txtuid) {
+				free(newargv);
+				free(n2);
+				_exit(EXIT_FAILURE);
+			}
 			ret = strnprintf(txtuid, 20, "%d", hostuid_mapped);
 			if (ret < 0) {
 				free(newargv);
@@ -1566,6 +1572,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			n2[n2args - 4] = txtuid;
 			n2[n2args - 3] = "--mapped-gid";
 
+			txtgid = malloc(20);
+			if (!txtgid) {
+				free(newargv);
+				free(n2);
+				_exit(EXIT_FAILURE);
+			}
 			ret = strnprintf(txtgid, 20, "%d", hostgid_mapped);
 			if (ret < 0) {
 				free(newargv);
