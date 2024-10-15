@@ -401,6 +401,14 @@
 #define MFD_ALLOW_SEALING 0x0002U
 #endif
 
+#ifndef MFD_NOEXEC_SEAL
+#define MFD_NOEXEC_SEAL 0x0008U
+#endif
+
+#ifndef MFD_EXEC
+#define MFD_EXEC 0x0010U
+#endif
+
 /**
  * BUILD_BUG_ON - break compile if a condition is true.
  * @condition: the condition which the compiler should know is false.
