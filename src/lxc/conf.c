@@ -341,6 +341,10 @@ int lxc_rootfs_init(struct lxc_conf *conf, bool userns)
 	ret = lxc_storage_prepare(conf);
 	if (ret)
 		return syserror_set(-EINVAL, "Failed to prepare rootfs storage");
+
+	if (!rootfs->storage)
+		return log_trace(0, "Not pinning because container does not have storage");
+
 	type = rootfs->storage->type;
 
 	if (!type)
