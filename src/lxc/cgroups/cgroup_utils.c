@@ -83,7 +83,7 @@ int cgroup_tree_prune(int dfd, const char *path)
 
 		ret = cgroup_tree_prune(dfd_dup, direntp->d_name);
 		if (ret < 0)
-			return -errno;
+			return ret;
 	}
 
 	ret = unlinkat(dfd, path, AT_REMOVEDIR);
