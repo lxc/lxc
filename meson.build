@@ -691,7 +691,7 @@ endif
 
 if cc.get_define('FS_CONFIG_SET_CMD_CREATE', prefix: decl_headers) != ''
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_CMD_CREAT (sys/mount.h)'
+    found_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), false)
     missing_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
