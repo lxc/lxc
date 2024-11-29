@@ -21,9 +21,9 @@ LXC_DOMAIN=""
 LXC_USE_NFT="true"
 
 # IPv6 connectivity
-LXC_IPV6_ADDR="fc11:4514:1919:810::1"
+LXC_IPV6_ADDR="fc42:5009:ba4b:5ab0::1"
 LXC_IPV6_MASK="64"
-LXC_IPV6_NETWORK="fc11:4514:1919:810::/64"
+LXC_IPV6_NETWORK="fc42:5009:ba4b:5ab0::/64"
 LXC_IPV6_NAT="true"
 
 [ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
