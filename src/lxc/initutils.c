@@ -425,7 +425,7 @@ static void remove_self(void)
 
 static sig_atomic_t was_interrupted;
 
-static void interrupt_handler(int sig)
+static void interrupt_handler(int sig, siginfo_t *info, void *context)
 {
 	if (!was_interrupted)
 		was_interrupted = sig;
@@ -528,8 +528,8 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
-	act.sa_flags = 0;
-	act.sa_handler = interrupt_handler;
+	act.sa_flags = SA_SIGINFO;
+	act.sa_sigaction = interrupt_handler;
 
 	for (i = 1; i < NSIG; i++) {
 		/* Exclude some signals: ILL, SEGV and BUS are likely to reveal
