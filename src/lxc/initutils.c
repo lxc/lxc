@@ -632,17 +632,6 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 
 		switch (was_interrupted) {
 		case 0:
-		/* Some applications send SIGHUP in order to get init to reload
-		 * its configuration. We don't want to forward this onto the
-		 * application itself, because it probably isn't expecting this
-		 * signal since it was expecting init to do something with it.
-		 *
-		 * Instead, let's explicitly ignore it here. The actual
-		 * terminal case is handled in the monitor's handler, which
-		 * sends this task a SIGTERM in the case of a SIGHUP, which is
-		 * what we want.
-		 */
-		case SIGHUP:
 			break;
 		case SIGPWR:
 		case SIGTERM:
@@ -674,6 +663,13 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 			}
 			break;
 		}
+		/* NOTE(SIGHUP): The actual terminal case is handled in the monitor's
+		 * handler, which sends this task a SIGTERM in the case of a SIGHUP,
+		 * which is what we want.
+		 *
+		 * Therefore, we can forward SIGHUP to the application itself, in case
+		 * it is used to reload its configuration.
+		 */
 		default:
 			kill(pid, was_interrupted);
 			break;
