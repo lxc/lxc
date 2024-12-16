@@ -425,8 +425,13 @@ static void remove_self(void)
 
 static sig_atomic_t was_interrupted;
 
-static void interrupt_handler(int sig)
+static void interrupt_handler(int sig, siginfo_t *info, void *context)
 {
+	// Only forward signals if they didn't originate from our own PID
+	// namespace and if no other signal is already being processed.
+	if (info->si_code == SI_USER && info->si_pid > 1)
+		return;
+
 	if (!was_interrupted)
 		was_interrupted = sig;
 }
@@ -528,8 +533,8 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
-	act.sa_flags = 0;
-	act.sa_handler = interrupt_handler;
+	act.sa_flags = SA_SIGINFO;
+	act.sa_sigaction = interrupt_handler;
 
 	for (i = 1; i < NSIG; i++) {
 		/* Exclude some signals: ILL, SEGV and BUS are likely to reveal
@@ -632,17 +637,6 @@ __noreturn int lxc_container_init(int argc, char *const *argv, bool quiet)
 
 		switch (was_interrupted) {
 		case 0:
-		/* Some applications send SIGHUP in order to get init to reload
-		 * its configuration. We don't want to forward this onto the
-		 * application itself, because it probably isn't expecting this
-		 * signal since it was expecting init to do something with it.
-		 *
-		 * Instead, let's explicitly ignore it here. The actual
-		 * terminal case is handled in the monitor's handler, which
-		 * sends this task a SIGTERM in the case of a SIGHUP, which is
-		 * what we want.
-		 */
-		case SIGHUP:
 			break;
 		case SIGPWR:
 		case SIGTERM:
