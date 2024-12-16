@@ -427,6 +427,11 @@ static sig_atomic_t was_interrupted;
 
 static void interrupt_handler(int sig, siginfo_t *info, void *context)
 {
+	// Only forward signals if they didn't originate from our own PID
+	// namespace and if no other signal is already being processed.
+	if (info->si_code == SI_USER && info->si_pid > 1)
+		return;
+
 	if (!was_interrupted)
 		was_interrupted = sig;
 }
