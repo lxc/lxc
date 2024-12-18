@@ -1,14 +1,17 @@
-name: Coverity build and upload
+name: Coverity
 on:
   push:
     branches:
       - main
+
 permissions:
   contents: read
 
 jobs:
-  test:
+  coverity:
+    name: Build and upload
     runs-on: ubuntu-24.04
+    if: github.repository == 'lxc/lxc'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,18 +30,6 @@ jobs:
           sudo apt-get install -qq gcc clang meson
           sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev libselinux1-dev linux-libc-dev libpam0g-dev docbook2x libdbus-1-dev
 
-      - name: Compiler version
-        run: |
-          gcc --version
-
-      - name: Kernel version
-        run: |
-          uname -a
-
-      - name: Mount table
-        run: |
-          findmnt
-
       - name: Run coverity
         run: |
           # Configure
@@ -51,14 +42,14 @@ jobs:
 
           # Build
           cov-build --dir cov-int ninja -C ${BUILD}
-          tar czvf lxc.tgz cov-int
+          tar czvf upload.tgz cov-int
 
           # Submit the results
           curl \
             --form project=lxc/lxc \
             --form token=${TOKEN} \
             --form email=lxc-devel@lists.linuxcontainers.org \
-            --form file=@lxc.tgz \
+            --form file=@upload.tgz \
             --form version=main \
             --form description="${GITHUB_SHA}" \
             https://scan.coverity.com/builds?project=lxc/lxc
