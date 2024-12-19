@@ -1,0 +1,69 @@
+name: Test suite
+description: Runs the testsuite
+inputs:
+  compiler:
+    required: true
+  os:
+    required: true
+  variant:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/build
+      with:
+        compiler: ${{ inputs.compiler }}
+        os: ${{ inputs.os }}
+        variant: ${{ inputs.variant }}
+
+    - name: Remove existing installation
+      shell: bash
+      run: |
+        sudo apt-get remove --purge -qq \
+            liblxc1 \
+            liblxc-common \
+            liblxc-dev \
+            lxc-utils
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        sudo apt-get install --purge -qq \
+            apparmor \
+            acl \
+            busybox-static \
+            dnsmasq-base \
+            iptables \
+            rsync \
+            uidmap
+
+    - name: Test
+      shell: bash
+      env:
+        CC: ${{ inputs.compiler }}
+      run: |
+        # Install LXC on the system
+        sudo meson install -C build
+
+        if [ "${{ inputs.variant }}" = "sanitizer" ]; then
+            # Set sanitizer configuration
+            export ASAN_OPTIONS="detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:strict_string_checks=1:detect_odr_violation=0"
+            export UBSAN_OPTIONS="print_stacktrace=1:print_summary=1:halt_on_error=1"
+
+            # Disable problematic tests
+            sudo rm /usr/bin/lxc-test-concurrent
+            sudo rm /usr/bin/lxc-test-share-ns
+        fi
+
+        # Bring up systemd units
+        sudo sed -i 's/USE_LXC_BRIDGE="false"/USE_LXC_BRIDGE="true"/' /etc/default/lxc
+        sudo systemctl daemon-reload
+        sudo systemctl restart apparmor
+        sudo systemctl restart lxc-net
+
+        # Undo default ACLs from Github
+        sudo setfacl -b -R /home
+
+        # Run the testsuite
+        git clone --depth=1 https://github.com/lxc/lxc-ci
+        sudo -E lxc-ci/deps/lxc-exercise
