@@ -1,0 +1,79 @@
+name: Build LXC
+description: Install dependencies and build the codebase
+inputs:
+  compiler:
+    required: true
+  os:
+    required: true
+  variant:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        echo "::group::Installing dependencies"
+
+        sudo apt-get update -qq
+        sudo apt-get install -qq \
+            ${{ inputs.compiler }} \
+            meson \
+            pkg-config \
+            uuid-runtime \
+            docbook2x \
+            linux-libc-dev \
+            llvm \
+            libapparmor-dev \
+            libcap-dev \
+            libdbus-1-dev \
+            libpam0g-dev \
+            libseccomp-dev \
+            libselinux1-dev
+
+        echo "::endgroup::"
+
+    - name: Compiler version
+      shell: bash
+      env:
+        CC: ${{ inputs.compiler }}
+      run: |
+        echo "::group::Compiler version"
+
+        ${CC} --version
+
+        echo "::endgroup::"
+
+    - name: Build
+      shell: bash
+      env:
+        CC: ${{ inputs.compiler }}
+      run: |
+        echo "::group::Building LXC"
+
+        # Standard build
+        if [ "${{ inputs.variant }}" = "default" ]; then
+            meson setup build \
+                -Dprefix=/usr \
+                -Dtests=true \
+                -Dpam-cgroup=true \
+                -Dtools-multicall=true \
+                -Dwerror=true \
+                -Db_lto_mode=default
+        elif [ "${{ inputs.variant }}" = "sanitizer" ]; then
+            meson setup build \
+                -Dprefix=/usr \
+                -Dtests=true \
+                -Dpam-cgroup=true \
+                -Dtools-multicall=true \
+                -Dwerror=true \
+                -Db_lto_mode=default \
+                -Dio-uring-event-loop=false \
+                -Db_lundef=false \
+                -Db_sanitize=address,undefined
+        fi
+
+        meson compile -C build
+
+        echo "::endgroup::"
