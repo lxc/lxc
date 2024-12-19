@@ -14,6 +14,8 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
+        echo "::group::Installing dependencies"
+
         sudo apt-get update -qq
         sudo apt-get install -qq \
             ${{ inputs.compiler }} \
@@ -30,18 +32,26 @@ runs:
             libseccomp-dev \
             libselinux1-dev
 
+        echo "::endgroup::"
+
     - name: Compiler version
       shell: bash
       env:
         CC: ${{ inputs.compiler }}
       run: |
+        echo "::group::Compiler version"
+
         ${CC} --version
+
+        echo "::endgroup::"
 
     - name: Build
       shell: bash
       env:
         CC: ${{ inputs.compiler }}
       run: |
+        echo "::group::Building LXC"
+
         # Standard build
         if [ "${{ inputs.variant }}" = "default" ]; then
             meson setup build \
@@ -65,3 +75,5 @@ runs:
         fi
 
         meson compile -C build
+
+        echo "::endgroup::"
