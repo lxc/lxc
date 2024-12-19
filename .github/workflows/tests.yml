@@ -53,7 +53,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: ./.github/actions/testsuite
+      - name: Run the testsuite
+        uses: ./.github/actions/testsuite
         with:
           compiler: ${{ matrix.compiler }}
           os: ${{ matrix.os }}
@@ -83,7 +84,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: ./.github/actions/testsuite
+      - name: Run the testsuite
+        uses: ./.github/actions/testsuite
         with:
           compiler: ${{ matrix.compiler }}
           os: ${{ matrix.os }}
