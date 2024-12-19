@@ -1,0 +1,90 @@
+name: Tests
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  code-tests:
+    name: Code
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq coccinelle
+
+      - name: Confirm coccinelle output is clean
+        run: |
+          ./coccinelle/run-coccinelle.sh -i
+          git diff --exit-code
+
+      - name: Confirm apparmor profile is up to date
+        run: |
+          cd config/apparmor/
+          ./lxc-generate-aa-rules.py container-rules.base > container-rules
+          cat abstractions/container-base.in container-rules > abstractions/container-base
+          git diff --exit-code
+
+  testsuite-hosted:
+    name: Test suite (x86_64)
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+        variant:
+          - default
+          - sanitizer
+        exclude:
+          - variant: sanitizer
+            compiler: gcc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/testsuite
+        with:
+          compiler: ${{ matrix.compiler }}
+          os: ${{ matrix.os }}
+          variant: ${{ matrix.variant }}
+
+  testsuite-self-hosted:
+    name: Test suite (aarch64)
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+        variant:
+          - default
+    runs-on:
+      - self-hosted
+      - cpu-4
+      - mem-4G
+      - disk-50G
+      - arch-arm64
+      - image-${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/testsuite
+        with:
+          compiler: ${{ matrix.compiler }}
+          os: ${{ matrix.os }}
+          variant: ${{ matrix.variant }}
