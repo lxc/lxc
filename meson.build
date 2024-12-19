@@ -4,7 +4,7 @@
 project(
     'lxc',
     'c',
-    version: '6.0.2',
+    version: '6.0.3',
     license: 'LGPLv2+',
     default_options: [
         'b_lto=true',
@@ -30,7 +30,7 @@ liblxc_version = '1.8.0'
 version_data = configuration_data()
 version_data.set('LXC_VERSION_MAJOR', '6')
 version_data.set('LXC_VERSION_MINOR', '0')
-version_data.set('LXC_VERSION_MICRO', '2')
+version_data.set('LXC_VERSION_MICRO', '3')
 version_data.set('LXC_VERSION_BETA', '')
 version_data.set('LXC_ABI', liblxc_version)
 version_data.set('LXC_DEVEL', '0')
