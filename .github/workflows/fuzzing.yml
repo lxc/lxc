@@ -1,28 +1,24 @@
-name: Fuzzing with OSS-fuzz
+name: Fuzzing
 on:
   push:
-  pull_request:
-    paths:
-      - '**/meson.build'
-      - '.github/workflows/**'
-      - 'meson_options.txt'
-      - 'src/**'
     branches:
-      - main
+
 permissions:
   contents: read
+
 jobs:
-  Fuzzing:
+  fuzzing:
+    name: OSS-Fuzz
     runs-on: ubuntu-24.04
     if: github.repository == 'lxc/lxc'
     strategy:
       fail-fast: false
       matrix:
-        sanitizer: [address, undefined, memory]
+        sanitizer:
+          - address
+          - undefined
+          - memory
     steps:
-      - name: Install dependencies not yet listed in ubuntu pkg source
-        run: |
-          sudo apt-get install -qq libdbus-1-dev
       - name: Build Fuzzers (${{ matrix.sanitizer }})
         id: build
         uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
@@ -31,6 +27,7 @@ jobs:
           dry-run: false
           allowed-broken-targets-percentage: 0
           sanitizer: ${{ matrix.sanitizer }}
+
       - name: Run Fuzzers (${{ matrix.sanitizer }})
         uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
         with:
@@ -38,6 +35,7 @@ jobs:
           fuzz-seconds: 360
           dry-run: false
           sanitizer: ${{ matrix.sanitizer }}
+
       - name: Upload Crash
         uses: actions/upload-artifact@v4
         if: failure() && steps.build.outcome == 'success'
