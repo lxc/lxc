@@ -1430,6 +1430,15 @@ static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 	close_prot_errno_disarm(terminal->log_fd);
 }
 
+void lxc_attach_sig_handler(int signum) {
+	// exit on SIGCHLD, but not if sender-pid is 0 (main process)
+	if (signum == SIGCHLD) {
+		int sender_pid = waitpid(-1, NULL, WNOHANG);
+		if (sender_pid > 0)
+			exit(EXIT_SUCCESS);
+	}
+}
+
 int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
@@ -1734,6 +1743,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		signal(SIGINT, SIG_IGN);
 		signal(SIGQUIT, SIG_IGN);
 	}
+	signal(SIGCHLD, lxc_attach_sig_handler);
 
 	/* Reap transient process. */
 	ret = wait_for_pid(pid);
