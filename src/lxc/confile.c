@@ -6209,7 +6209,8 @@ static int get_config_net_veth_vlan_id(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	strprint(retv, inlen, "%d", netdev->priv.veth_attr.vlan_id);
+	if (netdev->priv.veth_attr.vlan_id_set)
+		strprint(retv, inlen, "%d", netdev->priv.veth_attr.vlan_id);
 
 	return fulllen;
 }
