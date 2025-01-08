@@ -1226,6 +1226,7 @@ static bool start_scope(DBusConnection *connection, const char *scope_name)
 static DBusConnection *open_systemd(void)
 {
 	__do_free char *user_bus = NULL;
+	const char *env_dbus_addr = getenv("DBUS_SESSION_BUS_ADDRESS");
 	char *s = NULL;
 	DBusMessageIter iter;
 	DBusError dbus_error;
@@ -1234,10 +1235,19 @@ static DBusConnection *open_systemd(void)
 	DBusPendingCall* pending;
 
 	dbus_error_init(&dbus_error);
-	user_bus = strdup("unix:path=/run/user/1000/bus"); // TODO get from $DBUS_SESSION_BUS_ADDRESS
+
+	if (!env_dbus_addr) {
+		WARN("Environment variable 'DBUS_SESSION_BUS_ADDRESS' not set");
+		user_bus = strdup("unix:path=/run/user/1000/bus");
+	} else {
+		user_bus = strdup(env_dbus_addr);
+	}
+
 	if (!user_bus) {
 		return log_error(NULL, "Failed opening user dbus");
 	}
+
+	TRACE("Using dbus unix socket: '%s'", user_bus);
 
 	connection = dbus_connection_open(user_bus, &dbus_error);
 	if (!connection) {
