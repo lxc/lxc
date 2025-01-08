@@ -2944,6 +2944,10 @@ int parse_cap(const char *cap_name, __u32 *cap)
 	if (strequal(cap_name, "none"))
 		return -2;
 
+#if HAVE_LIBCAP == 0
+	WARN("capabilities are disabled or libcap not found");
+#endif
+
 	for (size_t i = 0; i < end; i++) {
 		if (!strequal(cap_name, caps_opt[i].name))
 			continue;
