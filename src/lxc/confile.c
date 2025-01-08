@@ -2468,7 +2468,7 @@ static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
 		ret = parse_cap(token, &cap);
 		if (ret < 0) {
 			if (ret != -2)
-				return syserror_set(-EINVAL, "Invalid capability specified");
+				return syserror_set(-EINVAL, "Invalid capability specified: %s", token);
 
 			INFO("Ignoring unknown capability \"%s\"", token);
 			continue;
