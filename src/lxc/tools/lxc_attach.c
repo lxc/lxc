@@ -62,6 +62,9 @@ static char **extra_keep;
 static ssize_t extra_keep_size;
 static char *selinux_context = NULL;
 
+/* EXIT on SIGCHLD by default here for lxc-attach tool, not ignoring */
+static bool sigchld_ignore = false;
+
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
@@ -77,6 +80,7 @@ static const struct option my_longopts[] = {
 	{"uid", required_argument, 0, 'u'},
 	{"gid", required_argument, 0, 'g'},
         {"context", required_argument, 0, 'c'},
+	{"sigchld-ignore", no_argument, 0, 'G'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -131,6 +135,9 @@ Options :\n\
   -g, --gid=GID     Execute COMMAND with GID inside the container\n\
   -c, --context=context\n\
                     SELinux Context to transition into\n\
+  -G, --sigchld-ignore\n\
+                    I(G)nore SIGCHLD, which will cause initial process to\n\
+                    wait for all it's detached subprocesses running on PTY.\n\
 ",
 	.options      = my_longopts,
 	.parser       = my_parser,
@@ -209,6 +216,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
         case 'c':
                 selinux_context = arg;
                 break;
+	case 'G': /* --sigchld-ignore */
+		sigchld_ignore = true;
+		break;
 	}
 
 	return 0;
@@ -399,6 +409,9 @@ int lxc_attach_main(int argc, char *argv[])
 
 	if (stdfd_is_pty())
 		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
+
+	if (!sigchld_ignore)
+		attach_options.attach_flags |= LXC_ATTACH_SIGCHLD_EXIT;
 
 	attach_options.namespaces	= namespace_flags;
 	attach_options.personality	= new_personality;

@@ -55,6 +55,8 @@ enum {
 	LXC_ATTACH_SETGROUPS             = 0x00200000, /*!< Set additional group ids specified in @groups. */
 #define LXC_ATTACH_SETGROUPS             LXC_ATTACH_SETGROUPS
 
+	LXC_ATTACH_SIGCHLD_EXIT          = 0x00400000, /*!< Exit on SIGCHLD */
+#define LXC_ATTACH_SIGCHLD_EXIT          LXC_ATTACH_SIGCHLD_EXIT
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary

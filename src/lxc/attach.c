@@ -1430,6 +1430,19 @@ static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 	close_prot_errno_disarm(terminal->log_fd);
 }
 
+void lxc_attach_sig_handler(int signum)
+{
+	if (signum == SIGCHLD) {
+		/* SIG_IGN for SIGTERM will:
+		 *   - prevent shell from printing 'pid terminated' message
+		 *   - makes the program exit with code 0 (not 143)
+		 *   - NOT really disable SIGTERM from terminating the program
+		 */
+		signal(SIGTERM, SIG_IGN);
+		raise(SIGTERM);
+	}
+}
+
 int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
@@ -1741,6 +1754,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		goto close_mainloop;
 
 	TRACE("Transient process %d exited", pid);
+
+	/* After trans-proc exit, add SIGCHLD handler if option flag is set */
+	if (options->attach_flags & LXC_ATTACH_SIGCHLD_EXIT)
+		signal(SIGCHLD, lxc_attach_sig_handler);
 
 	/* We will always have to reap the attached process now. */
 	to_cleanup_pid = attached_pid;
