@@ -21,6 +21,7 @@ LXC_DOMAIN=""
 LXC_USE_NFT="true"
 
 # IPv6 connectivity
+LXC_IPV6_ENABLE="true"
 LXC_IPV6_ADDR="fc42:5009:ba4b:5ab0::1"
 LXC_IPV6_MASK="64"
 LXC_IPV6_NETWORK="fc42:5009:ba4b:5ab0::/64"
@@ -62,6 +63,8 @@ _ifup() {
 
 start_ipv6() {
     LXC_IPV6_ARG=""
+    [ "${LXC_IPV6_ENABLE}" = "true" ] || return 0
+
     if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
         echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
         echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
