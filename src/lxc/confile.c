@@ -908,10 +908,10 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 			break;
 
 		default:
-			inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> inetdev->prefix);
+			inetdev->bcast.s_addr = inetdev->addr.s_addr | htonl(INADDR_BROADCAST >> inetdev->prefix);
 			break;
 		}
-        }
+	}
 
 	list_add_tail(&inetdev->head, &netdev->ipv4_addresses);
 	move_ptr(inetdev);
