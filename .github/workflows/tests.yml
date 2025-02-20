@@ -31,8 +31,8 @@ jobs:
           cat abstractions/container-base.in container-rules > abstractions/container-base
           git diff --exit-code
 
-  testsuite-hosted:
-    name: Test suite (x86_64)
+  testsuite:
+    name: Test suite
     strategy:
       fail-fast: false
       matrix:
@@ -42,51 +42,120 @@ jobs:
         os:
           - ubuntu-22.04
           - ubuntu-24.04
+          - ubuntu-22.04-arm
+          - ubuntu-24.04-arm
         variant:
           - default
           - sanitizer
         exclude:
           - variant: sanitizer
             compiler: gcc
+          - variant: sanitizer
+            os: ubuntu-22.04-arm
+          - variant: sanitizer
+            os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run the testsuite
-        uses: ./.github/actions/testsuite
-        with:
-          compiler: ${{ matrix.compiler }}
-          os: ${{ matrix.os }}
-          variant: ${{ matrix.variant }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq \
+              ${{ matrix.compiler }} \
+              meson \
+              pkg-config \
+              uuid-runtime \
+              docbook2x \
+              linux-libc-dev \
+              llvm \
+              libapparmor-dev \
+              libcap-dev \
+              libdbus-1-dev \
+              libpam0g-dev \
+              libseccomp-dev \
+              libselinux1-dev
 
-  testsuite-self-hosted:
-    name: Test suite (aarch64)
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler:
-          - gcc
-          - clang
-        os:
-          - ubuntu-22.04
-          - ubuntu-24.04
-        variant:
-          - default
-    runs-on:
-      - self-hosted
-      - cpu-4
-      - mem-4G
-      - disk-50G
-      - arch-arm64
-      - image-${{ matrix.os }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Compiler version
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          ${CC} --version
 
-      - name: Run the testsuite
-        uses: ./.github/actions/testsuite
-        with:
-          compiler: ${{ matrix.compiler }}
-          os: ${{ matrix.os }}
-          variant: ${{ matrix.variant }}
+      - name: Build
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          # Standard build
+          if [ "${{ matrix.variant }}" = "default" ]; then
+              meson setup build \
+                  -Dprefix=/usr \
+                  -Dtests=true \
+                  -Dpam-cgroup=true \
+                  -Dtools-multicall=true \
+                  -Dwerror=true \
+                  -Db_lto_mode=default
+          elif [ "${{ matrix.variant }}" = "sanitizer" ]; then
+              meson setup build \
+                  -Dprefix=/usr \
+                  -Dtests=true \
+                  -Dpam-cgroup=true \
+                  -Dtools-multicall=true \
+                  -Dwerror=true \
+                  -Db_lto_mode=default \
+                  -Dio-uring-event-loop=false \
+                  -Db_lundef=false \
+                  -Db_sanitize=address,undefined
+          fi
+
+          meson compile -C build
+
+      - name: Remove existing installation
+        run: |
+          sudo apt-get remove --purge -qq \
+              liblxc1 \
+              liblxc-common \
+              liblxc-dev \
+              lxc-utils
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install --purge -qq \
+              apparmor \
+              acl \
+              busybox-static \
+              dnsmasq-base \
+              iptables \
+              rsync \
+              uidmap
+
+      - name: Test
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          # Install LXC on the system
+          sudo meson install -C build
+
+          if [ "${{ matrix.variant }}" = "sanitizer" ]; then
+              # Set sanitizer configuration
+              export ASAN_OPTIONS="detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:strict_string_checks=1:detect_odr_violation=0"
+              export UBSAN_OPTIONS="print_stacktrace=1:print_summary=1:halt_on_error=1"
+
+              # Disable problematic tests
+              sudo rm /usr/bin/lxc-test-concurrent
+              sudo rm /usr/bin/lxc-test-share-ns
+          fi
+
+          # Bring up systemd units
+          sudo sed -i 's/USE_LXC_BRIDGE="false"/USE_LXC_BRIDGE="true"/' /etc/default/lxc
+          sudo systemctl daemon-reload
+          sudo systemctl restart apparmor
+          sudo systemctl restart lxc-net
+
+          # Undo default ACLs from Github
+          sudo setfacl -b -R /home
+
+          # Run the testsuite
+          git clone --depth=1 https://github.com/lxc/lxc-ci
+          sudo -E lxc-ci/deps/lxc-exercise
