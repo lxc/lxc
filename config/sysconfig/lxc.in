@@ -23,6 +23,6 @@ OPTIONS=
 #	If you want to kill containers fast, use -k
 STOPOPTS="-a -A -s"
 
-USE_LXC_BRIDGE="false"  # overridden in lxc-net
+USE_LXC_BRIDGE="false"
 
 [ ! -f @LXC_DISTRO_SYSCONF@/lxc-net ] || . @LXC_DISTRO_SYSCONF@/lxc-net
