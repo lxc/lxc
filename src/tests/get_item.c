@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.0.hwaddr", "00:16:3e:xx:xx:xx")) {
+	if (!c->set_config_item(c, "lxc.net.0.hwaddr", "10:66:6a:xx:xx:xx")) {
 		fprintf(stderr, "%d: failed to set network.hwaddr\n", __LINE__);
 		goto out;
 	}
