@@ -503,7 +503,7 @@ void test_parse_byte_size_string(void)
 
 void test_lxc_config_net_is_hwaddr(void)
 {
-	if (!lxc_config_net_is_hwaddr("lxc.net.0.hwaddr = 00:16:3e:04:65:b8\n"))
+	if (!lxc_config_net_is_hwaddr("lxc.net.0.hwaddr = 10:66:6a:04:65:b8\n"))
 		exit(EXIT_FAILURE);
 
 	if (lxc_config_net_is_hwaddr("lxc.net"))

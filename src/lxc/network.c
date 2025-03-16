@@ -3480,10 +3480,10 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
  * following devices:
 
  * 4: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
- *    link/ether 00:16:3e:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:e7:5d:10
+ *    link/ether 10:66:6a:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 10:66:6a:e7:5d:10
  *    altname enp7s0
  * 5: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
- *    link/ether 00:16:3e:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:91:d3:ae
+ *    link/ether 10:66:6a:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 10:66:6a:91:d3:ae
  *    altname enp8s0
  *
  * and the user generates the following network config for their container:
@@ -3500,10 +3500,10 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
  * network namespace into the container's network namespace:
  *
  * 24: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
- *     link/ether 00:16:3e:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:e7:5d:10
+ *     link/ether 10:66:6a:91:d3:ae brd ff:ff:ff:ff:ff:ff permaddr 10:66:6a:e7:5d:10
  *     altname enp7s0
  * 25: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
- *     link/ether 00:16:3e:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 00:16:3e:91:d3:ae
+ *     link/ether 10:66:6a:e7:5d:10 brd ff:ff:ff:ff:ff:ff permaddr 10:66:6a:91:d3:ae
  *      altname enp8s0
  *
  * According to the network config above we now need to rename the network

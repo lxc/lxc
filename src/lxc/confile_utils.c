@@ -775,13 +775,13 @@ bool new_hwaddr(char *hwaddr)
 
 	seed = randseed(false);
 
-	ret = strnprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand_r(&seed) % 255,
+	ret = strnprintf(hwaddr, 18, "10:66:6a:%02x:%02x:%02x", rand_r(&seed) % 255,
 		       rand_r(&seed) % 255, rand_r(&seed) % 255);
 #else
 
 	(void)randseed(true);
 
-	ret = strnprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
+	ret = strnprintf(hwaddr, 18, "10:66:6a:%02x:%02x:%02x", rand() % 255,
 		       rand() % 255, rand() % 255);
 #endif
 	if (ret < 0)
