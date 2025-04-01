@@ -1,0 +1,83 @@
+name: Builds
+on:
+  - push
+
+permissions:
+  contents: read
+
+jobs:
+  packaging:
+    name: Packaging
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - focal
+          - jammy
+          - noble
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq \
+              debhelper \
+              devscripts \
+              meson \
+              pkg-config \
+              uuid-runtime \
+              docbook2x \
+              linux-libc-dev \
+              libapparmor-dev \
+              libcap-dev \
+              libdbus-1-dev \
+              libpam0g-dev \
+              libseccomp-dev \
+              libselinux1-dev
+
+      - name: Checkout the packaging branch
+        run: |
+          git clone https://github.com/lxc/lxc-pkg-ubuntu \
+            -b ppa-main --depth 1 ../packaging
+
+      - name: Generate a dist tarball
+        run: |
+          make dist
+          TARBALL=$(ls -1 *.tar.gz)
+          mv ${TARBALL} ../$(echo ${TARBALL} | sed -e "s/.tar.gz$/.orig.tar.gz/g" -e "s/lxc-/lxc_/g")
+
+      - name: Assemble the package
+        env:
+          DEBEMAIL: "lxc-devel@lists.linuxcontainers.org"
+          DEBFULLNAME: "LXC snapshot packages"
+        run: |
+          VERSION=$(cat meson.build | grep ' version: ' | head -1 | sed -e "s/.*version: '//g" -e "s/'.*//g")
+
+          cd ..
+
+          tar zxf *.orig.tar.gz
+          cd lxc-*/
+          cp -R ../packaging/debian .
+          rm -f debian/changelog
+          dch --create --package lxc \
+            -v 2:${VERSION}-0+daily~${{ matrix.os }}~$(date -u +%Y%m%d%H%M) \
+            --distribution ${{ matrix.os }} \
+            "Automated snapshot build."
+
+          debuild -S -sa -us -uc -d
+
+      - name: Prepare the upload
+        run: |
+          mkdir out
+          mv ../lxc_* out/
+
+      - name: Upload resulting build
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: ${{ matrix.os }}
+          path: out/*
