@@ -1247,7 +1247,7 @@ static int lxc_mount_rootfs(struct lxc_rootfs *rootfs)
 
 	rootfs->dfd_mnt = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (rootfs->dfd_mnt < 0)
-		return -errno;
+		return log_error_errno(-1, errno, "Failed to open rootfs \"%s\"", rootfs->mount);
 
 	return log_trace(0, "Container uses separate rootfs. Opened container's rootfs");
 }
