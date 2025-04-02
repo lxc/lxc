@@ -21,7 +21,7 @@
 #include "caps.h"
 #include "confile.h"
 #include "log.h"
-#ifdef ENFORCE_MEMFD_REXEC
+#if ENFORCE_MEMFD_REXEC
 #include "rexec.h"
 #endif
 #include "utils.h"
@@ -35,7 +35,7 @@ lxc_log_define(lxc_attach, lxc);
  * container are in the same user namespace or have set up an identity id
  * mapping: CVE-2019-5736.
  */
-#ifdef ENFORCE_MEMFD_REXEC
+#if ENFORCE_MEMFD_REXEC
 __attribute__((constructor)) static void lxc_attach_rexec(void)
 {
 	if (!getenv("LXC_MEMFD_REXEC") && lxc_rexec("lxc-attach")) {
