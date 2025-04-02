@@ -224,7 +224,7 @@ static int __caps_last_cap(__u32 *cap)
 	fd = open_at(-EBADF,
 		     "/proc/sys/kernel/cap_last_cap",
 		     PROTECT_OPEN,
-		     PROTECT_LOOKUP_ABSOLUTE,
+		     PROTECT_LOOKUP_ABSOLUTE & ~RESOLVE_NO_XDEV,
 		     0);
 	if (fd >= 0) {
 		ssize_t ret;
