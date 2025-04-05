@@ -1125,6 +1125,11 @@ static int do_start(void *data)
 		if (!lxc_switch_uid_gid(nsuid, nsgid))
 			goto out_warn_father;
 
+		ret = prctl(PR_SET_DUMPABLE, prctl_arg(1), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
+		if (ret < 0)
+			goto out_warn_father;
+
 		/* set{g,u}id() clears deathsignal */
 		ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid, status_fd);
 		if (ret < 0) {
