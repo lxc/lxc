@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <linux/loop.h>
+#include <mntent.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <pwd.h>
@@ -84,12 +85,6 @@
 
 #if !HAVE_STRLCAT
 #include "strlcat.h"
-#endif
-
-#if IS_BIONIC
-#include "lxcmntent.h"
-#else
-#include <mntent.h>
 #endif
 
 #if !HAVE_PRLIMIT && HAVE_PRLIMIT64

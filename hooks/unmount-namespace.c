@@ -23,12 +23,7 @@
 #include <sys/stat.h>  /* openat, open */
 #include <fcntl.h>     /* openat, open */
 #include <errno.h>     /* errno */
-
-#if IS_BIONIC
-#include "lxcmntent.h"
-#else
 #include <mntent.h>
-#endif
 
 #ifndef O_PATH
 #define O_PATH 010000000
