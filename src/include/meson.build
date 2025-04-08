@@ -8,12 +8,6 @@ netns_ifaddrs_sources = files(
     'netns_ifaddrs.c',
     'netns_ifaddrs.h')
 
-if srcconf.get('HAVE_GETLINE') == 0
-    include_sources += files(
-        'getline.c',
-        'getline.h')
-endif
-
 if srcconf.get('HAVE_FEXECVE') == 0
     include_sources += files(
         'fexecve.c',
@@ -43,16 +37,4 @@ if srcconf.get('HAVE_STRCHRNUL') == 0
     include_sources += files(
         'strchrnul.c',
         'strchrnul.h')
-endif
-
-if srcconf.get('HAVE_OPENPTY') == 0
-    include_sources += files(
-        'openpty.c',
-        'openpty.h')
-endif
-
-if srcconf.get('HAVE_PRLIMIT') == 0 and srcconf.get('HAVE_PRLIMIT64') == 1
-    include_sources += files(
-        'prlimit.c',
-        'prlimit.h')
 endif

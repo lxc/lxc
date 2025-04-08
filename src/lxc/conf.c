@@ -13,6 +13,7 @@
 #include <mntent.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <pty.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -73,22 +74,12 @@
 #include <sys/statvfs.h>
 #endif
 
-#if HAVE_OPENPTY
-#include <pty.h>
-#else
-#include "openpty.h"
-#endif
-
 #if HAVE_LIBCAP
 #include <sys/capability.h>
 #endif
 
 #if !HAVE_STRLCAT
 #include "strlcat.h"
-#endif
-
-#if !HAVE_PRLIMIT && HAVE_PRLIMIT64
-#include "prlimit.h"
 #endif
 
 #if !HAVE_STRLCPY
