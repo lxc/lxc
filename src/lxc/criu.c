@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <mntent.h>
 
 #include "attach_options.h"
 
@@ -27,12 +28,6 @@
 #include "storage.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
-
-#if IS_BIONIC
-#include "lxcmntent.h"
-#else
-#include <mntent.h>
-#endif
 
 #if !HAVE_STRLCPY
 #include "strlcpy.h"

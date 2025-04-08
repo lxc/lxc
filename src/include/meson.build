@@ -27,12 +27,6 @@ if srcconf.get('HAVE_GETGRGID_R') == 0
         'getgrgid_r.h')
 endif
 
-if srcconf.get('IS_BIONIC') == 1 or srcconf.get('HAVE_HASMNTOPT') == 0 or srcconf.get('HAVE_SETMNTENT') == 0 or srcconf.get('HAVE_ENDMNTENT') == 0
-    include_sources += files(
-        'lxcmntent.c',
-        'lxcmntent.h')
-endif
-
 if srcconf.get('HAVE_STRLCPY') == 0
     include_sources += files(
         'strlcpy.c',

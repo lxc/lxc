@@ -123,9 +123,6 @@ conf.set('PACKAGE_VERSION', meson.project_version())
 conf.set('RUNTIME_PATH', runtimepath)
 conf.set('SYSCONFDIR', sysconfdir)
 
-# Cross-compile on Android.
-srcconf.set10('IS_BIONIC', host_machine.system() == 'android')
-
 # Custom configuration.
 cgrouppattern = get_option('cgroup-pattern')
 coverity = get_option('coverity-build')

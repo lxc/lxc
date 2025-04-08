@@ -116,7 +116,6 @@ LXC also supports at least the following C standard libraries:
 
 - glibc
 - musl
-- bionic (Android's libc)
 
 ## Backwards Compatibility
 
