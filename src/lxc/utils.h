@@ -29,13 +29,6 @@ __hidden extern int get_u16(unsigned short *val, const char *arg, int base);
 __hidden extern int lxc_mkdir_p(const char *dir, mode_t mode);
 __hidden extern char *get_rundir(void);
 
-/* Define getline() if missing from the C library */
-#if !HAVE_GETLINE
-#if !HAVE_FGETLN
-#include "getline.h"
-#endif
-#endif
-
 static inline int lxc_set_cloexec(int fd)
 {
 	return fcntl(fd, F_SETFD, FD_CLOEXEC);
