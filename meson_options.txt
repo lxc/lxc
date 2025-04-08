@@ -6,68 +6,68 @@ option('cgroup-pattern', type: 'string', value: '',
        description: 'CGroup pattern')
 
 # was --coverity-build in autotools
-option('coverity-build', type: 'boolean', value: 'true',
+option('coverity-build', type: 'boolean', value: true,
        description: 'build for coverity')
 
 # was --{disable,enable}-examples in autotools
-option('examples', type: 'boolean', value: 'true',
+option('examples', type: 'boolean', value: true,
        description: 'build and install examples')
 
 # was --init-script in autotools
-option('init-script', type : 'array',
-       choices : ['systemd', 'sysvinit'], value : ['systemd'],
-       description : 'init script')
+option('init-script', type: 'array',
+       choices: ['systemd', 'sysvinit'], value: ['systemd'],
+       description: 'init script')
 
 # was --systemd-unidir in autotools
 # If set to "", the value is taken from the running systemd instance.
-option('systemd-unitdir', type : 'string', value: '',
-       description : 'systemd system unit directory')
+option('systemd-unitdir', type: 'string', value: '',
+       description: 'systemd system unit directory')
 
 # was --{disable,enable}-liburing in autotools
-option('io-uring-event-loop', type: 'boolean', value: 'false',
+option('io-uring-event-loop', type: 'boolean', value: false,
        description: 'Enable io-uring based event loop')
 
 # was --{disable,enable}-doc in autotools
-option('man', type: 'boolean', value: 'true',
+option('man', type: 'boolean', value: true,
        description: 'build and install manpages')
 
 # was --{disable,enable}-pam in autotools
-option('pam-cgroup', type: 'boolean', value: 'false',
+option('pam-cgroup', type: 'boolean', value: false,
        description: 'build and install the pam cgroup module')
 
 # was --{disable,enable}-tools in autotools
-option('tools', type: 'boolean', value: 'true',
+option('tools', type: 'boolean', value: true,
        description: 'build and install tools')
 
-option('tools-multicall', type: 'boolean', value: 'false',
+option('tools-multicall', type: 'boolean', value: false,
        description: 'build and install busybox style multicall binary')
 
 # was --{disable,enable}-commands in autotools
-option('commands', type: 'boolean', value: 'true',
+option('commands', type: 'boolean', value: true,
        description: 'build and install commands')
 
 # was --{disable,enable}-capabilities in autotools
-option('capabilities', type: 'boolean', value: 'true',
+option('capabilities', type: 'boolean', value: true,
        description: 'use capabilities')
 
 # was --{disable,enable}-seccomp in autotools
-option('seccomp', type: 'boolean', value: 'true',
+option('seccomp', type: 'boolean', value: true,
        description: 'use seccomp')
 
 # was --{disable,enable}-apparmor in autotools
-option('apparmor', type: 'boolean', value: 'true',
+option('apparmor', type: 'boolean', value: true,
        description: 'use apparmor')
 
 # was --{disable,enable}-openssl in autotools
-option('openssl', type: 'boolean', value: 'true',
+option('openssl', type: 'boolean', value: true,
        description: 'use openssl')
 
 # was --{disable,enable}-selinux in autotools
-option('selinux', type: 'boolean', value: 'true',
+option('selinux', type: 'boolean', value: true,
        description: 'use selinux')
 
 # was --{disable,enable}-tests in autotools
-option('tests', type: 'boolean', value: 'false',
+option('tests', type: 'boolean', value: false,
        description: 'build and install tests')
 
 # Paths
@@ -107,28 +107,28 @@ option('usernet-config-path', type: 'string', value: 'lxc/lxc-usernet',
 option('usernet-db-path', type: 'string', value: 'lxc/nics',
        description: 'User network database file path')
 
-option('oss-fuzz', type : 'boolean', value : 'false',
-       description : 'build against oss-fuzz')
+option('oss-fuzz', type: 'boolean', value: false,
+       description: 'build against oss-fuzz')
 
 # was --{disable,enable}-thread-safety in autotools
-option('thread-safety', type : 'boolean', value : 'true',
-       description : 'whether the build fails when thread-safe logging cannot be guaranteed')
+option('thread-safety', type: 'boolean', value: true,
+       description: 'whether the build fails when thread-safe logging cannot be guaranteed')
 
 # was --{disable,enable}-memfd-rexec in autotools
-option('memfd-rexec', type : 'boolean', value : 'true',
-       description : 'whether to rexec the lxc-attach binary when attaching to a container')
+option('memfd-rexec', type: 'boolean', value: true,
+       description: 'whether to rexec the lxc-attach binary when attaching to a container')
 
-option('distrosysconfdir', type : 'string', value: '',
+option('distrosysconfdir', type: 'string', value: '',
        description: 'relative path to sysconfdir for distro default configuration')
 
-option('dbus', type: 'boolean', value: 'true',
+option('dbus', type: 'boolean', value: true,
        description: 'use dbus')
 
-option('specfile', type : 'boolean', value: true,
+option('specfile', type: 'boolean', value: true,
        description: 'whether to prepare RPM spec')
 
-option('install-init-files', type : 'boolean', value: true,
+option('install-init-files', type: 'boolean', value: true,
        description: 'whether to install init files for local init (e.g. systemd units)')
 
-option('install-state-dirs', type : 'boolean', value: true,
+option('install-state-dirs', type: 'boolean', value: true,
        description: 'whether to create state directories on install')
