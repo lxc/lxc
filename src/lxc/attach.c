@@ -1261,19 +1261,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		if (!lxc_switch_uid_gid(ctx->setup_ns_uid, ctx->setup_ns_gid))
 			goto on_error;
 
-	if (attach_lsm(options) && ctx->lsm_label) {
-		bool on_exec;
-
-		/* Change into our new LSM profile. */
-		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, fd_lsm, ctx->lsm_label, on_exec);
-		close_prot_errno_disarm(fd_lsm);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Set %s LSM label to \"%s\"", ctx->lsm_ops->name, ctx->lsm_label);
-	}
-
 	if (conf->no_new_privs || (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
 		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
@@ -1366,6 +1353,19 @@ __noreturn static void do_attach(struct attach_payload *ap)
 
 	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
+
+	if (attach_lsm(options) && ctx->lsm_label) {
+		bool on_exec;
+
+		/* Change into our new LSM profile. */
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
+		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, fd_lsm, ctx->lsm_label, on_exec);
+		close_prot_errno_disarm(fd_lsm);
+		if (ret < 0)
+			goto on_error;
+
+		TRACE("Set %s LSM label to \"%s\"", ctx->lsm_ops->name, ctx->lsm_label);
+	}
 
 	put_attach_payload(ap);
 
