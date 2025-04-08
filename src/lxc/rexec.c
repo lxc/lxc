@@ -16,10 +16,6 @@
 #include "string_utils.h"
 #include "syscall_wrappers.h"
 
-#if IS_BIONIC && !HAVE_FEXECVE
-#include "fexecve.h"
-#endif
-
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
 

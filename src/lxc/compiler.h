@@ -222,13 +222,7 @@ static inline bool __must_check __must_check_overflow(bool overflow)
 
 #ifndef __noreturn
 #	if __STDC_VERSION__ >= 201112L
-#		if !IS_BIONIC
-#			define __noreturn _Noreturn
-#		else
-#			define __noreturn __attribute__((__noreturn__))
-#		endif
-#	elif IS_BIONIC
-#		define __noreturn __attribute__((__noreturn__))
+#		define __noreturn _Noreturn
 #	else
 #		define __noreturn __attribute__((noreturn))
 #	endif

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <pty.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,12 +29,6 @@
 #include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
-
-#if HAVE_OPENPTY
-#include <pty.h>
-#else
-#include "openpty.h"
-#endif
 
 #define LXC_TERMINAL_BUFFER_SIZE 1024
 

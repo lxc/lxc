@@ -56,7 +56,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ NULL, NULL },
 	};
 
-	/* placed in the thread local storage pool for non-bionic targets */
+	/* placed in the thread local storage pool */
 	static thread_local const char *values[sizeof(options) / sizeof(options[0])] = {0};
 
 	/* user_config_path is freed as soon as it is used */

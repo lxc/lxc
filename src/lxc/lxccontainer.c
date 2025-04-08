@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <libgen.h>
+#include <mntent.h>
 #include <pthread.h>
 #include <sched.h>
 #include <stdarg.h>
@@ -70,12 +71,6 @@
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
-#endif
-
-#if IS_BIONIC
-#include <../include/lxcmntent.h>
-#else
-#include <mntent.h>
 #endif
 
 #if !HAVE_STRLCPY

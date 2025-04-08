@@ -5,16 +5,11 @@
 
 #include "config.h"
 
+#include <mntent.h>
 #include <stdint.h>
 #include <sys/mount.h>
 
 #include "lxc.h"
-
-#if IS_BIONIC
-#include "lxcmntent.h"
-#else
-#include <mntent.h>
-#endif
 
 #include "compiler.h"
 #include "conf.h"
