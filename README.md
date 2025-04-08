@@ -121,8 +121,7 @@ LXC also supports at least the following C standard libraries:
 ## Backwards Compatibility
 
 LXC has always focused on strong backwards compatibility. In fact, the API
-hasn't been broken from release `1.0.0` onwards. Main LXC is currently at
-version `4.*.*`.
+hasn't been broken from release `1.0.0` onwards.
 
 ## Reporting Security Issues
 
