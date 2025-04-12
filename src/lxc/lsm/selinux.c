@@ -154,7 +154,7 @@ static int selinux_process_label_set_at(struct lsm_ops *ops, int label_fd, const
 
 	ret = lxc_write_nointr(label_fd, label, strlen(label));
 	if (ret < 0)
-		return log_error_errno(-errno, errno, "Failed to set AppArmor SELinux label to \"%s\"", label);
+		return log_error_errno(-errno, errno, "Failed to set SELinux label to \"%s\"", label);
 
 	INFO("Set SELinux label to \"%s\"", label);
 	return 0;
