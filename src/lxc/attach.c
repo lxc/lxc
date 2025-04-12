@@ -1430,6 +1430,11 @@ static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 	close_prot_errno_disarm(terminal->log_fd);
 }
 
+void SIGCHLD_handler(int signum) {
+	signal(SIGTERM, SIG_IGN); /* not terminating directly but: */
+	raise(SIGTERM);           /* leads to LXC_MAINLOOP_CLOSE and a clean exit */
+}
+
 int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
@@ -1741,6 +1746,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		goto close_mainloop;
 
 	TRACE("Transient process %d exited", pid);
+
+	if (options->attach_flags & LXC_ATTACH_TERMINAL)
+		signal(SIGCHLD, SIGCHLD_handler); /* after transient process end */
 
 	/* We will always have to reap the attached process now. */
 	to_cleanup_pid = attached_pid;
