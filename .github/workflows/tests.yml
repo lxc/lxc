@@ -39,6 +39,7 @@ jobs:
         compiler:
           - gcc
           - clang
+          - musl-gcc
         os:
           - ubuntu-22.04
           - ubuntu-24.04
@@ -50,6 +51,8 @@ jobs:
         exclude:
           - variant: sanitizer
             compiler: gcc
+          - variant: sanitizer
+            compiler: musl-gcc
           - variant: sanitizer
             os: ubuntu-22.04-arm
           - variant: sanitizer
@@ -63,7 +66,6 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qq \
-              ${{ matrix.compiler }} \
               meson \
               pkg-config \
               uuid-runtime \
@@ -77,6 +79,31 @@ jobs:
               libseccomp-dev \
               libselinux1-dev
 
+      - name: Install the compiler (gcc)
+        if: matrix.compiler == 'gcc'
+        run: |
+          sudo apt-get install -qq \
+              gcc
+
+      - name: Install the compiler (clang)
+        if: matrix.compiler == 'clang'
+        run: |
+          sudo apt-get install -qq \
+              clang
+
+      - name: Install the compiler (musl-gcc)
+        if: matrix.compiler == 'musl-gcc'
+        run: |
+          sudo apt-get install -qq \
+              musl \
+              musl-dev \
+              musl-tools
+
+          # Ubuntu isn't a native musl distro, so we need to expose a bunch of stuff to musl.
+          sudo ln -s /usr/include/$(uname -m)-linux-gnu/asm /usr/include/$(uname -m)-linux-musl/asm
+          sudo ln -s /usr/include/asm-generic /usr/include/$(uname -m)-linux-musl/asm-generic
+          sudo ln -s /usr/include/linux /usr/include/$(uname -m)-linux-musl/linux
+
       - name: Compiler version
         env:
           CC: ${{ matrix.compiler }}
@@ -88,7 +115,21 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           # Standard build
-          if [ "${{ matrix.variant }}" = "default" ]; then
+          if [ "${{ matrix.compiler }}" = "musl-gcc" ]; then
+              meson setup build \
+                  -Dprefix=/usr \
+                  -Dtests=true \
+                  -Dpam-cgroup=false \
+                  -Dseccomp=false \
+                  -Dapparmor=false \
+                  -Dselinux=false \
+                  -Dcapabilities=false \
+                  -Dopenssl=false \
+                  -Ddbus=false \
+                  -Dtools-multicall=true \
+                  -Dwerror=true \
+                  -Db_lto_mode=default
+          elif [ "${{ matrix.variant }}" = "default" ]; then
               meson setup build \
                   -Dprefix=/usr \
                   -Dtests=true \
