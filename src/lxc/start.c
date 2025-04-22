@@ -1372,7 +1372,7 @@ static int do_start(void *data)
 	}
 
 	if (handler->conf->ttys.tty_names) {
-		ret = putenv(handler->conf->ttys.tty_names);
+		ret = setenv("container_ttys", handler->conf->ttys.tty_names, 1);
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable for container ptys");
 			goto out_warn_father;

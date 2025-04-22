@@ -971,15 +971,6 @@ static int lxc_create_ttys(struct lxc_handler *handler)
 		}
 	}
 
-	if (conf->ttys.tty_names) {
-		ret = setenv("container_ttys", conf->ttys.tty_names, 1);
-		if (ret < 0) {
-			SYSERROR("Failed to set \"container_ttys=%s\"", conf->ttys.tty_names);
-			goto on_error;
-		}
-		TRACE("Set \"container_ttys=%s\"", conf->ttys.tty_names);
-	}
-
 	return 0;
 
 on_error:
