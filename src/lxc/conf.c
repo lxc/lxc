@@ -140,6 +140,7 @@ static struct mount_opt mount_opt[] = {
 	{ "noexec",        0, false, MOUNT_ATTR_NOEXEC,      MS_NOEXEC        },
 	{ "norelatime",    1, false, MOUNT_ATTR_RELATIME,    MS_RELATIME      },
 	{ "nostrictatime", 1, false, MOUNT_ATTR_STRICTATIME, MS_STRICTATIME   },
+	{ "nosymfollow",   0, false, MOUNT_ATTR_NOSYMFOLLOW, MS_NOSYMFOLLOW   },
 	{ "nosuid",        0, false, MOUNT_ATTR_NOSUID,      MS_NOSUID        },
 	{ "relatime",      0, false, MOUNT_ATTR_RELATIME,    MS_RELATIME      },
 	{ "ro",            0, false, MOUNT_ATTR_RDONLY,      MS_RDONLY        },

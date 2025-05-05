@@ -176,6 +176,10 @@ struct lxc_rootfs;
 #define MOUNT_ATTR_IDMAP 0x00100000
 #endif
 
+#ifndef MOUNT_ATTR_NOSYMFOLLOW
+#define MOUNT_ATTR_NOSYMFOLLOW 0x00200000 /* Do not follow symlinks */
+#endif
+
 #if !HAVE_MOVE_MOUNT
 static inline int move_mount_lxc(int from_dfd, const char *from_pathname,
 				 int to_dfd, const char *to_pathname,

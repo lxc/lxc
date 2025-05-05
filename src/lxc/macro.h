@@ -626,6 +626,10 @@ enum {
 #define MS_REC 16384
 #endif
 
+#ifndef MS_NOSYMFOLLOW
+#define MS_NOSYMFOLLOW 256     /* Do not follow symlinks */
+#endif
+
 /* open */
 #ifndef O_PATH
 #define O_PATH      010000000
