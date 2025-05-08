@@ -414,10 +414,7 @@ endif
 ## Libcap..
 if want_capabilities
     libcap = dependency('libcap', required: false)
-    if not libcap.found()
-        # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
-        libcap = cc.find_library('cap', required: false)
-    else
+    if libcap.found()
         have = cc.has_function('cap_get_file', dependencies: libcap, prefix: '#include <sys/capability.h>')
         srcconf.set10('LIBCAP_SUPPORTS_FILE_CAPABILITIES', have)
     endif
@@ -426,10 +423,6 @@ if want_capabilities
     liblxc_dependencies += libcap
 
     libcap_static = dependency('libcap', required: false, static: true)
-    if not libcap_static.found()
-        # Compat with Ubuntu 14.04 which ships libcap w/o .pc file
-        libcap_static = cc.find_library('cap', required: false, static: true)
-    endif
 
     code = '''
 int main(int argc, char *argv[]) { return 0; };
