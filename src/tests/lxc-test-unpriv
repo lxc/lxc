@@ -66,7 +66,7 @@ cleanup() {
 	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 
-	rm -Rf $HDIR /run/user/$(id -u $TUSER)
+	rm -Rf $HDIR /run/user/$(id -u $TUSER) || true
 
 	deluser $TUSER
 
@@ -90,7 +90,7 @@ TUSER=lxcunpriv
 HDIR=/home/$TUSER
 
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
-set -eu
+set -eux
 
 id $TUSER &> /dev/null && deluser -q --remove-home $TUSER
 useradd $TUSER
