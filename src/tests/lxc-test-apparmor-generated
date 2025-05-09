@@ -8,8 +8,8 @@
 
 if ! command -v apparmor_parser >/dev/null 2>&1; then
 	echo 'SKIP: test for generated apparmor profiles: apparmor_parser missing'
+	exit 0
 fi
-exit 0
 
 DONE=0
 LOGFILE="/tmp/lxc-test-$$.log"

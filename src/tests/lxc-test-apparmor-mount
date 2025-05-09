@@ -50,7 +50,7 @@ cleanup() {
 	pkill -u $(id -u $TUSER) -9 || true
 	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
-	rm -Rf $HDIR /run/user/$(id -u $TUSER)
+	rm -Rf $HDIR /run/user/$(id -u $TUSER) || true
 	deluser $TUSER
 	if [ $DONE -eq 0 ]; then
 		echo 'Failed container log:' >&2
