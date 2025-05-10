@@ -148,6 +148,7 @@ static struct mount_opt mount_opt[] = {
 	{ "suid",          1, false, MOUNT_ATTR_NOSUID,      MS_NOSUID        },
 
 	{ "bind",          0, false,  0,                     MS_BIND          },
+	{ "move",          0, false,  0,                     MS_MOVE          },
 	{ "defaults",      0, false,  0,                     0                },
 	{ "rbind",         0, true,   0,                     MS_BIND | MS_REC },
 
