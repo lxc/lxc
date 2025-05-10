@@ -140,6 +140,7 @@ static struct mount_opt mount_opt[] = {
 	{ "noexec",        0, false, MOUNT_ATTR_NOEXEC,      MS_NOEXEC        },
 	{ "norelatime",    1, false, MOUNT_ATTR_RELATIME,    MS_RELATIME      },
 	{ "nostrictatime", 1, false, MOUNT_ATTR_STRICTATIME, MS_STRICTATIME   },
+	{ "nosymfollow",   0, false, MOUNT_ATTR_NOSYMFOLLOW, MS_NOSYMFOLLOW   },
 	{ "nosuid",        0, false, MOUNT_ATTR_NOSUID,      MS_NOSUID        },
 	{ "relatime",      0, false, MOUNT_ATTR_RELATIME,    MS_RELATIME      },
 	{ "ro",            0, false, MOUNT_ATTR_RDONLY,      MS_RDONLY        },
@@ -2034,6 +2035,11 @@ int parse_mntopts_legacy(const char *mntopts, unsigned long *mntflags, char **mn
 	return 0;
 }
 
+/* Parses generic VFS option (opt) and puts results into (opts).
+ *
+ * @return  1 if opt is not a generic VFS option
+ * @return  0 if opt was processed
+ */
 static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size)
 {
 	/*
@@ -2090,7 +2096,8 @@ static int parse_vfs_attr(struct lxc_mount_options *opts, char *opt, size_t size
 		return 0;
 	}
 
-	return 0;
+	/* opt was skipped */
+	return 1;
 }
 
 int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
@@ -2116,22 +2123,22 @@ int parse_mount_attrs(struct lxc_mount_options *opts, const char *mntopts)
 		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(mntopt_cur, mntopts_dup, ",") {
-		/* This is a filesystem specific option. */
-		if (strchr(mntopt_cur, '=')) {
-			if (!end) {
-				end = stpcpy(mntopts_new, mntopt_cur);
-			} else {
-				end = stpcpy(end, ",");
-				end = stpcpy(end, mntopt_cur);
-			}
-
-			continue;
-		}
-
 		/* This is a generic vfs option. */
 		ret = parse_vfs_attr(opts, mntopt_cur, size);
 		if (ret < 0)
 			return syserror("Failed to parse mount attributes: \"%s\"", mntopt_cur);
+
+		/* (mntopt_cur) was processed in parse_vfs_attr() */
+		if (ret == 0)
+			continue;
+
+		/* This is a filesystem specific option. */
+		if (!end) {
+			end = stpcpy(mntopts_new, mntopt_cur);
+		} else {
+			end = stpcpy(end, ",");
+			end = stpcpy(end, mntopt_cur);
+		}
 	}
 
 	if (*mntopts_new)
