@@ -30,7 +30,12 @@ apt-get install --yes --no-install-recommends \
 apt-get remove --yes lxc-utils liblxc-common liblxc1 liblxc-dev
 
 # make sure we have a new enough meson version
-pip3 install meson ninja
+
+# ToDo: remove this workaround once meson is fixed
+# meson is pinned to get around https://github.com/mesonbuild/meson/issues/14533
+# thanks to Evgeny Vereshchagin
+# https://github.com/google/oss-fuzz/pull/13286/commits/093b2480ce44c38c2418c20df2212f56b9e7fbd2
+pip3 install meson==1.7.2 ninja
 
 # Sanitized build
 meson setup san_build \
