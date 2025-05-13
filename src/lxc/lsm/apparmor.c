@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/apparmor.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1213,17 +1212,15 @@ static int apparmor_process_label_set(struct lsm_ops *ops, const char *inlabel,
 	if (strequal(label, "unconfined") && apparmor_am_unconfined(ops))
 		return log_info(0, "AppArmor profile unchanged");
 
-	if (on_exec) {
-		ret = aa_change_onexec(label);
-	} else {
-		ret = aa_change_profile(label);
-	}
-	
- 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to set AppArmor%s context to \"%s\"",
-				       on_exec ? " exec" : "", label);
-	
-	return log_info(0, "Changed AppArmor%s profile to \"%s\"", on_exec ? " exec" : "", label);
+	label_fd = apparmor_process_label_fd_get(ops, lxc_raw_gettid(), on_exec);
+	if (label_fd < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to change AppArmor profile to %s", label);
+
+	ret = apparmor_process_label_set_at(ops, label_fd, label, on_exec);
+	if (ret < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to change AppArmor profile to %s", label);
+
+	return log_info(0, "Changed AppArmor profile to %s", label);
 }
 
 static struct lsm_ops apparmor_ops = {
