@@ -3275,6 +3275,7 @@ int lxc_config_parse_arch(const char *arch, signed long *persona)
 		{ "arm64",         PER_LINUX   },
 		{ "linux64",       PER_LINUX   },
 		{ "loongarch64",   PER_LINUX   },
+		{ "loong64",       PER_LINUX   },
 		{ "mips64",        PER_LINUX   },
 		{ "mips64el",      PER_LINUX   },
 		{ "ppc64",         PER_LINUX   },
