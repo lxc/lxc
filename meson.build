@@ -151,7 +151,7 @@ want_dbus = get_option('dbus')
 
 # Set sysconfdir
 fs = import('fs')
-if want_install_init
+if want_install_init or want_spec
     distrosysconfdir = get_option('distrosysconfdir')
     if distrosysconfdir != ''
         distrosysconfdir = join_paths(sysconfdir, distrosysconfdir)
