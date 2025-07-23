@@ -514,6 +514,77 @@ foreach ccattr: [
     srcconf.set10('HAVE_COMPILER_ATTR_' + ccattr.underscorify().to_upper(), cc.has_function_attribute(ccattr))
 endforeach
 
+## Headers.
+foreach ident: [
+    ['bpf',               '''#include <sys/syscall.h>
+                             #include <unistd.h>'''],
+    ['close_range',       '''#include <unistd.h>'''],
+    ['execveat',          '''#include <unistd.h>'''],
+    ['endmntent',         '''#include <stdio.h>
+                             #include <mntent.h>'''],
+    ['faccessat',         '''#include <fcntl.h>
+                             #include <unistd.h>'''],
+    ['fexecve',           '''#include <unistd.h>'''],
+    ['fgetln',            '''#include <stdio.h>'''],
+    ['fsconfig',          '''#include <sys/mount.h>'''],
+    ['fsmount',           '''#include <sys/mount.h>'''],
+    ['fsopen',            '''#include <sys/mount.h>'''],
+    ['fspick',            '''#include <sys/mount.h>'''],
+    ['getgrgid_r',        '''#include <sys/types.h>
+                             #include <grp.h>'''],
+    ['getline',           '''#include <stdio.h>'''],
+    ['getsubopt',         '''#include <stdlib.h>'''],
+    ['gettid',            '''#include <sys/types.h>
+                             #include <unistd.h>'''],
+    ['hasmntopt',         '''#include <stdio.h>
+                             #include <mntent.h>'''],
+    ['kcmp',              '''#include <linux/kcmp.h>'''],
+    ['keyctl',            '''#include <sys/types.h>
+                             #include <keyutils.h>'''],
+    ['memfd_create',      '''#include <sys/mman.h>'''],
+    ['mount_setattr',     '''#include <sys/mount.h>'''],
+    ['move_mount',        '''#include <sys/mount.h>'''],
+    ['openat2',           '''#include <sys/types.h>
+                             #include <sys/stat.h>
+                             #include <fctnl.h>'''],
+    ['open_tree',         '''#include <sys/mount.h>'''],
+    ['personality',       '''#include <sys/personality.h>'''],
+    ['pidfd_open',        '''#include <stdlib.h>
+                             #include <unistd.h>
+                             #include <signal.h>
+                             #include <sys/wait.h>'''],
+    ['pidfd_send_signal', '''#include <stdlib.h>
+                             #include <unistd.h>
+                             #include <signal.h>
+                             #include <sys/wait.h>'''],
+    ['pivot_root',        '''#include <stdlib.h>
+                             #include <unistd.h>'''],     # no known header declares pivot_root
+    ['prlimit',           '''#include <sys/time.h>
+                             #include <sys/resource.h>'''],
+    ['prlimit64',         '''#include <sys/time.h>
+                             #include <sys/resource.h>'''],
+    ['renameat2',         '''#include <stdio.h>
+                             #include <fcntl.h>'''],
+    ['sethostname',       '''#include <unistd.h>'''],
+    ['setmntent',         '''#include <stdio.h>
+                             #include <mntent.h>'''],
+    ['setns',             '''#include <sched.h>'''],
+    ['sigdescr_np',       '''#include <string.h>'''],
+    ['signalfd',          '''#include <sys/signalfd.h>'''],
+    ['statvfs',           '''#include <sys/statvfs.h>'''],
+    ['statx',             '''#include <sys/types.h>
+                             #include <sys/stat.h>
+                             #include <unistd.h>'''],
+    ['strchrnul',         '''#include <string.h>'''],
+    ['strlcat',           '''#include <string.h>'''],
+    ['strlcpy',           '''#include <string.h>'''],
+    ['unshare',           '''#include <sched.h>'''],
+]
+
+    have = cc.has_function(ident[0], prefix: ident[1], args: '-D_GNU_SOURCE')
+    srcconf.set10('HAVE_' + ident[0].to_upper(), have)
+endforeach
+
 ## Syscalls.
 found_syscalls = []
 missing_syscalls = []
@@ -639,7 +710,8 @@ else
     missing_types += 'struct mount_attr (sys/mount.h)' endif
 
 ## Check if sys/mount.h defines the fsconfig commands
-if cc.get_define('FSCONFIG_SET_FLAG', prefix: decl_headers) != ''
+if cc.get_define('FSCONFIG_SET_FLAG', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_FLAG')
     srcconf.set10('HAVE_' + 'FSCONFIG_SET_FLAG'.underscorify().to_upper(), true)
     found_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 else
@@ -647,124 +719,68 @@ else
     missing_types += 'FSCONFIG_SET_FLAG (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_STRING', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_STRING', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_STRING')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_STRING'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_STRING (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_STRING'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_STRING (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_STRING'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_STRING (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_BINARY', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_BINARY', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_BINARY')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_BINARY'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_BINARY (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_BINARY'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_BINARY (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_BINARY'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_BINARY (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_PATH_EMPTY', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_PATH', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_PATH')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_PATH'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_PATH (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_PATH_EMPTY (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_PATH'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_PATH (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_PATH_FD', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_PATH_EMPTY', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_PATH_EMPTY')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_PATH_EMPTY (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_PATH_FD'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_PATH_FD (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_PATH_EMPTY'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_PATH_EMPTY (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_CMD_CREATE', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_PATH_FD', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_FD')
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_FD'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_SET_FD (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_CREATE'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_CMD_CREATE (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_SET_FD'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_SET_FD (sys/mount.h)'
 endif
 
-if cc.get_define('FS_CONFIG_SET_CMD_RECONFIGURE', prefix: decl_headers) != ''
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), true)
-    found_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
+if cc.get_define('FS_CONFIG_SET_CMD_CREATE', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_CMD_CREATE')
+    srcconf.set10('HAVE_' + 'FSCONFIG_CMD_CREATE'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_CMD_CREATE (sys/mount.h)'
 else
-    srcconf.set10('HAVE_' + 'FS_CONFIG_SET_CMD_RECONFIGURE'.underscorify().to_upper(), false)
-    missing_types += 'FS_CONFIG_SET_CMD_RECONFIGURE (sys/mount.h)'
+    srcconf.set10('HAVE_' + 'FSCONFIG_CMD_CREATE'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_CMD_CREATE (sys/mount.h)'
 endif
 
-## Headers.
-foreach ident: [
-    ['bpf',               '''#include <sys/syscall.h>
-                             #include <unistd.h>'''],
-    ['close_range',       '''#include <unistd.h>'''],
-    ['execveat',          '''#include <unistd.h>'''],
-    ['endmntent',         '''#include <stdio.h>
-                             #include <mntent.h>'''],
-    ['faccessat',         '''#include <fcntl.h>
-                             #include <unistd.h>'''],
-    ['fexecve',           '''#include <unistd.h>'''],
-    ['fgetln',            '''#include <stdio.h>'''],
-    ['fsconfig',          '''#include <sys/mount.h>'''],
-    ['fsmount',           '''#include <sys/mount.h>'''],
-    ['fsopen',            '''#include <sys/mount.h>'''],
-    ['fspick',            '''#include <sys/mount.h>'''],
-    ['getgrgid_r',        '''#include <sys/types.h>
-                             #include <grp.h>'''],
-    ['getline',           '''#include <stdio.h>'''],
-    ['getsubopt',         '''#include <stdlib.h>'''],
-    ['gettid',            '''#include <sys/types.h>
-                             #include <unistd.h>'''],
-    ['hasmntopt',         '''#include <stdio.h>
-                             #include <mntent.h>'''],
-    ['kcmp',              '''#include <linux/kcmp.h>'''],
-    ['keyctl',            '''#include <sys/types.h>
-                             #include <keyutils.h>'''],
-    ['memfd_create',      '''#include <sys/mman.h>'''],
-    ['mount_setattr',     '''#include <sys/mount.h>'''],
-    ['move_mount',        '''#include <sys/mount.h>'''],
-    ['openat2',           '''#include <sys/types.h>
-                             #include <sys/stat.h>
-                             #include <fctnl.h>'''],
-    ['open_tree',         '''#include <sys/mount.h>'''],
-    ['personality',       '''#include <sys/personality.h>'''],
-    ['pidfd_open',        '''#include <stdlib.h>
-                             #include <unistd.h>
-                             #include <signal.h>
-                             #include <sys/wait.h>'''],
-    ['pidfd_send_signal', '''#include <stdlib.h>
-                             #include <unistd.h>
-                             #include <signal.h>
-                             #include <sys/wait.h>'''],
-    ['pivot_root',        '''#include <stdlib.h>
-                             #include <unistd.h>'''],     # no known header declares pivot_root
-    ['prlimit',           '''#include <sys/time.h>
-                             #include <sys/resource.h>'''],
-    ['prlimit64',         '''#include <sys/time.h>
-                             #include <sys/resource.h>'''],
-    ['renameat2',         '''#include <stdio.h>
-                             #include <fcntl.h>'''],
-    ['sethostname',       '''#include <unistd.h>'''],
-    ['setmntent',         '''#include <stdio.h>
-                             #include <mntent.h>'''],
-    ['setns',             '''#include <sched.h>'''],
-    ['sigdescr_np',       '''#include <string.h>'''],
-    ['signalfd',          '''#include <sys/signalfd.h>'''],
-    ['statvfs',           '''#include <sys/statvfs.h>'''],
-    ['statx',             '''#include <sys/types.h>
-                             #include <sys/stat.h>
-                             #include <unistd.h>'''],
-    ['strchrnul',         '''#include <string.h>'''],
-    ['strlcat',           '''#include <string.h>'''],
-    ['strlcpy',           '''#include <string.h>'''],
-    ['unshare',           '''#include <sched.h>'''],
-]
-
-    have = cc.has_function(ident[0], prefix: ident[1], args: '-D_GNU_SOURCE')
-    srcconf.set10('HAVE_' + ident[0].to_upper(), have)
-endforeach
+if cc.get_define('FS_CONFIG_SET_CMD_RECONFIGURE', prefix: decl_headers) != '' or \
+   cc.has_header_symbol('sys/mount.h','FSCONFIG_CMD_RECONFIGURE')
+    srcconf.set10('HAVE_' + 'FSCONFIG_CMD_RECONFIGURE'.underscorify().to_upper(), true)
+    found_types += 'FSCONFIG_CMD_RECONFIGURE (sys/mount.h)'
+else
+    srcconf.set10('HAVE_' + 'FSCONFIG_CMD_RECONFIGURE'.underscorify().to_upper(), false)
+    missing_types += 'FSCONFIG_CMD_RECONFIGURE (sys/mount.h)'
+endif
 
 found_headers = []
 missing_headers = []
