@@ -878,7 +878,7 @@ int detect_shared_rootfs(void)
 	return 0;
 }
 
-bool switch_to_ns(pid_t pid, const char *ns)
+bool try_switch_to_ns(pid_t pid, const char *ns, bool optional)
 {
 	__do_close int fd = -EBADF;
 	int ret;
@@ -896,8 +896,12 @@ bool switch_to_ns(pid_t pid, const char *ns)
 		return log_error_errno(false, errno, "Failed to open \"%s\"", nspath);
 
 	ret = setns(fd, 0);
-	if (ret)
-		return log_error_errno(false, errno, "Failed to set process %d to \"%s\" of %d", pid, ns, fd);
+	if (ret) {
+		if (optional)
+			return log_trace_errno(false, errno, "Failed to set process %d to \"%s\" of %d", pid, ns, fd);
+		else
+			return log_error_errno(false, errno, "Failed to set process %d to \"%s\" of %d", pid, ns, fd);
+	}
 
 	return true;
 }
