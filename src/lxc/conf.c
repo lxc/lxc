@@ -2682,11 +2682,11 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		ret = parse_lxc_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
 			return syserror("Failed to parse LXC specific mount options");
-		__data = opts.data;
 
 		ret = parse_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
 			return syserror("Failed to parse mount options");
+		__data = opts.data;
 
 		/* No idmapped mount entry so skip it. */
 		if (is_empty_string(opts.userns_path))
