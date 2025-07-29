@@ -300,6 +300,10 @@ static inline const char *signal_name(int sig)
 
 #if HAVE_SIGDESCR_NP
 	s = sigdescr_np(sig);
+#elif HAVE_STRSIGNAL
+	s = strsignal(sig);
+#elif HAVE_SYS_SIGLIST
+	s = sys_siglist[sig];
 #else
 	s = "UNSUPPORTED";
 #endif
