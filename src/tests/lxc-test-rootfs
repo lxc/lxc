@@ -9,6 +9,7 @@ set -ex
 cleanup() {
 	set +e
 	lxc-destroy -n lxc-test-rootfs -f
+	sed -i '/^root:910000:10000/d' /etc/subuid /etc/subgid
 	if [ $PHASE != "done" ]; then
 		echo "rootfs test failed at $PHASE"
 		exit 1
@@ -44,6 +45,22 @@ lxc-start -n lxc-test-rootfs
 pid=$(lxc-info -n lxc-test-rootfs -p -H)
 ro=0
 mkdir /proc/$pid/root/rwtest || ro=1
+[ $ro -ne 1 ]
+rmdir /proc/$pid/root/rwtest
+ro=0
+
+lxc-stop -n lxc-test-rootfs -k
+PHASE=idmapped_rootfs
+echo "Starting phase $PHASE"
+usermod -v 910000-919999 -w 910000-919999 root
+sed -i '/lxc.rootfs.options/d' $config
+echo "lxc.idmap = u 0 910000 9999" >> $config
+echo "lxc.idmap = g 0 910000 9999" >> $config
+echo "lxc.rootfs.options = idmap=container" >> $config
+lxc-start -n lxc-test-rootfs
+pid=$(lxc-info -n lxc-test-rootfs -p -H)
+ro=0
+lxc-attach -n lxc-test-rootfs -- mkdir /rwtest || ro=1
 [ $ro -ne 1 ]
 rmdir /proc/$pid/root/rwtest
 ro=0
