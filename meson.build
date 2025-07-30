@@ -148,6 +148,7 @@ want_state_dirs = get_option('install-state-dirs')
 want_thread_safety = get_option('thread-safety')
 want_memfd_rexec = get_option('memfd-rexec')
 want_dbus = get_option('dbus')
+want_acl = get_option('acl')
 
 # Set sysconfdir
 fs = import('fs')
@@ -455,6 +456,16 @@ srcconf.set10('ENFORCE_MEMFD_REXEC', want_memfd_rexec)
 pam = cc.find_library('pam', has_headers: 'security/pam_modules.h', required: want_pam_cgroup)
 srcconf.set10('HAVE_PAM', pam.found())
 pkgconfig_libs += pam
+
+## ACL.
+if want_acl
+    libacl = dependency('libacl', required: false)
+    srcconf.set10('HAVE_ACL', libacl.found())
+    pkgconfig_libs += libacl
+    liblxc_dependencies += libacl
+else
+    srcconf.set10('HAVE_ACL', false)
+endif
 
 ## Others.
 have = cc.has_function('fmemopen', prefix: '#include <stdio.h>', args: '-D_GNU_SOURCE')
@@ -819,6 +830,7 @@ foreach tuple: [
     ['pam'],
     ['openssl'],
     ['liburing'],
+    ['acl'],
 ]
 
     if tuple.length() >= 2

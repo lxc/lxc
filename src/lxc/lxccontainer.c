@@ -68,6 +68,14 @@
 #include <openssl/evp.h>
 #endif
 
+#if HAVE_ACL
+#include <acl/libacl.h>
+#endif
+
+#if HAVE_GETXATTR
+#include <sys/xattr.h>
+#endif
+
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
@@ -2597,6 +2605,12 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	__do_close int fd_config = -EBADF, fd_rootfs = -EBADF;
 	int lret = -1;
 	bool bret = false, need_disklock = false;
+#if HAVE_ACL
+	char tmp_file[PATH_MAX], attr_value[PATH_MAX], *attr_list = NULL;
+	struct stat file_stat;
+	ssize_t attr_list_size = -1, attr_size = -1, attr_len = -1;
+	acl_t acl_file = NULL;
+#endif
 
 	if (!alt_file)
 		alt_file = c->configfile;
@@ -2630,18 +2644,127 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (lret)
 		return log_error(false, "Failed to acquire lock");
 
+#if HAVE_ACL
+	snprintf(tmp_file, sizeof(tmp_file), "%s.tmpXXXXXX", alt_file);
+	fd_config = mkstemp(tmp_file);
+	if (fd_config < 0) {
+		SYSERROR("Failed to create temporary config file \"%s\"", tmp_file);
+		goto on_error;
+	}
+	TRACE("Created temporary config file \"%s\"", tmp_file);
+
+	if (stat(alt_file, &file_stat) < 0) {
+		SYSERROR("Failed to stat config file \"%s\"", alt_file);
+		goto on_error;
+	}
+
+	acl_file = acl_get_file(alt_file, ACL_TYPE_ACCESS);
+	if (acl_file == NULL) {
+		SYSERROR("Failed to get ACL for \"%s\"", alt_file);
+		goto on_error;
+	}
+
+	attr_list_size = listxattr(alt_file, NULL, 0);
+	if (attr_list_size < 0) {
+		if (errno != ENOTSUP) {
+			SYSERROR("Failed to list xattrs for \"%s\"", alt_file);
+			goto on_error;
+		}
+		TRACE("File system does not support xattrs for \"%s\"", alt_file);
+		attr_list_size = 0;
+	}
+
+	if (attr_list_size > 0) {
+		attr_list = malloc(attr_list_size);
+		if (attr_list == NULL) {
+			SYSERROR("Memory allocation failed");
+			goto on_error;
+		}
+
+		attr_len = listxattr(alt_file, attr_list, attr_list_size);
+		if (attr_len < 0) {
+			SYSERROR("Failed to list xattrs for \"%s\"", alt_file);
+			goto on_error;
+		}
+	} else {
+		attr_list = NULL;
+		attr_len = 0;
+	}
+#else
 	fd_config = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
 			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd_config < 0) {
 		SYSERROR("Failed to open config file \"%s\"", alt_file);
 		goto on_error;
 	}
+#endif
 
 	lret = write_config(fd_config, c->lxc_conf);
 	if (lret < 0) {
+#if HAVE_ACL
+		SYSERROR("Failed to write to temporary config file \"%s\"", tmp_file);
+#else
 		SYSERROR("Failed to write config file \"%s\"", alt_file);
+#endif
 		goto on_error;
 	}
+
+#if HAVE_ACL
+	if (fchmod(fd_config, file_stat.st_mode) < 0) {
+		SYSERROR("Failed to set permissions of temporary file \"%s\"", tmp_file);
+		goto on_error;
+	}
+
+	if (acl_set_file(tmp_file, ACL_TYPE_ACCESS, acl_file) < 0) {
+		if (errno == ENOTSUP) {
+			TRACE("File system does not support ACLs for \"%s\"", tmp_file);
+		} else {
+			SYSERROR("Failed to set ACL for temporary file \"%s\"", tmp_file);
+			goto on_error;
+		}
+	}
+
+	if (attr_list && attr_len > 0) {
+		for (ssize_t attr_cur = 0; attr_cur < attr_len; attr_cur += strlen(attr_list + attr_cur) + 1) {
+			const char *attr_name = attr_list + attr_cur;
+
+			attr_size = getxattr(alt_file, attr_name, attr_value, sizeof(attr_value));
+			if (attr_size < 0) {
+				if (errno != ENODATA && errno != ENOTSUP) {
+					SYSERROR("Failed to get xattr \"%s\" from \"%s\"", attr_name, alt_file);
+				}
+				continue;
+			}
+
+			if (setxattr(tmp_file, attr_name, attr_value, attr_size, 0) < 0) {
+				if (errno != ENOTSUP) {
+					SYSERROR("Failed to set xattr \"%s\" for \"%s\"", attr_name, tmp_file);
+					goto on_error;
+				}
+				TRACE("File system does not support setting xattr \"%s\"", attr_name);
+			} else {
+				TRACE("Successfully set xattr \"%s\" from \"%s\" to \"%s\"", 
+						attr_name, alt_file, tmp_file);
+			}
+		}
+	}
+
+	if (rename(tmp_file, alt_file) < 0) {
+		SYSERROR("Failed to rename temporary config file \"%s\" to \"%s\"", tmp_file, alt_file);
+		goto on_error;
+	}
+
+	tmp_file[0] = '\0';
+
+	if (attr_list) {
+		free(attr_list);
+		attr_list = NULL;
+	}
+	if (acl_file) {
+		acl_free(acl_file);
+		acl_file = NULL;
+	}
+#endif
 
 	bret = true;
 	TRACE("Saved config file \"%s\"", alt_file);
@@ -2651,6 +2774,15 @@ on_error:
 		container_disk_unlock(c);
 	else
 		container_mem_unlock(c);
+
+#if HAVE_ACL
+    if (acl_file)
+        acl_free(acl_file);
+	if (attr_list)
+		free(attr_list);
+    if (fd_config >= 0 && tmp_file[0] != '\0')
+        unlink(tmp_file);
+#endif
 
 	return bret;
 }
