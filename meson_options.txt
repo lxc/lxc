@@ -66,6 +66,9 @@ option('openssl', type: 'boolean', value: true,
 option('selinux', type: 'boolean', value: true,
        description: 'use selinux')
 
+option('acl', type: 'boolean', value: false,
+       description: 'use acl')
+
 # was --{disable,enable}-tests in autotools
 option('tests', type: 'boolean', value: false,
        description: 'build and install tests')
