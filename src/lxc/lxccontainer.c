@@ -69,11 +69,8 @@
 #endif
 
 #if HAVE_ACL
-#include <acl/libacl.h>
-#endif
-
-#if HAVE_GETXATTR
 #include <sys/xattr.h>
+#include <acl/libacl.h>
 #endif
 
 /* major()/minor() */
