@@ -134,7 +134,13 @@ __hidden extern bool is_shared_mountpoint(const char *path);
 __hidden extern int detect_shared_rootfs(void);
 __hidden extern bool detect_ramfs_rootfs(void);
 __hidden extern char *on_path(const char *cmd, const char *rootfs);
-__hidden extern bool switch_to_ns(pid_t pid, const char *ns);
+
+__hidden extern bool try_switch_to_ns(pid_t pid, const char *ns, bool optional);
+inline static bool switch_to_ns(pid_t pid, const char *ns)
+{
+	return try_switch_to_ns(pid, ns, false);
+}
+
 __hidden extern char *get_template_path(const char *t);
 __hidden extern int safe_mount(const char *src, const char *dest, const char *fstype,
 			       unsigned long flags, const void *data, const char *rootfs);

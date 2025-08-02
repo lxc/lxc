@@ -14,6 +14,7 @@
 
 set -e
 
+modprobe -v overlay || true
 if ! grep -q overlay /proc/filesystems; then
 	echo "Not running this test as overlay is not available"
 	exit 0

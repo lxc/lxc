@@ -4183,6 +4183,7 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
+		netdev->name[IFNAMSIZ-1] = '\0';
 
 		/* Receive network device ifindex in the child's namespace to
 		 * parent.

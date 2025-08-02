@@ -2220,7 +2220,7 @@ static inline bool enter_net_ns(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 
-	net_ns_entered = switch_to_ns(pid, "net");
+	net_ns_entered = try_switch_to_ns(pid, "net", true);
 
 	if ((geteuid() != 0 || (c->lxc_conf && !list_empty(&c->lxc_conf->id_map))) &&
 	    (access("/proc/self/ns/user", F_OK) == 0))
