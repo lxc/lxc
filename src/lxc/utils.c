@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -2080,4 +2081,37 @@ uint64_t get_fssize(char *s)
 	}
 
 	return ret;
+}
+
+bool lxc_check_kernel_met(const char* target) {
+	const char* ver = getenv("KERNEL_VERSION_OVERRIDE");
+	char buf[256];
+	int cur[3] = {0}, min[3] = {0};
+	struct utsname uts;
+
+	if (!ver) {
+		if (uname(&uts) != 0) {
+			perror("uname");
+			return false;
+		}
+		strncpy(buf, uts.release, sizeof(buf) - 1);
+		buf[sizeof(buf) - 1] = '\0';
+		ver = buf;
+	}
+	
+	if (sscanf(ver, "%d.%d.%d", &cur[0], &cur[1], &cur[2]) < 2) {
+		SYSWARN("Invalid kernel version: %s\n", ver);
+		return false;
+	}
+
+	if (sscanf(target, "%d.%d.%d", &min[0], &min[1], &min[2]) < 2) {
+		SYSWARN("Invalid minimum version: %s\n", target);
+		return false;
+	}
+
+	for (int i = 0; i < 3; i++) {
+		if (cur[i] > min[i]) return true;
+		if (cur[i] < min[i]) return false;
+	}
+	return true;
 }
