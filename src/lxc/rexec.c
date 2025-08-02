@@ -15,6 +15,7 @@
 #include "rexec.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
+#include "utils.h"
 
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
@@ -94,11 +95,14 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
 	__do_close int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
 		       tmpfd = -EBADF;
-	int ret;
+	int ret, flags = MFD_ALLOW_SEALING | MFD_CLOEXEC;
 	ssize_t bytes_sent = 0;
 	struct stat st = {0};
 
-	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+	if (lxc_check_kernel_met("6.3.0")) 
+		flags |= MFD_EXEC;
+
+	memfd = memfd_create(memfd_name, flags);
 	if (memfd < 0) {
 		char template[PATH_MAX];
 
