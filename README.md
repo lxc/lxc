@@ -9,9 +9,6 @@
   </table>
 </div>
 
-
-
-
 LXC is the well-known and heavily tested low-level Linux container runtime. It
 is in active development since 2008 and has proven itself in critical
 production environments world-wide. Some of its core contributors are the same
@@ -22,7 +19,6 @@ inside the Linux kernel.
 Type            | Service               | Status
 ---             | ---                   | ---
 CI (Linux)      | GitHub                | [![Build Status](https://github.com/lxc/lxc/actions/workflows/builds.yml/badge.svg)](https://github.com/lxc/lxc/actions)
-CI (Linux)      | Jenkins               | [![Build Status](https://github.com/lxc/lxc-ci/actions/workflows/tests.yml/badge.svg)](https://github.com/lxc/lxc-ci/actions/workflows/tests.yml)
 Project status  | CII Best Practices    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
 Fuzzing         | OSS-Fuzz              | [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/lxc.svg)](https://oss-fuzz-build-logs.storage.googleapis.com/index.html#lxc)
 Fuzzing         | CIFuzz                | [![CIFuzz](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml/badge.svg)](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml)
