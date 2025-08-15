@@ -1,5 +1,16 @@
-![Linux Containers logo](https://linuxcontainers.org/static/img/containers.png)
-# LXC
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://linuxcontainers.org/static/img/containers.png" width="100" height="100"><br>
+        <strong>LXC</strong>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
 
 LXC is the well-known and heavily tested low-level Linux container runtime. It
 is in active development since 2008 and has proven itself in critical
@@ -10,11 +21,11 @@ inside the Linux kernel.
 ## Status
 Type            | Service               | Status
 ---             | ---                   | ---
-CI (Linux)      | GitHub                | [![Build Status](https://github.com/lxc/lxc/actions/workflows/build.yml/badge.svg)](https://github.com/lxc/lxc/actions)
-CI (Linux)      | Jenkins               | [![Build Status](https://jenkins.linuxcontainers.org/job/lxc-github-commit/badge/icon)](https://jenkins.linuxcontainers.org/job/lxc-github-commit/)
+CI (Linux)      | GitHub                | [![Build Status](https://github.com/lxc/lxc/actions/workflows/builds.yml/badge.svg)](https://github.com/lxc/lxc/actions)
+CI (Linux)      | Jenkins               | [![Build Status](https://github.com/lxc/lxc-ci/actions/workflows/tests.yml/badge.svg)](https://github.com/lxc/lxc-ci/actions/workflows/tests.yml)
 Project status  | CII Best Practices    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
 Fuzzing         | OSS-Fuzz              | [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/lxc.svg)](https://oss-fuzz-build-logs.storage.googleapis.com/index.html#lxc)
-Fuzzing         | CIFuzz                | [![CIFuzz](https://github.com/lxc/lxc/actions/workflows/cifuzz.yml/badge.svg)](https://github.com/lxc/lxc/actions/workflows/cifuzz.yml)
+Fuzzing         | CIFuzz                | [![CIFuzz](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml/badge.svg)](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml)
 
 ## System Containers
 
