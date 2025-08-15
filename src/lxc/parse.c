@@ -55,8 +55,12 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	struct stat st = {};
 	ssize_t bytes;
 	char *line;
+	int flags = MFD_CLOEXEC;
 
-	memfd = memfd_create(".lxc_config_file", MFD_CLOEXEC);
+	if (lxc_check_kernel_met("6.3.0"))
+		flags |= MFD_NOEXEC_SEAL;
+
+	memfd = memfd_create(".lxc_config_file", flags);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_config_file_XXXXXX";
 
