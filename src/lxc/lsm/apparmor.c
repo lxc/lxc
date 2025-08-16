@@ -656,7 +656,11 @@ static void must_append_sized(char **buf, size_t *bufsz, const char *data, size_
 
 static bool is_privileged(struct lxc_conf *conf)
 {
-	return list_empty(&conf->id_map);
+	/* A container is considered privileged if:
+	 * the id_map list is empty (no user namespace mapping)
+	 * the process is running as root (uid 0)
+	*/
+	return list_empty(&conf->id_map) && (geteuid() == 0);
 }
 
 static const char* AA_ALL_DEST_PATH_LIST[] = {
