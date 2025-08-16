@@ -711,7 +711,8 @@ if cc.sizeof('struct mount_attr', prefix: decl_headers, args: '-D_GNU_SOURCE') >
     found_types += 'struct mount_attr (sys/mount.h)'
 else
     srcconf.set10('HAVE_' + 'struct mount_attr'.underscorify().to_upper(), false)
-    missing_types += 'struct mount_attr (sys/mount.h)' endif
+    missing_types += 'struct mount_attr (sys/mount.h)'
+endif
 
 ## Check if sys/mount.h defines the fsconfig commands
 if cc.has_header_symbol('sys/mount.h','FSCONFIG_SET_FLAG')
