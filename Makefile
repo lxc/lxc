@@ -1,12 +1,22 @@
 # SPDX-License-Identifier: LGPL-2.1+
 
-MESON := meson
-NINJA := ninja
+MESON ?= meson
+NINJA ?= ninja
 
 BUILDDIR := buildDir
 DISTDIR := $(BUILDDIR)/meson-dist
 
-.PHONY: all meson dist install clean rebuild
+.PHONY: all meson dist install clean rebuild help
+
+help:
+	@echo "Available commands:"
+	@echo "  all      - Build the project"
+	@echo "  meson    - Configure or reconfigure the project with Meson"
+	@echo "  dist     - Create the distribution package"
+	@echo "  install  - Install the project"
+	@echo "  clean    - Remove generated files"
+	@echo "  rebuild  - Clean and rebuild everything"
+	@echo "  help     - Show this message"
 
 all: meson
 	$(NINJA) -C $(BUILDDIR)
@@ -26,7 +36,7 @@ install:
 	DESTDIR=$(DESTDIR) $(NINJA) -C $(BUILDDIR) install
 
 clean:
-	rm -rf $(BUILDDIR) *.tar.gz
+	$(RM) -rf $(BUILDDIR) *.tar.gz
 
 rebuild:
 	$(MAKE) clean
