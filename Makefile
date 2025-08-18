@@ -36,7 +36,7 @@ install:
 	DESTDIR=$(DESTDIR) $(NINJA) -C $(BUILDDIR) install
 
 clean:
-	$(RM) -rf $(BUILDDIR) *.tar.gz
+	rm -rf $(BUILDDIR) *.tar.gz
 
 rebuild:
 	$(MAKE) clean

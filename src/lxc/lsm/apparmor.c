@@ -659,7 +659,7 @@ static bool is_privileged(struct lxc_conf *conf)
 	/* A container is considered privileged if:
 	 * the id_map list is empty (no user namespace mapping)
 	 * the process is running as root (uid 0)
-	*/
+	 */
 	return list_empty(&conf->id_map) && (geteuid() == 0);
 }
 
