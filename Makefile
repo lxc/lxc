@@ -1,34 +1,33 @@
 # SPDX-License-Identifier: LGPL-2.1+
 
+MESON := meson
+NINJA := ninja
+
 BUILDDIR := buildDir
 DISTDIR := $(BUILDDIR)/meson-dist
 
-.PHONY: all
-all: meson
-	ninja -C $(BUILDDIR)
+.PHONY: all meson dist install clean rebuild
 
-.PHONY: meson
+all: meson
+	$(NINJA) -C $(BUILDDIR)
+
 meson:
 	@if [ ! -d $(BUILDDIR) ]; then \
-		meson setup $(BUILDDIR)/ || exit 1; \
+		$(MESON) setup $(BUILDDIR); \
 	else \
-		meson setup --reconfigure $(BUILDDIR)/ || exit 1; \
+		$(MESON) setup --reconfigure $(BUILDDIR); \
 	fi
 
-.PHONY: dist
 dist: meson
-	meson dist -C $(BUILDDIR)/ --formats=gztar || exit 1
-	cp $(DISTDIR)/*.tar.gz . || exit 1
+	$(MESON) dist -C $(BUILDDIR) --formats=gztar
+	cp $(DISTDIR)/*.tar.gz .
 
-.PHONY: install
 install:
-	DESTDIR=$(DESTDIR) ninja -C $(BUILDDIR) install
+	DESTDIR=$(DESTDIR) $(NINJA) -C $(BUILDDIR) install
 
-.PHONY: clean
 clean:
 	rm -rf $(BUILDDIR) *.tar.gz
 
-.PHONY: rebuild
 rebuild:
 	$(MAKE) clean
 	$(MAKE) all
