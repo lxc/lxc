@@ -98,7 +98,7 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 	ssize_t bytes_sent = 0;
 	struct stat st = {0};
 
-	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+	memfd = memfd_create(memfd_name, MFD_EXEC | MFD_ALLOW_SEALING | MFD_CLOEXEC);
 	if (memfd < 0) {
 		char template[PATH_MAX];
 
