@@ -296,4 +296,7 @@ static inline int is_in_comm(const char *s)
 }
 #endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 
+/* Check if the kernel meets the required version */
+__hidden extern bool lxc_check_kernel_met(const char* target);
+
 #endif /* __LXC_UTILS_H */
