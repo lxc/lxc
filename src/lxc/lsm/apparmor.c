@@ -796,6 +796,7 @@ static char *get_apparmor_profile_content(struct lsm_ops *ops, struct lxc_conf *
 								+ sizeof(AA_PROFILE_BINFMT_MISC_MOUNT) + 1);
 	if (base_profile == NULL) {
 		log_error_errno(-ENOMEM, ENOMEM, "failed to allocate memory for apparmor profile");
+		return NULL;
 	}
 	
 	if (apparmor_binfmt_misc_ns_allowed()) {
