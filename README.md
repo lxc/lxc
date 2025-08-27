@@ -138,9 +138,9 @@ require that each commit includes a `Signed-off-by` line. The coding style we
 use is identical to the one used by the Linux kernel. You can find a detailed
 introduction at:
 
-- https://www.kernel.org/doc/html/v4.10/process/coding-style.html
+- https://docs.kernel.org/process/coding-style.html#codingstyle
 
-and should also take a look at the [CONTRIBUTING](CONTRIBUTING) file in this
+and should also take a look at the [CONTRIBUTING](CONTRIBUTING.md) file in this
 repo.
 
 If you want to become more active it is usually also a good idea to show up in
