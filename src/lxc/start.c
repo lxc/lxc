@@ -572,6 +572,38 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 	return 0;
 }
 
+void *lxc_handler_mainloop_thread_fn(void *arg)
+{
+	struct lxc_async_descr *descr = arg;
+
+	return INT_TO_PTR(lxc_mainloop(descr, -1));
+}
+
+int lxc_handler_mainloop(struct lxc_async_descr *descr, struct lxc_handler *handler)
+{
+	void *exit_code;
+	int ret;
+	pthread_t thread;
+
+	ret = pthread_create(&thread, NULL, lxc_handler_mainloop_thread_fn, (void *)descr);
+	if (ret) {
+		return log_error_errno(-1, ret,
+				       "Failed to spawn a thread for lxc handler mainloop");
+	}
+
+	ret = pthread_join(thread, &exit_code);
+	if (ret) {
+		return log_error_errno(-1, ret,
+				       "Failed to wait for lxc handler mainloop thread");
+	}
+
+	if (exit_code == PTHREAD_CANCELED) {
+		return log_error(-1, "Mainloop thread was canceled");
+	}
+
+	return PTR_TO_INT(exit_code);
+}
+
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
@@ -626,7 +658,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 
 	TRACE("Mainloop is ready");
 
-	ret = lxc_mainloop(&descr, -1);
+	ret = lxc_handler_mainloop(&descr, handler);
 	if (descr.type == LXC_MAINLOOP_EPOLL)
 		close_prot_errno_disarm(descr.epfd);
 	if (ret < 0 || !handler->init_died)
