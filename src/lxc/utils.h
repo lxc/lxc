@@ -296,4 +296,8 @@ static inline int is_in_comm(const char *s)
 }
 #endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 
+int lxc_parse_kernel_version(const char *version, int arr[3]);
+
+bool lxc_check_kernel_version_met(const char *target);
+
 #endif /* __LXC_UTILS_H */
