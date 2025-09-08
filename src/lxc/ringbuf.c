@@ -19,7 +19,7 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 {
 	__do_close int memfd = -EBADF;
 	char *tmp;
-	int ret;
+	int ret, flags = MFD_CLOEXEC;
 
 	buf->size = size;
 	buf->r_off = 0;
@@ -34,7 +34,10 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 	if (buf->addr == MAP_FAILED)
 		return -EINVAL;
 
-	memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC);
+	if (lxc_check_kernel_met("6.3.0"))
+		flags |= MFD_NOEXEC_SEAL;
+
+	memfd = memfd_create(".lxc_ringbuf", flags);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_ringbuf_XXXXXX";
 
