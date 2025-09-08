@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <linux/landlock.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
@@ -66,6 +67,36 @@
 #if !HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
+
+#if HAVE_LANDLOCK_MONITOR
+#ifndef landlock_create_ruleset
+static inline int
+landlock_create_ruleset(const struct landlock_ruleset_attr *const attr,
+			const size_t size, const __u32 flags)
+{
+	return syscall(__NR_landlock_create_ruleset, attr, size, flags);
+}
+#endif
+
+#ifndef landlock_restrict_self
+static inline int landlock_restrict_self(const int ruleset_fd,
+					 const __u32 flags)
+{
+	return syscall(__NR_landlock_restrict_self, ruleset_fd, flags);
+}
+#endif
+
+#ifndef landlock_add_rule
+static inline int landlock_add_rule(const int ruleset_fd,
+				    const enum landlock_rule_type rule_type,
+				    const void *const rule_attr,
+				    const __u32 flags)
+{
+	return syscall(__NR_landlock_add_rule, ruleset_fd, rule_type, rule_attr,
+		       flags);
+}
+#endif
+#endif /* HAVE_LANDLOCK_MONITOR */
 
 lxc_log_define(start, lxc);
 
@@ -572,6 +603,162 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 	return 0;
 }
 
+#if HAVE_LANDLOCK_MONITOR
+static int lxc_mainloop_protect(void)
+{
+	int err;
+	int ruleset_fd;
+
+	/* Detect the supported Landlock ABI. */
+	int abi;
+	abi = landlock_create_ruleset(NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
+	if (abi < 0) {
+		/* Landlock not supported. */
+		SYSERROR("Landlock not supported on system");
+		return -1;
+	}
+
+	struct landlock_ruleset_attr ruleset_attr = {
+		.handled_access_fs =
+			LANDLOCK_ACCESS_FS_WRITE_FILE |
+			LANDLOCK_ACCESS_FS_READ_FILE,
+	};
+
+	/* Define a new ruleset. */
+	ruleset_fd = landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
+	if (ruleset_fd < 0) {
+		/* Failed to create ruleset. */
+		SYSERROR("Failed to create landlock ruleset");
+		return -1;
+	}
+
+	/* Allow /sys/fs/cgroup write access. */
+	struct landlock_path_beneath_attr path_beneath = {
+		.allowed_access =
+		    LANDLOCK_ACCESS_FS_READ_FILE |
+		    LANDLOCK_ACCESS_FS_WRITE_FILE,
+	};
+
+	path_beneath.parent_fd = open("/sys/fs/cgroup", O_PATH | O_CLOEXEC);
+	if (path_beneath.parent_fd < 0) {
+		SYSERROR("Failed to open /sys/fs/cgroup");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	err = landlock_add_rule(ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0);
+	close(path_beneath.parent_fd);
+	if (err) {
+		SYSERROR("Failed to update ruleset");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	/* Allow /dev/ptmx write access. */
+	path_beneath.parent_fd = open("/dev/ptmx", O_PATH | O_CLOEXEC);
+	if (path_beneath.parent_fd < 0) {
+		SYSERROR("Failed to open /dev/ptmx");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	err = landlock_add_rule(ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0);
+	close(path_beneath.parent_fd);
+	if (err) {
+		SYSERROR("Failed to update ruleset");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	/* Allow /dev/pts write access. */
+	path_beneath.parent_fd = open("/dev/pts", O_PATH | O_CLOEXEC);
+	if (path_beneath.parent_fd < 0) {
+		SYSERROR("Failed to open /dev/pts");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	err = landlock_add_rule(ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0);
+	close(path_beneath.parent_fd);
+	if (err) {
+		SYSERROR("Failed to update ruleset");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	/* Prevent getting more privileges. */
+	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+		SYSERROR("Failed to restrict monitor privileges");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	/* Apply the Landlock restrictions. */
+	if (landlock_restrict_self(ruleset_fd, 0)) {
+		SYSERROR("Failed to enforce Landlock ruleset");
+		close(ruleset_fd);
+		return -1;
+	}
+
+	close(ruleset_fd);
+
+	return 0;
+}
+
+void *lxc_handler_mainloop_thread_fn(void *arg)
+{
+	int ret;
+	struct lxc_async_descr *descr = arg;
+
+	ret = lxc_mainloop_protect();
+	if (ret < 0) {
+		ERROR("Failed to protect the monitor process");
+		goto out;
+	}
+
+	ret = lxc_mainloop(descr, -1);
+
+out:
+	return INT_TO_PTR(ret);
+}
+
+int lxc_handler_mainloop(struct lxc_async_descr *descr, struct lxc_handler *handler)
+{
+	void *exit_code;
+	int ret;
+	pthread_t thread;
+
+	/* Skip protection if a seccomp proxy is setup. */
+	if (!handler || !handler->conf || handler->conf->seccomp.notifier.proxy_fd > 0) {
+		/* Landlock not supported when seccomp notify is in use. */
+		SYSERROR("Skipping Landlock due to seccomp notify");
+
+		/* We don't need to use thread then */
+		return lxc_mainloop(descr, -1);
+	}
+
+	INFO("Spawning monitor as a thread for Landlock confinement");
+
+	ret = pthread_create(&thread, NULL, lxc_handler_mainloop_thread_fn, (void *)descr);
+	if (ret) {
+		return log_error_errno(-1, ret,
+				       "Failed to spawn a thread for lxc handler mainloop");
+	}
+
+	ret = pthread_join(thread, &exit_code);
+	if (ret) {
+		return log_error_errno(-1, ret,
+				       "Failed to wait for lxc handler mainloop thread");
+	}
+
+	if (exit_code == PTHREAD_CANCELED) {
+		return log_error(-1, "Mainloop thread was canceled");
+	}
+
+	return PTR_TO_INT(exit_code);
+}
+#endif
+
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
@@ -626,7 +813,11 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 
 	TRACE("Mainloop is ready");
 
+#if HAVE_LANDLOCK_MONITOR
+	ret = lxc_handler_mainloop(&descr, handler);
+#else
 	ret = lxc_mainloop(&descr, -1);
+#endif
 	if (descr.type == LXC_MAINLOOP_EPOLL)
 		close_prot_errno_disarm(descr.epfd);
 	if (ret < 0 || !handler->init_died)
