@@ -1451,7 +1451,11 @@ static int do_start(void *data)
 	 * to allow them to be used by the various hooks, such as the start
 	 * hook below.
 	 */
-	ret = lxc_set_environment(handler->conf);
+	ret = lxc_set_environment(&handler->conf->environment);
+	if (ret < 0)
+		goto out_warn_father;
+
+	ret = lxc_set_environment(&handler->conf->environment_hooks);
 	if (ret < 0)
 		goto out_warn_father;
 
@@ -1552,7 +1556,11 @@ static int do_start(void *data)
 	if (ret < 0)
 		SYSERROR("Failed to clear environment.");
 
-	ret = lxc_set_environment(handler->conf);
+	ret = lxc_set_environment(&handler->conf->environment);
+	if (ret < 0)
+		goto out_warn_father;
+
+	ret = lxc_set_environment(&handler->conf->environment_runtime);
 	if (ret < 0)
 		goto out_warn_father;
 
