@@ -4008,10 +4008,21 @@
 
       <para>
         <!--
-        This configuration parameter can be specified multiple times; once
+        Subkeys are available to narrow the scope of environment variables:
+        <command>lxc.environment.runtime</command> applies only to
+        the container's init process (and all its descendents),
+        and <command>lxc.environment.hooks</command> applies only to hooks.
+        -->
+        サブキーを使用して、環境変数のスコープを絞り込めます:
+        <command>lxc.environment.runtime</command> は、コンテナの init プロセス（とそのすべての子孫）にのみ適用されます。そして、<command>lxc.environment.hooks</command> はフックにのみ適用されます。
+      </para>
+
+      <para>
+        <!--
+        These configuration parameter can be specified multiple times; once
         for each environment variable you wish to configure.
         -->
-        この設定項目は、設定したい環境変数ごとに 1 度ずつ、何度でも指定できます。
+        これらの設定項目は、設定したい環境変数ごとに 1 度ずつ、何度でも指定できます。
       </para>
 
       <variablelist>
@@ -4022,10 +4033,10 @@
           <listitem>
             <para>
               <!--
-              Specify an environment variable to pass into the container.
-              Example:
+              Environment variables applied both to the container init process
+              and to hooks. Example:
               -->
-              コンテナに渡したい環境変数を指定します。
+              環境変数は、コンテナの init プロセスとフックの両方に適用されます。
               例:
             </para>
             <programlisting>
@@ -4034,6 +4045,36 @@
             </programlisting>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.environment.runtime</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Environment variables applied only to the container's init
+              process.
+              -->
+              環境変数はコンテナの init プロセスにのみ適用されます。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.environment.hooks</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Environment variables applied only to hooks.
+              -->
+              環境変数はフックにのみ適用されます。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
