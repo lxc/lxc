@@ -686,6 +686,7 @@ static const struct mntopt_t {
 	{ ",nodev", sizeof(",nodev")-1 },
 	{ ",nosuid", sizeof(",nosuid")-1 },
 	{ ",noexec", sizeof(",noexec")-1 },
+	{ ",nosymfollow", sizeof(",nosymfollow")-1 },
 };
 
 static void append_remount_rule(char **profile, size_t *size, const char *rule)
