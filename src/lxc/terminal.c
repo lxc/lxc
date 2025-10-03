@@ -869,7 +869,7 @@ int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 	if (!terminal->log_path)
 		return 0;
 
-	terminal->log_fd = lxc_unpriv(open(terminal->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	terminal->log_fd = lxc_unpriv(open(terminal->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0640));
 	if (terminal->log_fd < 0) {
 		SYSERROR("Failed to open terminal log file \"%s\"", terminal->log_path);
 		return -1;
