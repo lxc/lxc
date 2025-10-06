@@ -879,7 +879,11 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 
 	/* Set container environment variables.*/
 	if (ctx->container->lxc_conf) {
-		ret = lxc_set_environment(ctx->container->lxc_conf);
+		ret = lxc_set_environment(&ctx->container->lxc_conf->environment);
+		if (ret < 0)
+			return -1;
+
+		ret = lxc_set_environment(&ctx->container->lxc_conf->environment_runtime);
 		if (ret < 0)
 			return -1;
 	}

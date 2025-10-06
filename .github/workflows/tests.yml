@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -87,6 +87,12 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
+          # Landlock support
+          landlock=false
+          if [ -e /usr/include/linux/landlock.h ]; then
+            landlock=true
+          fi
+
           # Standard build
           if [ "${{ matrix.variant }}" = "default" ]; then
               meson setup build \
@@ -94,6 +100,7 @@ jobs:
                   -Dtests=true \
                   -Dpam-cgroup=true \
                   -Dtools-multicall=true \
+                  -Dlandlock-monitor=${landlock} \
                   -Dwerror=true \
                   -Db_lto_mode=default
           elif [ "${{ matrix.variant }}" = "sanitizer" ]; then

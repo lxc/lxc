@@ -1,4 +1,3 @@
-![Linux Containers logo](https://linuxcontainers.org/static/img/containers.png)
 # LXC
 
 LXC is the well-known and heavily tested low-level Linux container runtime. It
@@ -10,11 +9,10 @@ inside the Linux kernel.
 ## Status
 Type            | Service               | Status
 ---             | ---                   | ---
-CI (Linux)      | GitHub                | [![Build Status](https://github.com/lxc/lxc/actions/workflows/build.yml/badge.svg)](https://github.com/lxc/lxc/actions)
-CI (Linux)      | Jenkins               | [![Build Status](https://jenkins.linuxcontainers.org/job/lxc-github-commit/badge/icon)](https://jenkins.linuxcontainers.org/job/lxc-github-commit/)
+CI (Linux)      | GitHub                | [![Build Status](https://github.com/lxc/lxc/actions/workflows/builds.yml/badge.svg)](https://github.com/lxc/lxc/actions)
 Project status  | CII Best Practices    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
 Fuzzing         | OSS-Fuzz              | [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/lxc.svg)](https://oss-fuzz-build-logs.storage.googleapis.com/index.html#lxc)
-Fuzzing         | CIFuzz                | [![CIFuzz](https://github.com/lxc/lxc/actions/workflows/cifuzz.yml/badge.svg)](https://github.com/lxc/lxc/actions/workflows/cifuzz.yml)
+Fuzzing         | CIFuzz                | [![CIFuzz](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml/badge.svg)](https://github.com/lxc/lxc/actions/workflows/fuzzing.yml)
 
 ## System Containers
 
@@ -140,9 +138,9 @@ require that each commit includes a `Signed-off-by` line. The coding style we
 use is identical to the one used by the Linux kernel. You can find a detailed
 introduction at:
 
-- https://www.kernel.org/doc/html/v4.10/process/coding-style.html
+- https://docs.kernel.org/process/coding-style.html#codingstyle
 
-and should also take a look at the [CONTRIBUTING](CONTRIBUTING) file in this
+and should also take a look at the [CONTRIBUTING](CONTRIBUTING.md) file in this
 repo.
 
 If you want to become more active it is usually also a good idea to show up in

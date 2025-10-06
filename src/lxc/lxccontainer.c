@@ -2220,7 +2220,7 @@ static inline bool enter_net_ns(struct lxc_container *c)
 	if (pid < 0)
 		return false;
 
-	net_ns_entered = switch_to_ns(pid, "net");
+	net_ns_entered = try_switch_to_ns(pid, "net", true);
 
 	if ((geteuid() != 0 || (c->lxc_conf && !list_empty(&c->lxc_conf->id_map))) &&
 	    (access("/proc/self/ns/user", F_OK) == 0))
@@ -4935,6 +4935,7 @@ WRAP_API_2(bool, lxcapi_restore, char *, bool)
 static int create_mount_target(const char *dest, mode_t st_mode)
 {
 	char *dirdup, *destdirname;
+	struct stat sb;
 	int ret;
 
 	dirdup = strdup(dest);
@@ -4952,7 +4953,21 @@ static int create_mount_target(const char *dest, mode_t st_mode)
 	}
 	free(dirdup);
 
-	(void)remove(dest);
+	if (stat(dest, &sb) == 0) {
+		if (S_ISDIR(st_mode) && S_ISDIR(sb.st_mode))
+			return 0;
+
+		if (S_ISREG(st_mode) && S_ISREG(sb.st_mode))
+			return 0;
+
+		if (remove(dest) < 0) {
+			SYSERROR("Failed to remove existing mount target \"%s\"", dest);
+			return -1;
+		}
+	} else if (errno != ENOENT) {
+		SYSERROR("Failed to stat existing mount target \"%s\"", dest);
+		return -1;
+	}
 
 	if (S_ISDIR(st_mode))
 		ret = mkdir(dest, 0000);

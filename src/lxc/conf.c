@@ -2682,11 +2682,11 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 		ret = parse_lxc_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
 			return syserror("Failed to parse LXC specific mount options");
-		__data = opts.data;
 
 		ret = parse_mount_attrs(&opts, mntent.mnt_opts);
 		if (ret < 0)
 			return syserror("Failed to parse mount options");
+		__data = opts.data;
 
 		/* No idmapped mount entry so skip it. */
 		if (is_empty_string(opts.userns_path))
@@ -3209,6 +3209,8 @@ struct lxc_conf *lxc_conf_init(void)
 	new->root_nsuid_map = NULL;
 	new->root_nsgid_map = NULL;
 	INIT_LIST_HEAD(&new->environment);
+	INIT_LIST_HEAD(&new->environment_runtime);
+	INIT_LIST_HEAD(&new->environment_hooks);
 	INIT_LIST_HEAD(&new->limits);
 	INIT_LIST_HEAD(&new->sysctls);
 	INIT_LIST_HEAD(&new->procs);
@@ -4239,18 +4241,18 @@ int lxc_clear_groups(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_environment(struct lxc_conf *c)
+int lxc_clear_environment(struct list_head *environment)
 {
 	struct environment_entry *env, *nenv;
 
-	list_for_each_entry_safe(env, nenv, &c->environment, head) {
+	list_for_each_entry_safe(env, nenv, environment, head) {
 		list_del(&env->head);
 		free(env->key);
 		free(env->val);
 		free(env);
 	}
 
-	INIT_LIST_HEAD(&c->environment);
+	INIT_LIST_HEAD(environment);
 	return 0;
 }
 
@@ -4359,7 +4361,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_mount_entries(conf);
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
-	lxc_clear_environment(conf);
+	lxc_clear_environment(&conf->environment);
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");
 	lxc_clear_procs(conf, "lxc.proc");
@@ -5210,11 +5212,11 @@ void suggest_default_idmap(void)
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
 }
 
-int lxc_set_environment(const struct lxc_conf *conf)
+int lxc_set_environment(const struct list_head *environment)
 {
 	struct environment_entry *env;
 
-	list_for_each_entry(env, &conf->environment, head) {
+	list_for_each_entry(env, environment, head) {
 		int ret;
 
 		ret = setenv(env->key, env->val, 1);
