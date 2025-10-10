@@ -2599,10 +2599,13 @@ FILE *make_anonymous_mount_file(const struct list_head *mount_entries,
 {
 	__do_close int fd = -EBADF;
 	FILE *f;
-	int ret;
+	int ret, flags = MFD_CLOEXEC;
 	struct string_entry *entry;
 
-	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
+	if (lxc_check_kernel_met("6.3.0"))
+		flags |= MFD_NOEXEC_SEAL;
+
+	fd = memfd_create(".lxc_mount_file", flags);
 	if (fd < 0) {
 		char template[] = P_tmpdir "/.lxc_mount_file_XXXXXX";
 
@@ -3376,7 +3379,7 @@ static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 	__do_close int memfd = -EBADF, mntinfo_fd = -EBADF;
 	size_t len = 0;
 	ssize_t copied;
-	int ret;
+	int ret, flags = MFD_CLOEXEC;
 
 	mntinfo_fd = open_at(rootfs->dfd_host, "proc/self/mountinfo", PROTECT_OPEN,
 			     (PROTECT_LOOKUP_BENEATH_XDEV & ~RESOLVE_NO_SYMLINKS), 0);
@@ -3385,7 +3388,10 @@ static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 		return;
 	}
 
-	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
+	if (lxc_check_kernel_met("6.3.0"))
+		flags |= MFD_NOEXEC_SEAL;
+
+	memfd = memfd_create(".lxc_mountinfo", flags);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_mountinfo_XXXXXX";
 
