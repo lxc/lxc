@@ -285,7 +285,7 @@ unpack_metadata() {
 
   echo "Using metadata file: ${LXC_METADATA}"
 
-  if ! tar Jxf "${LXC_METADATA}" -C "${LOCAL_TEMP}"; then
+  if ! tar -axf "${LXC_METADATA}" -C "${LOCAL_TEMP}"; then
     echo "Unable to unpack metadata file: ${LXC_METADATA}" 2>&1
     exit 1
   fi
@@ -330,7 +330,7 @@ unpack_rootfs() {
     echo "Excludes: ${EXCLUDES}"
   fi
 
-  tar --anchored ${EXCLUDES} --numeric-owner --xattrs-include='*' -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
+  tar --anchored ${EXCLUDES} --numeric-owner --xattrs-include='*' -xpaf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
 
   prepare_rootfs
 }
