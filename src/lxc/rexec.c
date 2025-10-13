@@ -15,6 +15,9 @@
 #include "rexec.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
+#include "log.h"
+
+lxc_log_define(rexec, lxc);
 
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
@@ -98,7 +101,13 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 	ssize_t bytes_sent = 0;
 	struct stat st = {0};
 
-	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC | MFD_EXEC);
+
+	if (memfd < 0 && errno == EINVAL) {
+		TRACE("MFD_EXEC may unsupported, using MFD_ALLOW_SEALING and MFD_CLOEXEC");
+		memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+	}
+	
 	if (memfd < 0) {
 		char template[PATH_MAX];
 
