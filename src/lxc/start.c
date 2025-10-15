@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
-#include <linux/landlock.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
@@ -69,6 +68,8 @@
 #endif
 
 #if HAVE_LANDLOCK_MONITOR
+#include <linux/landlock.h>
+
 #ifndef landlock_create_ruleset
 static inline int
 landlock_create_ruleset(const struct landlock_ruleset_attr *const attr,
