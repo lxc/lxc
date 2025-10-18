@@ -56,7 +56,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	ssize_t bytes;
 	char *line;
 
-	memfd = memfd_create(".lxc_config_file", MFD_CLOEXEC);
+	memfd = memfd_create(".lxc_config_file", MFD_NOEXEC_SEAL | MFD_CLOEXEC);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_config_file_XXXXXX";
 

@@ -34,7 +34,7 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 	if (buf->addr == MAP_FAILED)
 		return -EINVAL;
 
-	memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC);
+	memfd = memfd_create(".lxc_ringbuf", MFD_NOEXEC_SEAL | MFD_CLOEXEC);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_ringbuf_XXXXXX";
 
