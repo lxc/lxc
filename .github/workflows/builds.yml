@@ -13,7 +13,6 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - focal
           - jammy
           - noble
 
