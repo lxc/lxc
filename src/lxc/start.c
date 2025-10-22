@@ -729,6 +729,7 @@ int lxc_handler_mainloop(struct lxc_async_descr *descr, struct lxc_handler *hand
 	int ret;
 	pthread_t thread;
 
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	/* Skip protection if a seccomp proxy is setup. */
 	if (!handler || !handler->conf || handler->conf->seccomp.notifier.proxy_fd > 0) {
 		/* Landlock not supported when seccomp notify is in use. */
@@ -737,6 +738,7 @@ int lxc_handler_mainloop(struct lxc_async_descr *descr, struct lxc_handler *hand
 		/* We don't need to use thread then */
 		return lxc_mainloop(descr, -1);
 	}
+#endif
 
 	INFO("Spawning monitor as a thread for Landlock confinement");
 
