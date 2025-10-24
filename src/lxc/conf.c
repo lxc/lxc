@@ -2602,7 +2602,13 @@ FILE *make_anonymous_mount_file(const struct list_head *mount_entries,
 	int ret;
 	struct string_entry *entry;
 
-	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
+	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC | MFD_NOEXEC_SEAL);
+
+	if (fd < 0 && errno == EINVAL) {
+		TRACE("MFD_NOEXEC_SEAL may unsupported, using MFD_CLOEXEC only");
+		fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
+	}
+
 	if (fd < 0) {
 		char template[] = P_tmpdir "/.lxc_mount_file_XXXXXX";
 
@@ -3385,7 +3391,13 @@ static void turn_into_dependent_mounts(const struct lxc_rootfs *rootfs)
 		return;
 	}
 
-	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
+	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC | MFD_NOEXEC_SEAL);
+
+	if (memfd < 0 && errno == EINVAL) {
+		TRACE("MFD_NOEXEC_SEAL may unsupported, using MFD_CLOEXEC only");
+		memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
+	}
+
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_mountinfo_XXXXXX";
 
