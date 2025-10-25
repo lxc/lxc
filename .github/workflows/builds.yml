@@ -47,7 +47,16 @@ jobs:
         run: |
           make dist
           TARBALL=$(ls -1 *.tar.gz)
-          mv ${TARBALL} ../$(echo ${TARBALL} | sed -e "s/.tar.gz$/.orig.tar.gz/g" -e "s/lxc-/lxc_/g")
+          # if TARBALL is something like "lxc-6.0.0.tar.gz"
+          # then we want: lxc_6.0.0+daily~noble~202510252032.orig.tar.gz
+          newname=${TARBALL%.tar.gz}
+          newname="${newname/-/_}"
+          RELEASE=${{ matrix.os }}
+          D="$(date -u +%Y%m%d%H%M)"
+          echo "DPKG_DATE=$D" >> $GITHUB_ENV
+          newname="${newname}~daily~${RELEASE}~${D}.orig.tar.gz"
+          echo "renaming ${TARBALL} to ../${newname}"
+          mv ${TARBALL} "../${newname}"
 
       - name: Assemble the package
         env:
@@ -62,8 +71,9 @@ jobs:
           cd lxc-*/
           cp -R ../packaging/debian .
           rm -f debian/changelog
+          D="${DPKG_DATE}"  # saved from previous step
           dch --create --package lxc \
-            -v 2:${VERSION}-0+daily~${{ matrix.os }}~$(date -u +%Y%m%d%H%M) \
+            -v 2:${VERSION}~daily~${{ matrix.os }}~${D} \
             --distribution ${{ matrix.os }} \
             "Automated snapshot build."
 
