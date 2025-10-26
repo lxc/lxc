@@ -338,7 +338,7 @@ static int lxc_terminal_ptx_io(struct lxc_terminal *terminal)
 	w_rbuf = w_log = 0;
 	/* write to peer first */
 	if (terminal->peer >= 0)
-		w = lxc_write_nointr(terminal->peer, buf, r);
+		w = lxc_write_all(terminal->peer, buf, r);
 
 	/* write to terminal ringbuffer */
 	if (terminal->buffer_size > 0)
@@ -375,7 +375,7 @@ static int lxc_terminal_peer_io(struct lxc_terminal *terminal)
 		return -1;
 	}
 
-	w = lxc_write_nointr(terminal->ptx, buf, r);
+	w = lxc_write_all(terminal->ptx, buf, r);
 	if (w != r)
 		WARN("Short write on terminal r:%d != w:%d", r, w);
 

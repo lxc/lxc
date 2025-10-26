@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <poll.h>
 
 #include "file_utils.h"
 #include "macro.h"
@@ -145,6 +146,91 @@ ssize_t lxc_read_try_buf_at(int dfd, const char *path, void *buf, size_t count)
 	}
 
 	return ret;
+}
+
+static int __lxc_wait_for_io_ready(int fd, int event, int timeout_ms)
+{
+	int ret;
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = event,
+		.revents = 0
+	};
+
+	do {
+		ret = poll(&pfd, 1, timeout_ms);
+	} while (ret < 0 && errno == EINTR);
+
+	if (ret < 0)
+		return -errno;
+
+	if (ret == 0)
+		return -ETIMEDOUT;
+
+	if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+		if (pfd.revents & POLLERR)
+			return -EPIPE;
+		if (pfd.revents & POLLHUP)
+			return -EPIPE;
+		if (pfd.revents & POLLNVAL)
+			return -EBADF;
+	}
+
+	if (!(pfd.revents & event))
+		return -EAGAIN;
+
+	return ret;
+}
+
+ssize_t lxc_write_all(int fd, const void *buf, size_t count)
+{
+	ssize_t left_to_write = count;
+	const char *ptr = buf;
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return ret_set_errno(-1, errno);
+
+	/* only non-blocking fds are allowed */
+	if (!(flags & O_NONBLOCK))
+		return ret_set_errno(-1, EINVAL);
+
+	while (left_to_write > 0) {
+		int ret = write(fd, ptr, left_to_write);
+
+		if (ret > 0) {
+			left_to_write -= ret;
+			ptr += ret;
+			continue;
+		}
+
+		if (ret == 0)
+			break;
+
+		/* ret < 0 */
+		if (errno == EINTR)
+			continue;
+
+		if (errno == EAGAIN) {
+			int pret = __lxc_wait_for_io_ready(fd, POLLOUT, 5000);
+
+			/* we've got an event on fd */
+			if (pret > 0)
+				continue;
+
+			if (pret == -ETIMEDOUT)
+				break;
+
+			if (pret < 0)
+				return ret_set_errno(-1, -pret);
+		}
+
+		/* some other error */
+		return ret_set_errno(-1, errno);
+	}
+
+	return count - left_to_write;
 }
 
 ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
