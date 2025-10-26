@@ -35,6 +35,8 @@ __hidden extern int lxc_read_from_file(const char *filename, void *buf, size_t c
     __access_w(2, 3);
 
 /* send and receive buffers completely */
+__hidden extern ssize_t lxc_write_all(int fd, const void *buf, size_t count) __access_r(2, 3);
+
 __hidden extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count) __access_r(2, 3);
 
 __hidden extern ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count, off_t offset)
