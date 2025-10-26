@@ -2,8 +2,9 @@
 
 if libapparmor.found()
     configure_file(
-        configuration: conf,
-        input: 'container-base',
+        command: ['cat', '@INPUT@'],
+        capture: true,
+        input: ['container-base.in', '../container-rules'],
         output: 'container-base',
         install: true,
         install_dir: join_paths(sysconfdir, 'apparmor.d', 'abstractions', 'lxc'))
