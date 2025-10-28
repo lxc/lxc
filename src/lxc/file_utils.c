@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <poll.h>
 
 #include "file_utils.h"
 #include "macro.h"
@@ -147,15 +148,50 @@ ssize_t lxc_read_try_buf_at(int dfd, const char *path, void *buf, size_t count)
 	return ret;
 }
 
+static int lxc_wait_for_io_ready(int fd, int event, int timeout)
+{
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = event,
+		.revents = 0
+	};
+	
+	return poll(&pfd, 1, timeout);
+}
+
 ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
 {
 	ssize_t ret;
-
-	do {
-		ret = write(fd, buf, count);
-	} while (ret < 0 && errno == EINTR);
-
-	return ret;
+	size_t written = 0;
+	const char *ptr = (const char *)buf;
+	
+	while (written < count) {
+		ret = write(fd, ptr + written, count - written);
+		
+		if (ret > 0) {
+			written += ret;
+			continue;
+		}
+		
+		if (ret == 0)
+			break;
+		
+		if (errno == EINTR)
+			continue;
+		
+		if (errno == EWOULDBLOCK) {
+			if (lxc_wait_for_io_ready(fd, POLLOUT, 5000) <= 0)
+				break;
+			continue;
+		}
+		
+		break;
+	}
+	
+	if (written > 0)
+		return (ssize_t)written;
+	
+	return -1;
 }
 
 ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count, off_t offset)
