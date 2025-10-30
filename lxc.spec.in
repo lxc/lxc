@@ -26,7 +26,7 @@ BuildRequires: systemd
 # Must use /var/run for runtime_path on older releases or dnsmasq in the
 # lxc-net script will not be able to write its pid in /run (selinux denial)
 %if 0%{?fedora} < 15 || 0%{?rhel} < 7
-%define _with_runtime_path --with-runtime-path=/var/run
+%define _with_runtime_path -Druntime-path=/var/run
 %endif
 
 # RPM needs alpha/beta/rc in Release: not Version: to ensure smooth
@@ -52,12 +52,13 @@ Requires: openssl rsync dnsmasq bridge-utils
 Requires: %{name}-libs = %{version}-%{release}
 Requires(pre): /usr/sbin/useradd
 Requires(postun): /usr/sbin/userdel
-%if 0%{?fedora} < 15 || 0%{?rhel} < 7
+%if 0%{?fedora} < 15 && 0%{?rhel} < 7
 Requires: libcgroup
 %endif
 # Note for Suse.  The "docbook2X" BuildRequires does properly
 # match docbook2x on Suse in a case insensitive manner
-BuildRequires: libcap libcap-devel docbook2X graphviz libxslt pkgconfig dbus-1
+BuildRequires: libcap libcap-devel docbook2X graphviz libxslt pkgconfig dbus-devel
+BuildRequires: meson
 
 #
 # Additional packages for openSUSE and SUSE
@@ -109,22 +110,18 @@ development of the Linux containers.
 %setup -q -n %{name}-%{version}%{?beta_dot}
 %build
 
-#Dont use pkgconfig to get bash completion dir and use backwards compatible location.
-export bashcompdir=%{_sysconfdir}/bash_completion.d
-
-PATH=$PATH:/usr/sbin:/sbin %configure $args \
+%meson \
 %if "x%{_unitdir}" != "x"
-  --with-systemdsystemunitdir=%{_unitdir} \
+  -Dsystemd-unitdir=%{_unitdir} \
 %endif
   %{?_with_runtime_path} \
-  --disable-rpath \
-  --with-init-script=%{init_script}
-make %{?_smp_mflags}
+  "-Dinit-script=['%{init_script}']"
+
+%meson_build
 
 %install
 rm -rf %{buildroot}
-make install DESTDIR=%{buildroot}
-find %{buildroot} -type f -name '*.la' -exec rm -f {} ';'
+%meson_install
 
 %clean
 rm -rf %{buildroot}
@@ -228,9 +225,9 @@ fi
 %{_mandir}/ko/man5/lxc*
 %{_mandir}/ko/man7/lxc*
 %endif
+%{_datadir}/bash-completion/completions
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
-%{_sysconfdir}/bash_completion.d
 %config(noreplace) %{_sysconfdir}/lxc/*
 %config(noreplace) %{_sysconfdir}/sysconfig/*
 
