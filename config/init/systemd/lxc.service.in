@@ -13,6 +13,7 @@ ExecStop=@LIBEXECDIR@/lxc/lxc-containers stop
 ExecReload=@LIBEXECDIR@/lxc/lxc-apparmor-load
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
+StateDirectory=lxc
 Delegate=yes
 
 [Install]

@@ -80,6 +80,8 @@ lxc_config_define(console_rotate);
 lxc_config_define(console_size);
 lxc_config_define(unsupported_key);
 lxc_config_define(environment);
+lxc_config_define(environment_runtime);
+lxc_config_define(environment_hooks);
 lxc_config_define(ephemeral);
 lxc_config_define(execute_cmd);
 lxc_config_define(group);
@@ -211,6 +213,8 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.console.rotate",             true,  set_config_console_rotate,             get_config_console_rotate,             clr_config_console_rotate,             },
 	{ "lxc.console.size",               true,  set_config_console_size,               get_config_console_size,               clr_config_console_size,               },
 	{ "lxc.sched.core",		    true,  set_config_sched_core,		  get_config_sched_core,                 clr_config_sched_core,                 },
+	{ "lxc.environment.runtime",        true,  set_config_environment_runtime,        get_config_environment_runtime,        clr_config_environment_runtime         },
+	{ "lxc.environment.hooks",          true,  set_config_environment_hooks,          get_config_environment_hooks,          clr_config_environment_hooks           },
 	{ "lxc.environment",                true,  set_config_environment,                get_config_environment,                clr_config_environment,                },
 	{ "lxc.ephemeral",                  true,  set_config_ephemeral,                  get_config_ephemeral,                  clr_config_ephemeral,                  },
 	{ "lxc.execute.cmd",                true,  set_config_execute_cmd,                get_config_execute_cmd,                clr_config_execute_cmd,                },
@@ -1574,15 +1578,15 @@ static int set_config_group(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_environment(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf, void *data)
+static int set_config_environment_impl(const char *value,
+				       struct list_head *environment)
 {
 	__do_free char *dup = NULL, *val = NULL;
 	__do_free struct environment_entry *new_env = NULL;
 	char *env_val;
 
 	if (lxc_config_value_empty(value))
-		return lxc_clear_environment(lxc_conf);
+		return lxc_clear_environment(environment);
 
 	new_env = zalloc(sizeof(struct environment_entry));
 	if (!new_env)
@@ -1609,10 +1613,28 @@ static int set_config_environment(const char *key, const char *value,
 	new_env->key = move_ptr(dup);
 	new_env->val = move_ptr(val);
 
-	list_add_tail(&new_env->head, &lxc_conf->environment);
+	list_add_tail(&new_env->head, environment);
 	move_ptr(new_env);
 
 	return 0;
+}
+
+static int set_config_environment(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_environment_impl(value, &lxc_conf->environment);
+}
+
+static int set_config_environment_runtime(const char *key, const char* value,
+					  struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_environment_impl(value, &lxc_conf->environment_runtime);
+}
+
+static int set_config_environment_hooks(const char *key, const char* value,
+					struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_environment_impl(value, &lxc_conf->environment_hooks);
 }
 
 static int set_config_tty_max(const char *key, const char *value,
@@ -4473,8 +4495,8 @@ static int get_config_group(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_environment(const char *key, char *retv, int inlen,
-				  struct lxc_conf *c, void *data)
+static int get_config_environment_impl(char *retv, int inlen,
+				       struct list_head *environment)
 {
 	int len, fulllen = 0;
 	struct environment_entry *env;
@@ -4484,11 +4506,30 @@ static int get_config_environment(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	list_for_each_entry(env, &c->environment, head) {
+	list_for_each_entry(env, environment, head) {
 		strprint(retv, inlen, "%s=%s\n", env->key, env->val);
 	}
 
 	return fulllen;
+}
+
+static int get_config_environment(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	return get_config_environment_impl(retv, inlen, &c->environment);
+}
+
+static int get_config_environment_runtime(const char *key, char *retv,
+					  int inlen, struct lxc_conf *c,
+					  void *data)
+{
+	return get_config_environment_impl(retv, inlen, &c->environment_runtime);
+}
+
+static int get_config_environment_hooks(const char *key, char *retv, int inlen,
+					struct lxc_conf *c, void *data)
+{
+	return get_config_environment_impl(retv, inlen, &c->environment_hooks);
 }
 
 static int get_config_execute_cmd(const char *key, char *retv, int inlen,
@@ -5211,7 +5252,19 @@ static inline int clr_config_group(const char *key, struct lxc_conf *c,
 static inline int clr_config_environment(const char *key, struct lxc_conf *c,
 					 void *data)
 {
-	return lxc_clear_environment(c);
+	return lxc_clear_environment(&c->environment);
+}
+
+static inline int clr_config_environment_runtime(const char *key,
+						 struct lxc_conf *c, void *data)
+{
+	return lxc_clear_environment(&c->environment_runtime);
+}
+
+static inline int clr_config_environment_hooks(const char *key,
+					       struct lxc_conf *c, void *data)
+{
+	return lxc_clear_environment(&c->environment_hooks);
 }
 
 static inline int clr_config_execute_cmd(const char *key, struct lxc_conf *c,
@@ -6607,6 +6660,9 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 	} else if (strequal(key, "lxc.console")) {
 		strprint(retv, inlen, "logfile\n");
 		strprint(retv, inlen, "path\n");
+	} else if (strequal(key, "lxc.environment")) {
+		strprint(retv, inlen, "runtime\n");
+		strprint(retv, inlen, "hooks\n");
 	} else if (strequal(key, "lxc.seccomp")) {
 		strprint(retv, inlen, "profile\n");
 	} else if (strequal(key, "lxc.signal")) {

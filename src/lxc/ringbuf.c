@@ -11,9 +11,12 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "log.h"
 #include "ringbuf.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
+
+lxc_log_define(ringbuf, lxc);
 
 int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 {
@@ -34,7 +37,13 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 	if (buf->addr == MAP_FAILED)
 		return -EINVAL;
 
-	memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC);
+	memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC | MFD_NOEXEC_SEAL);
+
+	if (memfd < 0 && errno == EINVAL) {
+		TRACE("MFD_NOEXEC_SEAL may unsupported, using MFD_CLOEXEC only");
+		memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC);
+	}
+
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_ringbuf_XXXXXX";
 

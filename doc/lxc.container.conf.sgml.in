@@ -2990,7 +2990,14 @@
       </para>
 
       <para>
-        This configuration parameter can be specified multiple times; once
+        Subkeys are available to narrow the scope of environment variables:
+        <command>lxc.environment.runtime</command> applies only to
+        the container's init process (and all its descendents),
+        and <command>lxc.environment.hooks</command> applies only to hooks.
+      </para>
+
+      <para>
+        These configuration parameters can be specified multiple times; once
         for each environment variable you wish to configure.
       </para>
 
@@ -3001,8 +3008,8 @@
           </term>
           <listitem>
             <para>
-              Specify an environment variable to pass into the container.
-              Example:
+              Environment variables applied both to the container init process
+              and to hooks. Example:
             </para>
             <programlisting>
               lxc.environment = APP_ENV=production
@@ -3015,6 +3022,29 @@
             <programlisting>
               lxc.environment = PATH
             </programlisting>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.environment.runtime</option>
+          </term>
+          <listitem>
+            <para>
+              Environment variables applied only to the container's init
+              process.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.environment.hooks</option>
+          </term>
+          <listitem>
+            <para>
+              Environment variables applied only to hooks.
+            </para>
           </listitem>
         </varlistentry>
       </variablelist>

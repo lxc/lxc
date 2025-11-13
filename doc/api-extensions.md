@@ -160,3 +160,10 @@ This adds the new options `cgroup2`, `cgroup2:ro`, `cgroup2:force`,
 `cgroup2:ro:force` for the `lxc.mount.auto` configuration key. For example, if
 a user specifies `cgroup2:force` LXC will pre-mount a pure `cgroup2` layout for
 the container even if the host is running with a hybrid layout.
+
+## environment\_runtime\_hooks
+
+This introduces `lxc.environment.runtime` and `lxc.environment.hooks`
+configuration keys to allow environment variables to be applied only to the
+container init process or only to hooks respectively.
+`lxc.environment` remains and still applies to both.

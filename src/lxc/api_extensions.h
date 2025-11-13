@@ -52,6 +52,7 @@ static char *api_extensions[] = {
 	"idmapped_mounts_v2",
 	"core_scheduling",
 	"cgroup2_auto_mounting",
+	"environment_runtime_hooks",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

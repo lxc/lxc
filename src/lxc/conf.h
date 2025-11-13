@@ -506,9 +506,16 @@ struct lxc_conf {
 	unsigned int monitor_unshare;
 	unsigned int monitor_signal_pdeath;
 
-	/* list of environment variables we'll add to the container when
-	 * started */
+	/* list of environment variables to provide to both the container's init
+	 * process and hooks */
 	struct list_head environment;
+
+	/* list of environment variables to provide to the container's init
+	 * process */
+	struct list_head environment_runtime;
+
+	/* list of environment variables to provide to container hooks */
+	struct list_head environment_hooks;
 
 	/* text representation of the config file */
 	char *unexpanded_config;
@@ -599,7 +606,7 @@ __hidden extern int lxc_clear_automounts(struct lxc_conf *c);
 __hidden extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_clear_idmaps(struct lxc_conf *c);
 __hidden extern int lxc_clear_groups(struct lxc_conf *c);
-__hidden extern int lxc_clear_environment(struct lxc_conf *c);
+__hidden extern int lxc_clear_environment(struct list_head *environment);
 __hidden extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 __hidden extern int lxc_delete_autodev(struct lxc_handler *handler);
 __hidden extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
@@ -710,7 +717,7 @@ static inline int lxc_personality(personality_t persona)
 	return personality(persona);
 }
 
-__hidden extern int lxc_set_environment(const struct lxc_conf *conf);
+__hidden extern int lxc_set_environment(const struct list_head *environment);
 __hidden extern int parse_cap(const char *cap_name, __u32 *cap);
 
 #endif /* __LXC_CONF_H */

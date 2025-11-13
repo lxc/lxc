@@ -525,10 +525,10 @@ static int log_open(const char *name)
 	__do_close int fd = -EBADF;
 
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
+	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0640));
 #else
 	if (!RUN_ON_OSS_FUZZ && is_in_comm("fuzz-lxc-") <= 0)
-		fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
+		fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0640));
 #endif /* !FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 	if (fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open log file \"%s\"", name);

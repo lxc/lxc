@@ -87,6 +87,12 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
+          # Landlock support
+          landlock=false
+          if [ -e /usr/include/linux/landlock.h ]; then
+            landlock=true
+          fi
+
           # Standard build
           if [ "${{ matrix.variant }}" = "default" ]; then
               meson setup build \
@@ -94,6 +100,7 @@ jobs:
                   -Dtests=true \
                   -Dpam-cgroup=true \
                   -Dtools-multicall=true \
+                  -Dlandlock-monitor=${landlock} \
                   -Dwerror=true \
                   -Db_lto_mode=default
           elif [ "${{ matrix.variant }}" = "sanitizer" ]; then

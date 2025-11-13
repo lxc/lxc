@@ -124,6 +124,9 @@ option('distrosysconfdir', type: 'string', value: '',
 option('dbus', type: 'boolean', value: true,
        description: 'use dbus')
 
+option('landlock-monitor', type: 'boolean', value: false,
+       description: 'use Landlock to protect the monitor API')
+
 option('specfile', type: 'boolean', value: true,
        description: 'whether to prepare RPM spec')
 

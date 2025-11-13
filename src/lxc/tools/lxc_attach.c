@@ -308,7 +308,7 @@ static int lxc_attach_create_log_file(const char *log_file)
 {
 	int fd;
 
-	fd = open(log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
+	fd = open(log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0640);
 	if (fd < 0) {
 		ERROR("Failed to open log file \"%s\"", log_file);
 		return -1;
