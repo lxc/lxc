@@ -138,13 +138,6 @@
 #define CLONE_NEWTIME 0x00000080 /* New time namespace */
 #endif
 
-/* waitid */
-#if !HAVE_SYS_PIDFD_H
-#ifndef P_PIDFD
-#define P_PIDFD 3
-#endif
-#endif
-
 #ifndef CLONE_ARGS_SIZE_VER0
 #define CLONE_ARGS_SIZE_VER0 64 /* sizeof first published struct */
 #endif
