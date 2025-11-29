@@ -72,3 +72,16 @@ if want_mans
             install_dir: join_paths(mandir, 'man' + page[1]))
     endforeach
 endif
+
+# API Docs (Doxygen)
+if want_api_docs
+    doxygen = find_program('doxygen', required: true)
+
+    api_docs = custom_target(
+        'api-docs',
+        input: files('api/Doxyfile'),
+        output: 'api-docs.stamp',
+        command: [doxygen, '@INPUT@'],
+        build_by_default: true
+    )
+endif
