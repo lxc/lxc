@@ -521,6 +521,17 @@ foreach ccattr: [
     srcconf.set10('HAVE_COMPILER_ATTR_' + ccattr.underscorify().to_upper(), cc.has_function_attribute(ccattr))
 endforeach
 
+## P_PIDFD
+test_code = '''
+#include <sys/wait.h>
+void func() { siginfo_t s; int r = waitid(P_PIDFD, 0, &s, 0); }
+'''
+if cc.compiles(test_code, name: 'waitid(P_PIDFD, ...)')
+    srcconf.set('HAVE_P_PIDFD', 1)
+  else
+    srcconf.set('HAVE_P_PIDFD', 0)
+endif
+
 ## Headers.
 foreach ident: [
     ['bpf',               '''#include <sys/syscall.h>

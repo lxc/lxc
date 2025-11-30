@@ -139,7 +139,7 @@
 #endif
 
 /* waitid */
-#if !HAVE_SYS_PIDFD_H
+#if !HAVE_P_PIDFD
 #ifndef P_PIDFD
 #define P_PIDFD 3
 #endif
