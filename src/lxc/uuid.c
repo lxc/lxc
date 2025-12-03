@@ -74,7 +74,10 @@ int lxc_id128_randomize(lxc_id128_t *ret)
 
 static char hexchar(int x)
 {
-	static const char table[16] = "0123456789abcdef";
+	static const char table[] = {
+		'0', '1', '2', '3', '4', '5', '6', '7', 
+		'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+	};
 
 	return table[x & 15];
 }
