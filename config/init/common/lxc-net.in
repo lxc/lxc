@@ -63,6 +63,10 @@ _ifup() {
 
 start_ipv6() {
     LXC_IPV6_ARG=""
+    [ -e /proc/sys/net/ipv6 ] || return 0
+    [ -f /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/disable_ipv6 ] &&
+        [ "$(cat /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/disable_ipv6)" -eq 1 ] &&
+            return 0
     [ "${LXC_IPV6_ENABLE}" = "true" ] || return 0
 
     if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
