@@ -103,7 +103,7 @@ if [ ! -f "${CONFIG}" ]; then
     fi
 fi
 
-if gunzip -tq < "$CONFIG" 2>/dev/null; then
+if gunzip -t < "$CONFIG" >/dev/null 2>&1; then
     GREP="zgrep"
 fi
 
