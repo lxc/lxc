@@ -253,10 +253,8 @@ char *get_rundir(void)
 	const char *homedir;
 	struct stat sb;
 
-	if (stat(RUNTIME_PATH, &sb) < 0)
-		return NULL;
-
-	if (geteuid() == sb.st_uid || getegid() == sb.st_gid)
+	if ((stat(RUNTIME_PATH, &sb) == 0) &&
+	    (geteuid() == sb.st_uid || getegid() == sb.st_gid))
 		return strdup(RUNTIME_PATH);
 
 	static_rundir = getenv("XDG_RUNTIME_DIR");
