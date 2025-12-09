@@ -36,6 +36,7 @@ static const struct option my_longopts[] = {
 	{"dir", required_argument, 0, '6'},
 	{"rbdname", required_argument, 0, '7'},
 	{"rbdpool", required_argument, 0, '8'},
+	{"rbduser", required_argument, 0, '9'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -67,6 +68,8 @@ Options :\n\
                                 (Default: container name)\n\
       --rbdpool=POOL            Use Ceph RBD pool name POOL\n\
                                 (Default: lxc)\n\
+      --rbduser=RBDUSER         Use Ceph user RBDUSER for auth\n\
+                                (Default: admin)\n\
 \n\
   BDEV option for ZFS (with -B/--bdev zfs) :\n\
       --zfsroot=PATH            Create zfs under given zfsroot\n\
@@ -128,6 +131,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case '8':
 		args->rbdpool = arg;
 		break;
+	case '9':
+		args->rbduser = arg;
+		break;
 	}
 	return 0;
 }
@@ -175,7 +181,7 @@ static bool validate_bdev_args(struct lxc_arguments *args)
 			}
 
 		if (strncmp(args->bdevtype, "rbd", strlen(args->bdevtype)) != 0)
-			if (args->rbdname || args->rbdpool) {
+			if (args->rbdname || args->rbdpool ) {
 				ERROR("--rbdname and --rbdpool are only valid with -B rbd");
 				return false;
 			}
@@ -303,6 +309,9 @@ int lxc_create_main(int argc, char *argv[])
 
 		if (my_args.rbdpool)
 			spec.rbd.rbdpool = my_args.rbdpool;
+		
+		if(my_args.rbduser)
+			spec.rbd.rbduser = my_args.rbduser;
 	}
 
 	if (my_args.dir)
