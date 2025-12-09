@@ -25,6 +25,7 @@
 #define DEFAULT_THIN_POOL "lxc"
 #define DEFAULT_ZFSROOT "lxc"
 #define DEFAULT_RBDPOOL "lxc"
+#define DEFAULT_RBDUSER NULL
 
 #ifndef PR_SET_MM
 #define PR_SET_MM 35

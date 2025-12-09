@@ -22,6 +22,7 @@ lxc_log_define(rbd, lxc);
 
 struct rbd_args {
 	const char *osd_pool_name;
+	const char *rbd_user;
 	const char *rbd_name;
 	const char *size;
 };
@@ -30,8 +31,14 @@ static int rbd_create_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
-	execlp("rbd", "rbd", "create", "--pool", args->osd_pool_name,
+	if (args->rbd_user){
+		execlp("rbd", "rbd", "create", "--id", args->rbd_user, "--pool", 
+			args->osd_pool_name, args->rbd_name, "--size", args->size, 
+			(char *)NULL);
+	} else {
+		execlp("rbd", "rbd", "create", "--pool", args->osd_pool_name,
 	       args->rbd_name, "--size", args->size, (char *)NULL);
+	}
 
 	return -1;
 }
@@ -40,9 +47,13 @@ static int rbd_map_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
-	execlp("rbd", "rbd", "map", "--pool", args->osd_pool_name,
+	if (args->rbd_user){
+		execlp("rbd", "rbd", "map", "--id", args->rbd_user, "--pool", 
+			args->osd_pool_name, args->rbd_name, (char *)NULL);
+	} else {
+		execlp("rbd", "rbd", "map", "--pool", args->osd_pool_name,
 	       args->rbd_name, (char *)NULL);
-
+	}
 	return -1;
 }
 
@@ -50,7 +61,13 @@ static int rbd_unmap_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
-	execlp("rbd", "rbd", "unmap", args->rbd_name, (char *)NULL);
+	if (args->rbd_user){
+		execlp("rbd", "rbd", "unmap", "--id", args->rbd_user, args->rbd_name, 
+			(char *)NULL);
+	} else {
+		execlp("rbd", "rbd", "unmap", args->rbd_name, (char *)NULL);
+	}
+
 
 	return -1;
 }
@@ -59,7 +76,12 @@ static int rbd_delete_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
-	execlp("rbd", "rbd", "rm", args->rbd_name, (char *)NULL);
+	if (args->rbd_user){
+		execlp("rbd", "rbd", "rm", "--id", args->rbd_user, args->rbd_name, 
+			(char *)NULL);
+	} else {
+		execlp("rbd", "rbd", "rm", args->rbd_name, (char *)NULL);
+	}
 
 	return -1;
 }
@@ -83,6 +105,7 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	const char *cmd_args[2];
 	char cmd_output[PATH_MAX];
 	const char *rbdname = n;
+	const char *rbduser;
 	struct rbd_args args = {0};
 
 	if (!specs)
@@ -94,6 +117,10 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 
 	if (specs->rbd.rbdname)
 		rbdname = specs->rbd.rbdname;
+	
+	rbduser = specs->rbd.rbduser;
+	if (!rbduser)
+		rbduser = lxc_global_config_value("lxc.bdev.rbd.rbduser");
 
 	/* source device /dev/rbd/lxc/ctn */
 	len = strlen(rbdpool) + strlen(rbdname) + 4 + 11;
@@ -123,6 +150,7 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 
 	args.osd_pool_name = rbdpool;
 	args.rbd_name = rbdname;
+	args.rbd_user = rbduser;
 	args.size = sz;
 	ret = run_command(cmd_output, sizeof(cmd_output), rbd_create_wrapper,
 			  (void *)&args);
@@ -178,6 +206,8 @@ int rbd_destroy(struct lxc_storage *orig)
 	char cmd_output[PATH_MAX];
 	struct rbd_args args = {0};
 	size_t len;
+
+	args.rbd_user = lxc_global_config_value("lxc.bdev.rbd.rbduser");
 
 	src = lxc_storage_get_path(orig->src, orig->type);
 	if (file_exists(src)) {

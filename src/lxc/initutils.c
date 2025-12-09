@@ -49,6 +49,7 @@ const char *lxc_global_config_value(const char *option_name)
 		{ "lxc.bdev.lvm.thin_pool", DEFAULT_THIN_POOL },
 		{ "lxc.bdev.zfs.root",      DEFAULT_ZFSROOT },
 		{ "lxc.bdev.rbd.rbdpool",   DEFAULT_RBDPOOL },
+		{ "lxc.bdev.rbd.rbduser", 	DEFAULT_RBDUSER },
 		{ "lxc.lxcpath",            NULL            },
 		{ "lxc.default_config",     NULL            },
 		{ "lxc.cgroup.pattern",     NULL            },

@@ -936,6 +936,7 @@ struct bdev_specs {
 	struct {
 		char *rbdname; /*!< RBD image name */
 		char *rbdpool; /*!< Ceph pool name */
+		char *rbduser; /*!< Ceph user name*/
 	} rbd;
 };
 
