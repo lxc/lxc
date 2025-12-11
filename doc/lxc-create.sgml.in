@@ -139,6 +139,7 @@
 	    You can specify the following options :
 	    <replaceable>--rbdname RBDNAME</replaceable> will create a blockdevice named RBDNAME rather than the default, which is the container name.
 	    <replaceable>--rbdpool POOL</replaceable> will create the blockdevice in the pool named POOL, rather than the default, which is 'lxc'.
+		<replaceable>--rbduser RBDUSER</replaceable> will specify the ceph user RBDUSER creating the blockdevice, rather than the default, which is 'admin'.
 	  </para>
 	  <para>
 	    If backingstore is 'best', then lxc will try, in order, btrfs,
