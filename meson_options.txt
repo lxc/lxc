@@ -31,6 +31,10 @@ option('io-uring-event-loop', type: 'boolean', value: false,
 option('man', type: 'boolean', value: true,
        description: 'build and install manpages')
 
+# was --{disable,enable}-api-docs in autotools
+option('api-docs', type: 'boolean', value: false,
+       description: 'build and install API documentation (Doxygen)')
+
 # was --{disable,enable}-pam in autotools
 option('pam-cgroup', type: 'boolean', value: false,
        description: 'build and install the pam cgroup module')
