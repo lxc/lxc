@@ -1307,9 +1307,6 @@ static int do_start(void *data)
 		if (!handler->conf->root_nsgid_map)
 			nsgid = handler->conf->init_gid;
 
-		/* Drop groups only after we switched to a valid gid in the new
-		 * user namespace.
-		 */
 		if (!lxc_drop_groups() &&
 		    (handler->am_root || errno != EPERM))
 			goto out_warn_father;
