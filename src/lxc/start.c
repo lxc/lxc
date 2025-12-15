@@ -1403,15 +1403,17 @@ static int do_start(void *data)
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif
 		{
-			if (handler->conf->init_groups.size > 0) {
-				if (!lxc_setgroups(handler->conf->init_groups.list,
-						   handler->conf->init_groups.size))
-					goto out_warn_father;
-			} else {
+			if (handler->conf->init_groups.size == 0) {
 				if (!lxc_drop_groups())
 					goto out_warn_father;
 			}
 		}
+	}
+
+	if (handler->conf->init_groups.size > 0) {
+		if (!lxc_setgroups(handler->conf->init_groups.list,
+				   handler->conf->init_groups.size))
+			goto out_warn_father;
 	}
 
 	if (!lxc_switch_uid_gid(new_uid, new_gid))
