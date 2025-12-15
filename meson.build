@@ -133,6 +133,7 @@ want_install_init = get_option('install-init-files')
 want_io_uring = get_option('io-uring-event-loop')
 want_pam_cgroup = get_option('pam-cgroup')
 want_mans = get_option('man')
+want_api_docs = get_option('api-docs')
 want_tests = get_option('tests')
 want_tools = get_option('tools')
 want_tools_multicall = get_option('tools-multicall')
@@ -339,6 +340,12 @@ if not sgml2man.found()
     elif want_mans
         error('missing required docbook2x or docbook-utils dependency')
     endif
+endif
+
+## API Docs.
+doxygen = find_program('doxygen', required: false)
+if not doxygen.found() and want_api_docs
+    error('missing required doxygen dependency')
 endif
 
 ## Threads.
