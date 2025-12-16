@@ -207,6 +207,21 @@ rootfs
     </refsect2>
 
     <refsect2>
+      <title>Unprivileged containers</title>
+      <para>
+        Unprivileged LXC containers run without root host-level privileges in a 
+        user namespace, mapping container UID 0 to a non-root host ID, which 
+        strictly limits the accessible devices and filesystems of the 
+        container. In order to mount a rootfs in an unprivileged container, the 
+        mapped host user must have execute permissions for all directories 
+        along the path to and including the rootfs. Additionally, all files and 
+        directories under the rootfs must be owned by the correct user ID and 
+        group ID. The correct user ID and group ID are the host IDs mapped to 
+        the container root(UID 0) in lxc.idmap.
+      </para>
+    </refsect2>
+
+    <refsect2>
       <title>Creating / Destroying containers</title>
       <para>
 	A persistent container object can be created via the
