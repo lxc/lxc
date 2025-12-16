@@ -3468,6 +3468,10 @@ static void copy_rdepends(struct lxc_container *c, struct lxc_container *c0)
 		return;
 	}
 
+	if (!file_exists(path0)) {
+		return;
+	}
+	
 	if (copy_file(path0, path1) < 0) {
 		INFO("Error copying reverse dependencies");
 		return;
