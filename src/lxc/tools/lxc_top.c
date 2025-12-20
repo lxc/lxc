@@ -22,7 +22,6 @@
 #include "mainloop.h"
 #include "utils.h"
 
-#define USER_HZ   100
 #define ESC       "\033"
 #define TERMCLEAR ESC "[H" ESC "[J"
 #define TERMNORM  ESC "[0m"
@@ -35,16 +34,32 @@ struct blkio_stats {
 	uint64_t total;
 };
 
-struct stats {
-	uint64_t mem_used;
-	uint64_t mem_limit;
-	uint64_t memsw_used;
-	uint64_t memsw_limit;
+struct cpu_stats {
+	uint64_t use_nanos;
+	uint64_t use_user;
+	uint64_t use_sys;
+};
+
+struct mem_stats {
+	union {
+		struct {
+			uint64_t swap_used;
+			uint64_t swap_limit;
+		}; /* v2 only */
+		struct {
+			uint64_t memsw_used;
+			uint64_t memsw_limit;
+		}; /* v1 only */
+	};
+	uint64_t used;
+	uint64_t limit;
 	uint64_t kmem_used;
 	uint64_t kmem_limit;
-	uint64_t cpu_use_nanos;
-	uint64_t cpu_use_user;
-	uint64_t cpu_use_sys;
+};
+
+struct stats {
+	struct mem_stats mem;
+	struct cpu_stats cpu;
 	struct blkio_stats io_service_bytes;
 	struct blkio_stats io_serviced;
 };
@@ -62,6 +77,7 @@ static int sort_reverse = 0;
 static struct termios oldtios;
 static struct container_stats *container_stats = NULL;
 static int ct_alloc_cnt = 0;
+static long user_hz = 0;
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -204,7 +220,6 @@ static uint64_t stat_get_int(struct lxc_container *c, const char *item)
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		return 0;
 	}
 
@@ -223,7 +238,6 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		goto out;
 	}
 
@@ -275,21 +289,21 @@ examples:
 	8:0 Total 149327872
 	Total 149327872
 */
-static void stat_get_blk_stats(struct lxc_container *c, const char *item,
+static int cg1_get_blk_stats(struct lxc_container *c, const char *item,
 			      struct blkio_stats *stats) {
 	char buf[4096];
 	int i, len;
 	char **lines, **cols;
+	int ret = -1;
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0 || (size_t)len >= sizeof(buf)) {
-		fprintf(stderr, "Unable to read cgroup item %s\n", item);
-		return;
+		return ret;
 	}
 
 	lines = lxc_string_split_and_trim(buf, '\n');
 	if (!lines)
-		return;
+		return ret;
 
 	memset(stats, 0, sizeof(struct blkio_stats));
 
@@ -308,40 +322,131 @@ static void stat_get_blk_stats(struct lxc_container *c, const char *item,
 
 		lxc_free_array((void **)cols, free);
 	}
-
+	ret = 0;
 out:
 	lxc_free_array((void **)lines, free);
-	return;
+	return ret;
+}
+
+static int cg2_get_blk_stats(struct lxc_container *c, const char *item,
+			      struct blkio_stats *stats) {
+	char buf[4096];
+	int i, j, len;
+	char **lines, **cols;
+	int ret = -1;
+
+	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
+	if (len <= 0 || (size_t)len >= sizeof(buf)) {
+		return ret;
+	}
+
+	lines = lxc_string_split_and_trim(buf, '\n');
+	if (!lines)
+		return ret;
+
+	memset(stats, 0, sizeof(struct blkio_stats));
+
+	for (i = 0; lines[i]; i++) {
+		cols = lxc_string_split_and_trim(lines[i], ' ');
+		if (!cols)
+			goto out;
+
+		for (j = 0; cols[j]; j++) {
+			if (strncmp(cols[j], "rbytes=", 7) == 0) {
+				stats->read += strtoull(&cols[j][7], NULL, 0);
+			} else if (strncmp(cols[j], "wbytes=", 7) == 0) {
+				stats->write += strtoull(&cols[j][7], NULL, 0);
+			}
+		}
+
+		lxc_free_array((void **)cols, free);
+	}
+	stats->total = stats->read + stats->write;
+	ret = 0;
+out:
+	lxc_free_array((void **)lines, free);
+	return ret;
+}
+
+static int cg1_mem_stats(struct lxc_container *c, struct mem_stats *mem)
+{
+	mem->used        = stat_get_int(c, "memory.usage_in_bytes");
+	mem->limit       = stat_get_int(c, "memory.limit_in_bytes");
+	mem->memsw_used  = stat_get_int(c, "memory.memsw.usage_in_bytes");
+	mem->memsw_limit = stat_get_int(c, "memory.memsw.limit_in_bytes");
+	mem->kmem_used   = stat_get_int(c, "memory.kmem.usage_in_bytes");
+	mem->kmem_limit  = stat_get_int(c, "memory.kmem.limit_in_bytes");
+	return mem->used > 0 ? 0 : -1;
+}
+
+static int cg2_mem_stats(struct lxc_container *c, struct mem_stats *mem)
+{
+	mem->used          = stat_get_int(c, "memory.current");
+	mem->limit         = stat_get_int(c, "memory.max");
+	mem->swap_used     = stat_get_int(c, "memory.swap.current");
+	mem->swap_limit    = stat_get_int(c, "memory.swap.max");
+	mem->kmem_used     = stat_match_get_int(c, "memory.stat", "kernel", 1);
+	/* does not exist in cgroup v2 */
+	// mem->kmem_limit = 0;
+	return mem->used > 0 ? 0 : -1;
+}
+
+static int cg1_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
+{
+	cpu->use_nanos = stat_get_int(c, "cpuacct.usage");
+	cpu->use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
+	cpu->use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
+	return cpu->use_nanos > 0 ? 0 : -1;
+}
+
+static int cg2_cpu_stats(struct lxc_container *c, struct cpu_stats *cpu)
+{
+	/* convert microseconds to nanoseconds */
+	cpu->use_nanos = stat_match_get_int(c, "cpu.stat", "usage_usec", 1) * 1000;
+
+	cpu->use_user  = stat_match_get_int(c, "cpu.stat", "user_usec", 1) * user_hz / 1000000;
+	cpu->use_sys   = stat_match_get_int(c, "cpu.stat", "system_usec", 1) * user_hz / 1000000;
+	return cpu->use_nanos > 0 ? 0 : -1;
 }
 
 static void stats_get(struct lxc_container *c, struct container_stats *ct, struct stats *total)
 {
 	ct->c = c;
-	ct->stats->mem_used      = stat_get_int(c, "memory.usage_in_bytes");
-	ct->stats->mem_limit     = stat_get_int(c, "memory.limit_in_bytes");
-	ct->stats->memsw_used    = stat_get_int(c, "memory.memsw.usage_in_bytes");
-	ct->stats->memsw_limit   = stat_get_int(c, "memory.memsw.limit_in_bytes");
-	ct->stats->kmem_used     = stat_get_int(c, "memory.kmem.usage_in_bytes");
-	ct->stats->kmem_limit    = stat_get_int(c, "memory.kmem.limit_in_bytes");
-	ct->stats->cpu_use_nanos = stat_get_int(c, "cpuacct.usage");
-	ct->stats->cpu_use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
-	ct->stats->cpu_use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
+	if (cg1_mem_stats(c, &ct->stats->mem) < 0) {
+		if (cg2_mem_stats(c, &ct->stats->mem) < 0) {
+			fprintf(stderr, "Unable to read memory stats\n");
+		}
+	}
+	if (cg1_cpu_stats(c, &ct->stats->cpu) < 0) {
+		if (cg2_cpu_stats(c, &ct->stats->cpu) < 0) {
+			fprintf(stderr, "Unable to read CPU stats\n");
+		}
+	}
 
-	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
-	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
+	if (cg1_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes) < 0) {
+		if (cg2_get_blk_stats(c, "io.stat", &ct->stats->io_service_bytes) < 0) {
+			fprintf(stderr, "Unable to read IO stats\n");
+		}
+	} else {
+		/* only with cgroups v1 */
+		cg1_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
+	}
+
 
 	if (total) {
-		total->mem_used      = total->mem_used      + ct->stats->mem_used;
-		total->mem_limit     = total->mem_limit     + ct->stats->mem_limit;
-		total->memsw_used    = total->memsw_used    + ct->stats->memsw_used;
-		total->memsw_limit   = total->memsw_limit   + ct->stats->memsw_limit;
-		total->kmem_used     = total->kmem_used     + ct->stats->kmem_used;
-		total->kmem_limit    = total->kmem_limit    + ct->stats->kmem_limit;
-		total->cpu_use_nanos = total->cpu_use_nanos + ct->stats->cpu_use_nanos;
-		total->cpu_use_user  = total->cpu_use_user  + ct->stats->cpu_use_user;
-		total->cpu_use_sys   = total->cpu_use_sys   + ct->stats->cpu_use_sys;
+		total->mem.used       += ct->stats->mem.used;
+		total->mem.limit      += ct->stats->mem.limit;
+		total->mem.swap_used  += ct->stats->mem.swap_used;
+		total->mem.swap_limit += ct->stats->mem.swap_limit;
+		total->mem.kmem_used  += ct->stats->mem.kmem_used;
+		total->mem.kmem_limit += ct->stats->mem.kmem_limit;
+
+		total->cpu.use_nanos += ct->stats->cpu.use_nanos;
+		total->cpu.use_user  += ct->stats->cpu.use_user;
+		total->cpu.use_sys   += ct->stats->cpu.use_sys;
+
 		total->io_service_bytes.total += ct->stats->io_service_bytes.total;
-		total->io_service_bytes.read += ct->stats->io_service_bytes.read;
+		total->io_service_bytes.read  += ct->stats->io_service_bytes.read;
 		total->io_service_bytes.write += ct->stats->io_service_bytes.write;
 	}
 }
@@ -351,19 +456,19 @@ static void stats_print_header(struct stats *stats)
 	printf(TERMRVRS TERMBOLD);
 	printf("%-18s %12s %12s %12s %36s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem");
 
-	if (stats->memsw_used > 0)
+	if (stats->mem.swap_used > 0)
 		printf(" %10s", "MemSw");
 
-	if (stats->kmem_used > 0)
+	if (stats->mem.kmem_used > 0)
 		printf(" %10s", "KMem");
 	printf("\n");
 
 	printf("%-18s %12s %12s %12s %36s %10s", "Name",      "Used", "Sys",  "User", "Total(Read/Write)", "Used");
 
-	if (stats->memsw_used > 0)
+	if (stats->mem.swap_used > 0)
 		printf(" %10s", "Used");
 
-	if (stats->kmem_used > 0)
+	if (stats->mem.kmem_used > 0)
 		printf(" %10s", "Used");
 
 	printf("\n");
@@ -388,7 +493,7 @@ static void stats_print(const char *name, const struct stats *stats,
 		size_humanize(stats->io_service_bytes.total, iosb_total_str, sizeof(iosb_total_str));
 		size_humanize(stats->io_service_bytes.read, iosb_read_str, sizeof(iosb_read_str));
 		size_humanize(stats->io_service_bytes.write, iosb_write_str, sizeof(iosb_write_str));
-		size_humanize(stats->mem_used, mem_used_str, sizeof(mem_used_str));
+		size_humanize(stats->mem.used, mem_used_str, sizeof(mem_used_str));
 
 		ret = snprintf(iosb_str, sizeof(iosb_str), "%s(%s/%s)", iosb_total_str, iosb_read_str, iosb_write_str);
 		if (ret < 0 || (size_t)ret >= sizeof(iosb_str))
@@ -396,18 +501,18 @@ static void stats_print(const char *name, const struct stats *stats,
 
 		printf("%-18.18s %12.2f %12.2f %12.2f %36s %10s",
 		       name,
-		       (float)stats->cpu_use_nanos / 1000000000,
-		       (float)stats->cpu_use_sys  / USER_HZ,
-		       (float)stats->cpu_use_user / USER_HZ,
+		       (float)stats->cpu.use_nanos / 1000000000,
+		       (float)stats->cpu.use_sys  / user_hz,
+		       (float)stats->cpu.use_user / user_hz,
 		       iosb_str,
 		       mem_used_str);
 
-		if (total->memsw_used > 0) {
-			size_humanize(stats->memsw_used, memsw_used_str, sizeof(memsw_used_str));
+		if (total->mem.swap_used > 0) {
+			size_humanize(stats->mem.swap_used, memsw_used_str, sizeof(memsw_used_str));
 			printf(" %10s", memsw_used_str);
 		}
-		if (total->kmem_used > 0) {
-			size_humanize(stats->kmem_used, kmem_used_str, sizeof(kmem_used_str));
+		if (total->mem.kmem_used > 0) {
+			size_humanize(stats->mem.kmem_used, kmem_used_str, sizeof(kmem_used_str));
 			printf(" %10s", kmem_used_str);
 		}
 	} else {
@@ -415,11 +520,11 @@ static void stats_print(const char *name, const struct stats *stats,
 		time_ms = (unsigned long long) (time_val.tv_sec) * 1000 + (unsigned long long) (time_val.tv_usec) / 1000;
 		printf("%" PRIu64 ",%s,%" PRIu64 ",%" PRIu64 ",%" PRIu64
 		       ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64,
-		       (uint64_t)time_ms, name, (uint64_t)stats->cpu_use_nanos,
-		       (uint64_t)stats->cpu_use_sys,
-		       (uint64_t)stats->cpu_use_user, (uint64_t)stats->io_service_bytes.total,
-		       (uint64_t)stats->io_serviced.total, (uint64_t)stats->mem_used,
-		       (uint64_t)stats->memsw_used, (uint64_t)stats->kmem_used);
+		       (uint64_t)time_ms, name, (uint64_t)stats->cpu.use_nanos,
+		       (uint64_t)stats->cpu.use_sys,
+		       (uint64_t)stats->cpu.use_user, (uint64_t)stats->io_service_bytes.total,
+		       (uint64_t)stats->io_serviced.total, (uint64_t)stats->mem.used,
+		       (uint64_t)stats->mem.swap_used, (uint64_t)stats->mem.kmem_used);
 	}
 
 }
@@ -441,9 +546,9 @@ static int cmp_cpuuse(const void *sct1, const void *sct2)
 	const struct container_stats *ct2 = sct2;
 
 	if (sort_reverse)
-		return ct2->stats->cpu_use_nanos < ct1->stats->cpu_use_nanos;
+		return ct2->stats->cpu.use_nanos < ct1->stats->cpu.use_nanos;
 
-	return ct1->stats->cpu_use_nanos < ct2->stats->cpu_use_nanos;
+	return ct1->stats->cpu.use_nanos < ct2->stats->cpu.use_nanos;
 }
 
 static int cmp_blkio(const void *sct1, const void *sct2)
@@ -463,9 +568,9 @@ static int cmp_memory(const void *sct1, const void *sct2)
 	const struct container_stats *ct2 = sct2;
 
 	if (sort_reverse)
-		return ct2->stats->mem_used < ct1->stats->mem_used;
+		return ct2->stats->mem.used < ct1->stats->mem.used;
 
-	return ct1->stats->mem_used < ct2->stats->mem_used;
+	return ct1->stats->mem.used < ct2->stats->mem.used;
 }
 
 static int cmp_memorysw(const void *sct1, const void *sct2)
@@ -474,9 +579,9 @@ static int cmp_memorysw(const void *sct1, const void *sct2)
 	const struct container_stats *ct2 = sct2;
 
 	if (sort_reverse)
-		return ct2->stats->memsw_used < ct1->stats->memsw_used;
+		return ct2->stats->mem.swap_used < ct1->stats->mem.swap_used;
 
-	return ct1->stats->memsw_used < ct2->stats->memsw_used;
+	return ct1->stats->mem.swap_used < ct2->stats->mem.swap_used;
 }
 
 static int cmp_kmemory(const void *sct1, const void *sct2)
@@ -485,9 +590,9 @@ static int cmp_kmemory(const void *sct1, const void *sct2)
 	const struct container_stats *ct2 = sct2;
 
 	if (sort_reverse)
-		return ct2->stats->kmem_used < ct1->stats->kmem_used;
+		return ct2->stats->mem.kmem_used < ct1->stats->mem.kmem_used;
 
-	return ct1->stats->kmem_used < ct2->stats->kmem_used;
+	return ct1->stats->mem.kmem_used < ct2->stats->mem.kmem_used;
 }
 
 static void ct_sort(int active)
@@ -589,6 +694,11 @@ int lxc_top_main(int argc, char *argv[])
 	signal(SIGINT, sig_handler);
 	signal(SIGQUIT, sig_handler);
 
+	user_hz = sysconf(_SC_CLK_TCK);
+	if (user_hz == 0) {
+		user_hz = 100;
+	}
+
 	if (lxc_mainloop_open(&descr)) {
 		fprintf(stderr, "Failed to create mainloop\n");
 		goto out;
@@ -631,7 +741,7 @@ int lxc_top_main(int argc, char *argv[])
 			stats_print_header(&total);
 		}
 
-		for (i = 0; i < active_cnt && i < ct_print_cnt; i++) {
+		for (i = 0; i < active_cnt && ((i < ct_print_cnt) || batch); i++) {
 			stats_print(container_stats[i].c->name, container_stats[i].stats, &total);
 			printf("\n");
 		}
