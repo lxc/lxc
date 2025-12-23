@@ -1521,6 +1521,9 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 		dbus_threads_initialized = true;
 	}
 
+	if (conf->cgroup_meta.systemd_scope != NULL)
+		return log_error(true, "Already in a scope, must be a reboot.");
+
 	connection = open_systemd();
 	if (connection == NULL)
 		return log_error(false, "Failed opening dbus connection");
