@@ -984,7 +984,13 @@ static void _dbus_message_free(DBusMessage **message)
 	}
 }
 
-static bool systemd_cgroup_scope_ready(DBusConnection *connection, const char *scope_name)
+enum systemd_scope_ret {
+	SYSTEMD_SCOPE_RET_OK,     // The scope was created (we got JobRemoved)
+	SYSTEMD_SCOPE_RET_IGNORE, // No helpful message
+	SYSTEMD_SCOPE_RET_ERROR,  // Error decoding message
+};
+
+static enum systemd_scope_ret systemd_cgroup_scope_ready(DBusConnection *connection, const char *scope_name)
 {
 	__attribute__((__cleanup__(_dbus_message_free))) DBusMessage* message = NULL;
 	DBusMessageIter iter;
@@ -993,38 +999,40 @@ static bool systemd_cgroup_scope_ready(DBusConnection *connection, const char *s
 	dbus_connection_read_write(connection, 0);
 	message = dbus_connection_pop_message(connection);
 	if (!message)
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_IGNORE, "Dbus error...");
 
-	if (!dbus_message_is_signal(message, INTERFACE, "JobRemoved"))
-		return false;
+	if (!dbus_message_is_signal(message, INTERFACE, "JobRemoved")) {
+		DEBUG("Got a message which is not JobRemoved");
+		return SYSTEMD_SCOPE_RET_IGNORE;
+	}
 
 	TRACE("got a JobRemoved signal.");
 	// "uoss" -> &id, &path, &unit, &result)
 	if (!dbus_message_iter_init(message, &iter)) // id
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 	if (DBUS_TYPE_UINT32 != dbus_message_iter_get_arg_type(&iter))
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 
 	if (!dbus_message_iter_next(&iter)) // path
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 
 	if (!dbus_message_iter_next(&iter)) // unit
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 	if (DBUS_TYPE_STRING != dbus_message_iter_get_arg_type(&iter))
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 	dbus_message_iter_get_basic(&iter, &unit);
 	if (strcmp(unit, scope_name) != 0)
-		return log_debug(false, "unit was '%s' not '%s'", unit, scope_name);
+		return log_debug(SYSTEMD_SCOPE_RET_IGNORE, "unit was '%s' not '%s'", unit, scope_name);
 
 	if (!dbus_message_iter_next(&iter)) // result
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 	if (DBUS_TYPE_STRING != dbus_message_iter_get_arg_type(&iter))
-		return log_debug(false, "Dbus error...");
+		return log_debug(SYSTEMD_SCOPE_RET_ERROR, "Dbus error...");
 	dbus_message_iter_get_basic(&iter, &result);
 	if (strcmp(result, "done") != 0)
-		return log_debug(false, "JobRemoved signal received, but result was '%s' not done", result);
+		return log_debug(SYSTEMD_SCOPE_RET_IGNORE, "JobRemoved signal received, but result was '%s' not done", result);
 
-	return true;
+	return SYSTEMD_SCOPE_RET_OK;
 }
 
 struct dbus_iter {
@@ -1124,6 +1132,8 @@ static bool start_scope(DBusConnection *connection, const char *scope_name)
 	// ss scope_name, fail
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &scope_name))
 		return log_debug(false, "Dbus error...");
+	// The final argument to dbus_message_iter_append_basic() is the mode,
+	// "replace" or "fail".  If the directory exists, we want it to fail.
 	if (!dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &fail_name))
 		return log_debug(false, "Dbus error...");
 
@@ -1213,11 +1223,18 @@ static bool start_scope(DBusConnection *connection, const char *scope_name)
 
 	// Wait on a signal telling us the async scope request is handled
 	// TODO add a timeout
+	int count=0;
 	while (true) {
-		if (systemd_cgroup_scope_ready(connection, scope_name))
+		enum systemd_scope_ret sret;
+		sret = systemd_cgroup_scope_ready(connection, scope_name);
+		if (sret == SYSTEMD_SCOPE_RET_ERROR)
+			return log_debug(false, "error reading dbus message");
+		if (sret == SYSTEMD_SCOPE_RET_OK)
 			break;
-		nanosleep((const struct timespec[]){{0, 1000}}, NULL);
-		continue;
+		if (count > 50)
+			return log_debug(false, "timed out waiting for a response");
+		nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
+		count++;
 	}
 
 	return true;
