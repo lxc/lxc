@@ -2635,16 +2635,40 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (lret)
 		return log_error(false, "Failed to acquire lock");
 
-	fd_config = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (fd_config < 0) {
-		SYSERROR("Failed to open config file \"%s\"", alt_file);
+	char tmpfile[PATH_MAX];
+	snprintf(tmpfile, sizeof(tmpfile), "%s.tmpXXXXXX", alt_file);
+
+	__do_close int tmpfd = mkstemp(tmpfile);
+	if (tmpfd < 0) {
+		SYSERROR("Failed to create temporary config file \"%s\"", tmpfile);
 		goto on_error;
 	}
 
-	lret = write_config(fd_config, c->lxc_conf);
+	lret = write_config(tmpfd, c->lxc_conf);
 	if (lret < 0) {
-		SYSERROR("Failed to write config file \"%s\"", alt_file);
+		SYSERROR("Failed to write to temporary config file \"%s\"", tmpfile);
+		unlink(tmpfile);
+		goto on_error;
+	}
+
+	if (fsync(tmpfd) < 0) {
+		SYSERROR("Failed to fsync temporary config file \"%s\"", tmpfile);
+		unlink(tmpfile);
+		goto on_error;
+	}
+
+	close(tmpfd);
+	tmpfd = -EBADF;
+
+	if (chmod(tmpfile, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+			SYSERROR("Failed to set permissions of temporary file \"%s\"", tmpfile);
+			unlink(tmpfile);
+			goto on_error;
+	}
+
+	if (rename(tmpfile, alt_file) < 0) {
+		SYSERROR("Failed to rename temporary config file \"%s\" to \"%s\"", tmpfile, alt_file);
+		unlink(tmpfile);
 		goto on_error;
 	}
 
