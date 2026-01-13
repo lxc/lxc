@@ -23,6 +23,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -2078,4 +2079,72 @@ uint64_t get_fssize(char *s)
 	}
 
 	return ret;
+}
+
+int lxc_parse_kernel_version(const char *version, int arr[3]) {
+    if (version == NULL || arr == NULL || *version == '\0')
+    return -1;
+
+    arr[0] = arr[1] = arr[2] = 0;
+
+    int count = 0;
+    const char *ptr = version;
+    char *end;
+
+    while (count < 3) {
+        errno = 0;
+        unsigned long val = strtoul(ptr, &end, 10);
+        if (ptr == end || errno == ERANGE || val > INT_MAX) {
+            return -1; 
+        }
+
+        arr[count] = (int)val;
+        count++;
+        ptr = end;
+
+        if (*ptr == '.') {
+            ptr++;
+        } else if (*ptr == '-' || *ptr == '+' || *ptr == '\0') {
+            break;
+        } else {
+            return -1;
+        }
+    }
+
+    return count;
+}
+
+bool lxc_check_kernel_version_met(const char *target)
+{
+	struct utsname buf;
+	int version[3] = {0, 0, 0};
+	int target_ver[3] = {0, 0, 0};
+	int ret;
+
+	ret = uname(&buf);
+	if (ret < 0) {
+		SYSERROR("Failed to get kernel version");
+		return false;
+	}
+
+	ret = lxc_parse_kernel_version(target, target_ver);
+	if (ret < 0) {
+		SYSWARN("Failed to parse target kernel version from string: %s", target);
+		return false;
+	}
+
+	ret = lxc_parse_kernel_version(buf.release, version);
+	if (ret < 0) {
+		SYSWARN("Failed to parse kernel version from string: %s", buf.release);
+		return false;
+	}
+
+	for (int i = 0; i < 3; i++) {
+		if (version[i] > target_ver[i])
+			return true;
+		if (version[i] < target_ver[i])
+			return false;
+	}
+
+	return true;
 }
