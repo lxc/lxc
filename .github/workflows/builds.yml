@@ -36,7 +36,8 @@ jobs:
               libdbus-1-dev \
               libpam0g-dev \
               libseccomp-dev \
-              libselinux1-dev
+              libselinux1-dev \
+              liburing-dev
 
       - name: Checkout the packaging branch
         run: |

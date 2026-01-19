@@ -44,6 +44,9 @@ jobs:
           - ubuntu-24.04
           - ubuntu-22.04-arm
           - ubuntu-24.04-arm
+        async-api:
+          - epoll
+          - io_uring
         variant:
           - default
           - sanitizer
@@ -54,6 +57,10 @@ jobs:
             os: ubuntu-22.04-arm
           - variant: sanitizer
             os: ubuntu-24.04-arm
+          - async-api: io_uring
+            os: ubuntu-22.04-arm
+          - async-api: io_uring
+            os: ubuntu-22.04
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -75,7 +82,8 @@ jobs:
               libdbus-1-dev \
               libpam0g-dev \
               libseccomp-dev \
-              libselinux1-dev
+              libselinux1-dev \
+              liburing-dev
 
       - name: Compiler version
         env:
@@ -97,6 +105,7 @@ jobs:
           if [ "${{ matrix.variant }}" = "default" ]; then
               meson setup build \
                   -Dprefix=/usr \
+                  -Dio-uring-event-loop=${{ matrix.async-api == 'io_uring' }} \
                   -Dtests=true \
                   -Dpam-cgroup=true \
                   -Dtools-multicall=true \
@@ -106,12 +115,12 @@ jobs:
           elif [ "${{ matrix.variant }}" = "sanitizer" ]; then
               meson setup build \
                   -Dprefix=/usr \
+                  -Dio-uring-event-loop=${{ matrix.async-api == 'io_uring' }} \
                   -Dtests=true \
                   -Dpam-cgroup=true \
                   -Dtools-multicall=true \
                   -Dwerror=true \
                   -Db_lto_mode=default \
-                  -Dio-uring-event-loop=false \
                   -Db_lundef=false \
                   -Db_sanitize=address,undefined
           fi
