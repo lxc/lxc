@@ -58,6 +58,7 @@ for i in $(seq 1 100); do
 	if [ "$attach" != "busy" ]; then
 		FAIL "lxc-attach -n busy -- hostname"
 	fi
+	rm -f "${ATTACH_LOG}"
 done
 
 # stdin  --> /dev/null
@@ -67,6 +68,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname < /dev/null 
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname < /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> attached to pty
 # stdout --> /dev/null
@@ -75,6 +77,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname > /dev/null 
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- hostname > /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> attached to pty
 # stdout --> attached to pty
@@ -83,6 +86,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname 2> /dev/null
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> /dev/null
 # stdout --> attached to pty
@@ -91,6 +95,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname 2> /dev/null
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # Use a synthetic reproducer in container to produce output on stderr. stdout on
 # the host gets redirect to /dev/null. We should still be able to receive
@@ -104,6 +109,7 @@ attach=$( ( lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'hostname >&
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # Use a synthetic reproducer in container to produce output on stderr. stderr on
 # the host gets redirect to /dev/null. We should not receive output on stderr on
@@ -116,7 +122,7 @@ attach=$( ( lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'hostname >&
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null"
 fi
-
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> attached to pty
 # stdout --> /dev/null
@@ -126,7 +132,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'rm 2>&1' > /de
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null"
 fi
-
+rm -f "${ATTACH_LOG}"
 
 # - stdin  --> attached to pty
 # - stdout --> attached to pty
@@ -136,6 +142,7 @@ attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'rm 2>&1' 2> /d
 if [ -z "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null"
 fi
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> $in
 # stdout --> attached to pty
@@ -144,6 +151,7 @@ attach=$(echo hostname | lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- || FA
 if [ "$attach" != "busy" ]; then
         FAIL "echo hostname | lxc-attach -n busy --"
 fi
+rm -f "${ATTACH_LOG}"
 
 # stdin  --> attached to pty
 # stdout --> $out
@@ -158,7 +166,7 @@ if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err"
 fi
 
-rm -f $out $err
+rm -f $out $err "${ATTACH_LOG}"
 
 # stdin  --> $in
 # stdout --> $out
@@ -174,8 +182,57 @@ if [ "$outcontent" != "busy" ] || [ -z "$errcontent" ]; then
         FAIL "echo 'hostname; rm' | lxc-attach -n busy > $out 2> $err"
 fi
 
-rm -f $out $err
+rm -f $out $err "${ATTACH_LOG}"
 
+#
+# This testcase covers cases like:
+# https://github.com/lxc/lxc/issues/4546
+# https://discuss.linuxcontainers.org/t/lxc-attach-long-output-stops-suddenly-possible-bug/22031
+# https://discuss.linuxcontainers.org/t/fixing-forgejo-runners-lxc-logging/25918
+#
+# Idea is simple, we simulate a heavy IO and write relatively large amount of data to overfill
+# pts device buffers, then ensure data integrity.
+#
+# We need to use "script" tool to allocate TTYs properly, otherwise we don't go into a
+# problematic LXC code-path we want to cover.
+#
+# Also, I had to introduce two synthetic sleeps: one before issuing commands to busybox shell inside
+# a container and another one after.
+#
+# First one is needed, because LXC looses some pieces of terminal device input during
+# lxc-attach command initialization because of tcsetattr(fd, TCSAFLUSH, &newtios) call
+# (see https://github.com/lxc/lxc/blob/5d9839bc1316fa185d8c29b90982684b32e3dfa7/src/lxc/terminal.c#L523)
+# I would replace TCSAFLUSH with TCSANOW to avoid TTY buffer flush (and I tested that it helps),
+# but taking into account that this code is here since 2010
+# (see https://github.com/lxc/lxc/commit/e0dc0de76ed1ad9e284a37bd01268227d4eae8c9)
+# I decided to keep it like it is for now (FIXME?).
+#
+# Second sleep is needed because of a bug in busybox, unfortunately, without this sleep,
+# busybox fails to react on the host pipe write-end closure (after full command submission)
+# and continues to poll infinitely. This sleep makes pipe closure even to be separated from
+# a heavy IO and avoids this bug.
+#
+
+# Check test dependencies
+command -v script >/dev/null 2>&1 || { echo "'script' command is missing" >&2; exit 1; }
+busybox dd --help >/dev/null 2>&1 || FAIL "missing busybox's dd applet"
+busybox hexdump --help >/dev/null 2>&1 || FAIL "missing busybox's hexdump applet"
+busybox tee --help >/dev/null 2>&1 || FAIL "missing busybox's tee applet"
+
+out=$(mktemp /tmp/out_XXXX)
+BS=1000000
+( sleep 3; echo "echo DATASTART ; dd if=/dev/urandom bs=$BS count=1 status=none | hexdump | tee /root/large-data.txt ; echo DATAEND" ; sleep 1 ) | \
+	script -q -e -c "lxc-attach -n busy -l trace -o \"${ATTACH_LOG}\"" | \
+	sed -n '/DATASTART/,/DATAEND/{/DATASTART/d;/DATAEND/d;s/[\r\n]*$//;p}' > $out
+
+[ $(stat -c%s $out) -gt $BS ] || FAIL "generated file size is too small"
+cmp -s /var/lib/lxc/busy/rootfs/root/large-data.txt $out || FAIL "data corruption detected"
+
+md5sum /var/lib/lxc/busy/rootfs/root/large-data.txt $out
+ls -lah /var/lib/lxc/busy/rootfs/root/large-data.txt
+rm -f /var/lib/lxc/busy/rootfs/root/large-data.txt $out "${ATTACH_LOG}"
+
+# Cleanup stage
 lxc-destroy -n busy -f
 rm -f "${ATTACH_LOG}" || true
 
