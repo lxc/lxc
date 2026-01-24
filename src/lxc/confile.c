@@ -4309,6 +4309,9 @@ static int get_config_cap_drop(const char *key, char *retv, int inlen,
 	int len, fulllen = 0;
 	struct cap_entry *cap;
 
+	if (c->caps.keep)
+		return fulllen;
+
 	if (!retv)
 		inlen = 0;
 	else
@@ -4326,6 +4329,9 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 {
 	int len, fulllen = 0;
 	struct cap_entry *cap;
+
+	if (!c->caps.keep)
+		return fulllen;
 
 	if (!retv)
 		inlen = 0;
