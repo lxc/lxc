@@ -2,6 +2,7 @@
 
 #include "config.h"
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -306,6 +307,22 @@ static int toss_list(struct lxc_list *c_groups_list)
 	return 1;
 }
 
+struct start_thread_info {
+	struct lxc_container *c;
+};
+
+static void *start_container_thread(void *arg)
+{
+	struct start_thread_info *info = arg;
+	if (!info->c->start(info->c, 0, NULL)) {
+		ERROR("Error starting container: %s", info->c->name);
+		free(info);
+		return (void *)0;
+	}
+	free(info);
+	return (void *)1;
+}
+
 int __attribute__((weak, alias("lxc_autostart_main"))) main(int argc, char *argv[]);
 int lxc_autostart_main(int argc, char *argv[])
 {
@@ -356,6 +373,12 @@ int lxc_autostart_main(int argc, char *argv[])
 
 	failed = 0;
 	lxc_list_for_each(cmd_group, cmd_groups_list) {
+		pthread_t *threads = calloc(count, sizeof(pthread_t));
+		struct lxc_container **group_containers = calloc(count, sizeof(struct lxc_container *));
+		int group_count = 0;
+		int last_order = -1;
+		int max_delay = 0;
+
 		/* Because we may take several passes through the container list
 		 * We'll switch on if the container pointer is NULL and if we
 		 * process a container (run it or decide to ignore it) and call
@@ -466,12 +489,31 @@ int lxc_autostart_main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->start(c, 0, NULL)) {
-							failed++;
-							ERROR("Error starting container: %s", c->name);
-						} else {
-							sleep(get_config_integer(c, "lxc.start.delay"));
+						int current_order = get_config_integer(c, "lxc.start.order");
+						if (group_count > 0 && current_order != last_order) {
+							for (int j = 0; j < group_count; j++) {
+								void *result;
+								pthread_join(threads[j], &result);
+								if (!result)
+									failed++;
+								lxc_container_put(group_containers[j]);
+							}
+							if (max_delay > 0)
+								sleep(max_delay);
+							group_count = 0;
+							max_delay = 0;
 						}
+
+						struct start_thread_info *info = malloc(sizeof(struct start_thread_info));
+						info->c = c;
+						group_containers[group_count] = c;
+						last_order = current_order;
+						int delay = get_config_integer(c, "lxc.start.delay");
+						if (delay > max_delay)
+							max_delay = delay;
+
+						pthread_create(&threads[group_count], NULL, start_container_thread, info);
+						group_count++;
 					}
 				}
 			}
@@ -481,8 +523,12 @@ int lxc_autostart_main(int argc, char *argv[])
 			 * then we're done with this container...  We can dump any
 			 * c_groups_list and the container itself.
 			 */
-			if (lxc_container_put(c) > 0)
+			if (my_args.shutdown || my_args.hardstop || my_args.reboot || my_args.list) {
+				if (lxc_container_put(c) > 0)
+					containers[i] = NULL;
+			} else {
 				containers[i] = NULL;
+			}
 
 			if (c_groups_lists) {
 				toss_list(c_groups_lists[i]);
@@ -490,6 +536,18 @@ int lxc_autostart_main(int argc, char *argv[])
 			}
 		}
 
+		for (int j = 0; j < group_count; j++) {
+			void *result;
+			pthread_join(threads[j], &result);
+			if (!result)
+				failed++;
+			lxc_container_put(group_containers[j]);
+		}
+		if (max_delay > 0)
+			sleep(max_delay);
+
+		free(threads);
+		free(group_containers);
 	}
 
 	/* clean up any lingering detritus, if container exists here
