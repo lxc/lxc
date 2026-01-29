@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+depend() {
+    need net
+    use logger
+}
+
+start() {
+    ebegin "Starting LXC network bridge"
+    @LIBEXECDIR@/lxc/lxc-net start
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping LXC network bridge"
+    @LIBEXECDIR@/lxc/lxc-net stop
+    eend $?
+}
