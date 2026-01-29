@@ -917,8 +917,15 @@ subdir('config/bash')
 subdir('config/etc')
 if want_install_init
     subdir('config/init/common')
-    subdir('config/init/systemd')
-    subdir('config/init/sysvinit')
+    if 'systemd' in init_script
+        subdir('config/init/systemd')
+    endif
+    if 'sysvinit' in init_script
+        subdir('config/init/sysvinit')
+    endif
+    if 'openrc' in init_script
+        subdir('config/init/openrc')
+    endif
     subdir('config/sysconfig')
 endif
 if want_selinux
