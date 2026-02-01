@@ -15,7 +15,7 @@ option('examples', type: 'boolean', value: true,
 
 # was --init-script in autotools
 option('init-script', type: 'array',
-       choices: ['systemd', 'sysvinit'], value: ['systemd'],
+       choices: ['systemd', 'sysvinit', 'openrc'], value: ['systemd'],
        description: 'init script')
 
 # was --systemd-unidir in autotools

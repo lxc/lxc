@@ -1,0 +1,19 @@
+#!/sbin/openrc-run
+
+depend() {
+    need net
+    use logger
+    after cgroupfs-mount
+}
+
+start() {
+    ebegin "Starting LXC autoboot containers"
+    @LIBEXECDIR@/lxc/lxc-containers start
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping LXC containers"
+    @LIBEXECDIR@/lxc/lxc-containers stop
+    eend $?
+}
