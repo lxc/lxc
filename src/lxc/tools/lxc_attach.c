@@ -50,6 +50,7 @@ static int lxc_fill_elevated_privileges(char *flaglist, unsigned int *flags);
 static int add_to_simple_array(char ***array, ssize_t *capacity, char *value);
 static bool stdfd_is_pty(void);
 static int lxc_attach_create_log_file(const char *log_file);
+static int get_additional_gids(const char *add_gids, lxc_groups_t *gids);
 
 static unsigned int elevated_privileges;
 static signed long new_personality = -1;
@@ -61,6 +62,7 @@ static ssize_t extra_env_size;
 static char **extra_keep;
 static ssize_t extra_keep_size;
 static char *selinux_context = NULL;
+static lxc_groups_t additional_gids = { 0 };
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
@@ -76,7 +78,8 @@ static const struct option my_longopts[] = {
 	{"rcfile", required_argument, 0, 'f'},
 	{"uid", required_argument, 0, 'u'},
 	{"gid", required_argument, 0, 'g'},
-        {"context", required_argument, 0, 'c'},
+	{"context", required_argument, 0, 'c'},
+	{"additional-gids", required_argument, 0, 503},
 	LXC_COMMON_OPTIONS
 };
 
@@ -129,6 +132,9 @@ Options :\n\
                     Load configuration file FILE\n\
   -u, --uid=UID     Execute COMMAND with UID inside the container\n\
   -g, --gid=GID     Execute COMMAND with GID inside the container\n\
+      --additional-gids\n\
+                    Execute COMMAND with Additional GIDs inside the container.\n\
+                    Format: GID[,GID]\n\
   -c, --context=context\n\
                     SELinux Context to transition into\n\
 ",
@@ -206,9 +212,15 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		if (lxc_safe_uint(arg, &args->gid) < 0)
 			return -1;
 		break;
-        case 'c':
-                selinux_context = arg;
-                break;
+	case 'c':
+		selinux_context = arg;
+		break;
+	case 503: /* additional gids */
+		if (get_additional_gids(arg, &additional_gids) != 0) {
+			ERROR("Failed to get additional gids");
+			return -1;
+		}
+		break;
 	}
 
 	return 0;
@@ -302,6 +314,51 @@ static bool stdfd_is_pty(void)
 		return true;
 
 	return false;
+}
+
+static int get_additional_gids(const char *add_gids, lxc_groups_t *gids)
+{
+	unsigned int readvalue;
+	size_t i, len;
+	const size_t max_gids = 32;
+	gid_t *g = NULL;
+	__do_free_string_list char **gids_str = NULL;
+
+	if (add_gids == NULL || strlen(add_gids) == 0) {
+		ERROR("No additional gids");
+		return -1;
+	}
+
+	gids_str = lxc_string_split(add_gids, ',');
+	if (gids_str == NULL) {
+		ERROR("Failed to split additional gids");
+		return -1;
+	}
+
+	len = lxc_array_len((void **)gids_str);
+	if (len > max_gids) {
+		ERROR("Too many additional gids");
+		return -1;
+	}
+
+	g = calloc(len, sizeof(gid_t));
+	if (g == NULL) {
+		ERROR("Out of memory");
+		return -1;
+	}
+
+	for (i = 0; i < len; i++) {
+		if (lxc_safe_uint(gids_str[i], &readvalue) != 0) {
+			ERROR("Invalid gid value %s", gids_str[i]);
+			free(g);
+			return -1;
+		}
+		g[i] = readvalue;
+	}
+
+	gids->list = g;
+	gids->size = len;
+	return 0;
 }
 
 static int lxc_attach_create_log_file(const char *log_file)
@@ -422,6 +479,11 @@ int lxc_attach_main(int argc, char *argv[])
 
 	if (my_args.gid != LXC_INVALID_GID)
 		attach_options.gid = my_args.gid;
+
+	if (additional_gids.size > 0) {
+		attach_options.attach_flags |= LXC_ATTACH_SETGROUPS;
+		attach_options.groups = additional_gids;
+	}
 
 	// selinux_context will be NULL if not set
 	if (selinux_context) {
