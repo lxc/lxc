@@ -571,7 +571,7 @@ foreach ident: [
     ['move_mount',        '''#include <sys/mount.h>'''],
     ['openat2',           '''#include <sys/types.h>
                              #include <sys/stat.h>
-                             #include <fctnl.h>'''],
+                             #include <fcntl.h>'''],
     ['open_tree',         '''#include <sys/mount.h>'''],
     ['personality',       '''#include <sys/personality.h>'''],
     ['pidfd_open',        '''#include <stdlib.h>
