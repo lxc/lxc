@@ -25,6 +25,8 @@ struct open_how {
 	__u64 mode;
 	__u64 resolve;
 };
+#else
+#include <fcntl.h>
 #endif
 
 /* how->resolve flags for openat2(2). */

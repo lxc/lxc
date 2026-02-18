@@ -678,6 +678,7 @@ endforeach
 
 ## Types.
 decl_headers = '''
+#include <fcntl.h>
 #include <uchar.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
