@@ -1249,7 +1249,8 @@ static int set_config_seccomp_profile(const char *key, const char *value,
 #if HAVE_SECCOMP
 	return set_config_path_item(&lxc_conf->seccomp.seccomp, value);
 #else
-	return ret_errno(ENOSYS);
+	WARN("Ignoring seccomp profile: \"%s\" because seccomp is disabled or libseccomp not found")
+	return 0;
 #endif
 }
 
@@ -2490,9 +2491,13 @@ static int add_cap_entry(struct lxc_conf *conf, char *caps, bool keep)
 		ret = parse_cap(token, &cap);
 		if (ret < 0) {
 			if (ret != -2)
+#if HAVE_LIBCAP
 				return syserror_set(-EINVAL, "Invalid capability specified: %s", token);
 
 			INFO("Ignoring unknown capability \"%s\"", token);
+#else
+				WARN("Ignoring capability \"%s\"", token);
+#endif
 			continue;
 		}
 
