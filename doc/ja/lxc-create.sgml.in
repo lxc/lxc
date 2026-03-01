@@ -185,10 +185,12 @@
 		 You can specify the following options :
 		 <replaceable>&#045;&#045;rbdname RBDNAME</replaceable> will create a blockdevice named RBDNAME rather than the default, which is the container name.
 		 <replaceable>&#045;&#045;rbdpool POOL</replaceable> will create the blockdevice in the pool named POOL, rather than the default, which is 'lxc'.
+		<replaceable>\-\-rbduser RBDUSER</replaceable> will specify the ceph user RBDUSER creating the blockdevice, rather than the default, which is 'admin'.
 		 -->
 		 backingstore が 'rbd' の場合、<filename>ceph.conf</filename> に有効な設定がされており、<filename>ceph.client.admin.keyring</filename> が定義されている必要があります。
 		 <replaceable>--rbdname RBDNAME</replaceable> を指定すると、RBDNAME という名前のブロックデバイスを作成します。このオプションを指定しない場合のデフォルトのブロックデバイス名はコンテナ名です。
 		 <replaceable>--rbdpool POOL</replaceable> を指定すると、POOL という名前のプール内にブロックデバイスを作成します。このオプションを指定しない場合のデフォルトのプール名は 'lxc' です。
+		 <replaceable>--rbduser RBDUSER</replaceable> を指定すると、RBDUSER という ceph ユーザを指定してブロックデバイスを作成します。このオプションを指定しない場合のデフォルトのユーザ名は 'admin' です。
 	  </para>
 	  <para>
             <!--
