@@ -569,10 +569,12 @@ foreach ident: [
     ['personality',       '''#include <sys/personality.h>'''],
     ['pidfd_open',        '''#include <stdlib.h>
                              #include <unistd.h>
+                             #include <sys/pidfd.h>
                              #include <signal.h>
                              #include <sys/wait.h>'''],
     ['pidfd_send_signal', '''#include <stdlib.h>
                              #include <unistd.h>
+                             #include <sys/pidfd.h>
                              #include <signal.h>
                              #include <sys/wait.h>'''],
     ['pivot_root',        '''#include <stdlib.h>
