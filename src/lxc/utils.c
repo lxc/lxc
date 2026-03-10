@@ -593,20 +593,20 @@ int run_script_argv(const char *name, unsigned int hook_version,
 	size += STRLITERALLEN("exec");
 	size++;
 	size += strlen(script);
-	size++;
+	size += 3;
 
 	if (size > INT_MAX)
 		return -EFBIG;
 
 	if (hook_version == 0) {
 		size += strlen(hookname);
-		size++;
+		size += 3;
 
 		size += strlen(name);
-		size++;
+		size += 3;
 
 		size += strlen(section);
-		size++;
+		size += 3;
 
 		if (size > INT_MAX)
 			return -EFBIG;
@@ -706,7 +706,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 	size += strlen(script);
 	size += strlen(name);
 	size += strlen(section);
-	size += 4;
+	size += 10;
 
 	if (size > INT_MAX)
 		return -1;
