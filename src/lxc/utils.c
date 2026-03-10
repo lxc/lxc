@@ -617,9 +617,9 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		return -ENOMEM;
 
 	if (hook_version == 0)
-		buf_pos = strnprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
+		buf_pos = strnprintf(buffer, size, "exec '%s' '%s' '%s' '%s'", script, name, section, hookname);
 	else
-		buf_pos = strnprintf(buffer, size, "exec %s", script);
+		buf_pos = strnprintf(buffer, size, "exec '%s'", script);
 	if (buf_pos < 0)
 		return log_error_errno(-1, errno, "Failed to create command line for script \"%s\"", script);
 
@@ -712,7 +712,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		return -1;
 
 	buffer = must_realloc(NULL, size);
-	ret = strnprintf(buffer, size, "exec %s %s %s", script, name, section);
+	ret = strnprintf(buffer, size, "exec '%s' '%s' '%s'", script, name, section);
 	if (ret < 0)
 		return -1;
 
