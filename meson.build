@@ -865,6 +865,11 @@ foreach tuple: [
     endif
 endforeach
 
+if want_install_init
+    if 'systemd' in init_script
+        srcconf.set10('HAVE_SYSTEMD', 1)
+    endif
+endif
 # Generate config.h
 config_h = configure_file(
         output: 'config.h',
