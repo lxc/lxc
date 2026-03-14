@@ -962,7 +962,7 @@ static bool check_cgroup_dir_config(struct lxc_conf *conf)
 #define SYSTEMD_SCOPE_UNSUPP 1
 #define SYSTEMD_SCOPE_SUCCESS 0
 
-#if HAVE_DBUS
+#if HAVE_DBUS && HAVE_SYSTEMD
 #define DESTINATION "org.freedesktop.systemd1"
 #define PATH "/org/freedesktop/systemd1"
 #define INTERFACE "org.freedesktop.systemd1.Manager"
@@ -1593,14 +1593,14 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 
 	return SYSTEMD_SCOPE_FAILED; // failed, let's try old-school after all
 }
-#else /* HAVE_DBUS */
+#else /* HAVE_DBUS && HAVE_SYSTEMD */
 
 static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	return SYSTEMD_SCOPE_UNSUPP;
 }
 
-#endif /* HAVE_DBUS */
+#endif /* HAVE_DBUS && HAVE_SYSTEMD */
 
 // Return a duplicate of cgroup path @cg without leading /, so
 // that caller can own+free it and be certain it's not abspath.
@@ -2869,7 +2869,7 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	__do_free char *scope = NULL;
 	ssize_t ret;
 
-#if HAVE_DBUS
+#if HAVE_DBUS && HAVE_SYSTEMD
 	scope = lxc_cmd_get_systemd_scope(conf->name, lxcpath);
 	if (scope) {
 		TRACE("%s:%s is running under systemd-created scope '%s'.  Attaching...", lxcpath, conf->name, scope);
