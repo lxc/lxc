@@ -811,7 +811,7 @@ found_headers = []
 missing_headers = []
 foreach tuple: [
     ['sys/resource.h'],
-    ['sys/memfd.h'],
+    ['linux/memfd.h'],
     ['sys/personality.h'],
     ['sys/pidfd.h'],
     ['sys/signalfd.h'],
