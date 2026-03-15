@@ -1521,6 +1521,9 @@ static int unpriv_systemd_create_scope(struct cgroup_ops *ops, struct lxc_conf *
 	__attribute__((__cleanup__(_dbus_connection_free))) DBusConnection *connection = NULL;
 	unsigned int len;
 
+	if (!file_exists("/run/systemd/system"))
+		return log_info(SYSTEMD_SCOPE_UNSUPP, "Not a systemd system or systemd not running");
+
 	if (geteuid() == 0)
 		return log_info(SYSTEMD_SCOPE_UNSUPP, "Running privileged, not using a systemd unit");
 
