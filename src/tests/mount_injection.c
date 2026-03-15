@@ -409,20 +409,24 @@ static void lxc_teardown_shmount(char *shmount_path)
 
 int main(int argc, char *argv[])
 {
+	int ret = EXIT_SUCCESS;
+	
 	if (!lxc_setup_shmount("/tmp/mount_injection_test"))
 		exit(EXIT_FAILURE);
 
 	if (do_priv_container_test()) {
 		fprintf(stderr, "Privileged mount injection test failed\n");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto out;
 	}
 
 	if (do_unpriv_container_test()) {
 		fprintf(stderr, "Unprivileged mount injection test failed\n");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto out;
 	}
 
+out:
 	lxc_teardown_shmount("/tmp/mount_injection_test");
-
-	exit(EXIT_SUCCESS);
+	exit(ret);
 }
