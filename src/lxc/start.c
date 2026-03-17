@@ -352,9 +352,10 @@ restart:
 		}
 
 		if (closeall) {
-			if (close(fd))
-				SYSINFO("Closed inherited fd %d", fd);
-			else
+			if (close(fd)) {
+				WARN("Could not close fd %d. Continuing...", fd);
+				continue;
+			} else
 				INFO("Closed inherited fd %d", fd);
 			closedir(dir);
 			goto restart;
