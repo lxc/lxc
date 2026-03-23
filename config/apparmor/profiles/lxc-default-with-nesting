@@ -10,6 +10,12 @@ profile lxc-container-default-with-nesting flags=(attach_disconnected,mediate_de
   mount fstype=proc -> /var/cache/lxc/**,
   mount fstype=sysfs -> /var/cache/lxc/**,
   mount options=(rw,bind),
+  mount options=(rw,rbind) -> /run/systemd/mount-rootfs/,
+  mount options=(rw,rbind) -> /run/systemd/mount-rootfs/**,
+  mount options=(rw,rbind) -> /run/systemd/unit-root/,
+  mount options=(rw,rbind) -> /run/systemd/unit-root/**,
+  mount options=(rw,rshared) -> /,
+  mount options=(rw,nosuid,nodev,noexec) proc -> /run/systemd/unit-root/proc/,
   mount fstype=cgroup -> /sys/fs/cgroup/**,
   mount fstype=cgroup2 -> /sys/fs/cgroup/**,
 }
