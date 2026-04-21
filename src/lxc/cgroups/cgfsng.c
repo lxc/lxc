@@ -1813,75 +1813,6 @@ __cgfsng_ops static void cgfsng_finalize(struct cgroup_ops *ops)
         }
 }
 
-/* cgroup-full:* is done, no need to create subdirs */
-static inline bool cg_mount_needs_subdirs(int cgroup_automount_type)
-{
-	switch (cgroup_automount_type) {
-	case LXC_AUTO_CGROUP_RO:
-		return true;
-	case LXC_AUTO_CGROUP_RW:
-		return true;
-	case LXC_AUTO_CGROUP_MIXED:
-		return true;
-	}
-
-	return false;
-}
-
-/* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
- * remount controller ro if needed and bindmount the cgroupfs onto
- * control/the/cg/path.
- */
-static int cg_legacy_mount_controllers(int cgroup_automount_type, struct hierarchy *h,
-				       char *hierarchy_mnt, char *cgpath,
-				       const char *container_cgroup)
-{
-	__do_free char *sourcepath = NULL;
-	int ret, remount_flags;
-	int flags = MS_BIND;
-
-	if ((cgroup_automount_type == LXC_AUTO_CGROUP_RO) ||
-	    (cgroup_automount_type == LXC_AUTO_CGROUP_MIXED)) {
-		ret = mount(hierarchy_mnt, hierarchy_mnt, "cgroup", MS_BIND, NULL);
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
-					       hierarchy_mnt, hierarchy_mnt);
-
-		remount_flags = add_required_remount_flags(hierarchy_mnt,
-							   hierarchy_mnt,
-							   flags | MS_REMOUNT);
-		ret = mount(hierarchy_mnt, hierarchy_mnt, "cgroup",
-			    remount_flags | MS_REMOUNT | MS_BIND | MS_RDONLY,
-			    NULL);
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remount \"%s\" ro", hierarchy_mnt);
-
-		INFO("Remounted %s read-only", hierarchy_mnt);
-	}
-
-	sourcepath = make_cgroup_path(h, h->at_base, container_cgroup, NULL);
-	if (cgroup_automount_type == LXC_AUTO_CGROUP_RO)
-		flags |= MS_RDONLY;
-
-	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount \"%s\" onto \"%s\"",
-				       h->controllers[0], cgpath);
-	INFO("Mounted \"%s\" onto \"%s\"", h->controllers[0], cgpath);
-
-	if (flags & MS_RDONLY) {
-		remount_flags = add_required_remount_flags(sourcepath, cgpath,
-							   flags | MS_REMOUNT);
-		ret = mount(sourcepath, cgpath, "cgroup", remount_flags, NULL);
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remount \"%s\" ro", cgpath);
-		INFO("Remounted %s read-only", cgpath);
-	}
-
-	INFO("Completed second stage cgroup automounts for \"%s\"", cgpath);
-	return 0;
-}
-
 /* __cgroupfs_mount
  *
  * Mount cgroup hierarchies directly without using bind-mounts. The main
@@ -1894,7 +1825,7 @@ static int __cgroupfs_mount(int cgroup_automount_type, struct hierarchy *h,
 {
 	__do_close int fd_fs = -EBADF;
 	unsigned int flags = 0;
-	char *fstype;
+	char *fstype = "cgroup2";
 	int ret;
 
 	if (dfd_mnt_cgroupfs < 0)
@@ -1910,10 +1841,8 @@ static int __cgroupfs_mount(int cgroup_automount_type, struct hierarchy *h,
 	    (cgroup_automount_type == LXC_AUTO_CGROUP2_RO))
 		flags |= MOUNT_ATTR_RDONLY;
 
-	if (is_unified_hierarchy(h))
-		fstype = "cgroup2";
-	else
-		fstype = "cgroup";
+	if (!is_unified_hierarchy(h))
+		return ret_errno(EOPNOTSUPP);
 
 	if (can_use_mount_api()) {
 		fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
@@ -1970,26 +1899,6 @@ static inline int cgroupfs_mount(int cgroup_automount_type, struct hierarchy *h,
 				dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
-static inline int cgroupfs_bind_mount(int cgroup_automount_type, struct hierarchy *h,
-				      struct lxc_rootfs *rootfs,
-				      int dfd_mnt_cgroupfs,
-				      const char *hierarchy_mnt)
-{
-	switch (cgroup_automount_type) {
-	case LXC_AUTO_CGROUP_FULL_RO:
-		break;
-	case LXC_AUTO_CGROUP_FULL_RW:
-		break;
-	case LXC_AUTO_CGROUP_FULL_MIXED:
-		break;
-	default:
-		return 0;
-	}
-
-	return __cgroupfs_mount(cgroup_automount_type, h, rootfs,
-				dfd_mnt_cgroupfs, hierarchy_mnt);
-}
-
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_handler *handler, int cg_flags)
 {
@@ -1999,7 +1908,6 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	bool in_cgroup_ns = false, wants_force_mount = false;
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
-	const char *rootfs_mnt = get_rootfs_mnt(rootfs);
 	int ret;
 
 	if (!ops)
@@ -2143,93 +2051,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return syserror_ret(false, "Failed to mount cgroups");
 	}
 
-	/*
-	 * Mount a tmpfs over DEFAULT_CGROUP_MOUNTPOINT. Note that we're
-	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
-	 * DEFAULT_CGROUP_MOUNTPOINT define.
-	 */
-	if (can_use_mount_api()) {
-		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
-		if (fd_fs < 0)
-			return log_error_errno(false, errno, "Failed to create new filesystem context for tmpfs");
-
-		ret = fs_set_property(fd_fs, "mode", "0755");
-		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
-
-		ret = fs_set_property(fd_fs, "size", "10240k");
-		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
-
-		ret = fs_attach(fd_fs, rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
-				MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |
-				MOUNT_ATTR_NOEXEC | MOUNT_ATTR_RELATIME);
-	} else {
-		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
-		ret = safe_mount(NULL, cgroup_root, "tmpfs",
-				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-				 "size=10240k,mode=755", rootfs_mnt);
-	}
-	if (ret < 0)
-		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
-				       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
-
-	dfd_mnt_tmpfs = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (dfd_mnt_tmpfs < 0)
-		return syserror_ret(false, "Failed to open %d(%s)",
-				    rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
-
-	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *hierarchy_mnt = NULL, *path2 = NULL;
-		struct hierarchy *h = ops->hierarchies[i];
-
-		ret = mkdirat(dfd_mnt_tmpfs, h->at_mnt, 0000);
-		if (ret < 0)
-			return syserror_ret(false, "Failed to create cgroup at_mnt %d(%s)", dfd_mnt_tmpfs, h->at_mnt);
-
-		if (in_cgroup_ns && wants_force_mount) {
-			/*
-			 * If cgroup namespaces are supported but the container
-			 * will not have CAP_SYS_ADMIN after it has started we
-			 * need to mount the cgroups manually.
-			 */
-			ret = cgroupfs_mount(cgroup_automount_type, h, rootfs,
-					     dfd_mnt_tmpfs, h->at_mnt);
-			if (ret < 0)
-				return false;
-
-			continue;
-		}
-
-		/* Here is where the ancient kernel section begins. */
-		ret = cgroupfs_bind_mount(cgroup_automount_type, h, rootfs,
-					  dfd_mnt_tmpfs, h->at_mnt);
-		if (ret < 0)
-			return false;
-
-		if (!cg_mount_needs_subdirs(cgroup_automount_type))
-			continue;
-
-		if (!cgroup_root)
-			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
-
-		hierarchy_mnt = must_make_path(cgroup_root, h->at_mnt, NULL);
-		path2 = must_make_path(hierarchy_mnt, h->at_base,
-				       ops->container_cgroup, NULL);
-		ret = lxc_mkdir_p(path2, 0755);
-		if (ret < 0 && (errno != EEXIST))
-			return false;
-
-		ret = cg_legacy_mount_controllers(cgroup_automount_type, h,
-						  hierarchy_mnt, path2,
-						  ops->container_cgroup);
-		if (ret < 0)
-			return false;
-	}
-
-	return true;
+	return syserror_ret(false, "Failed to mount cgroups - unsupported cgroup layout");
 }
 
 /* Only root needs to escape to the cgroup of its init. */
