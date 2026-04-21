@@ -396,6 +396,13 @@ if want_tests
         output: 'lxc-test-usernic')
 
     test_programs += configure_file(
+        configuration: conf,
+        install: true,
+        install_dir: bindir,
+        input: 'lxc-test-usernic-2.in',
+        output: 'lxc-test-usernic-2')
+
+    test_programs += configure_file(
         configuration: dummy_config_data,
         install: true,
         install_dir: bindir,

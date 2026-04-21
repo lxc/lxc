@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: LGPL-2.1+
+
+# lxc: linux Container library
+#
+# This tests verifies that lxc-user-nic can't be used by an
+# unprivileged user to delete another user's ovs nics.
+#
+# This test assumes an Ubuntu host
+
+DONE=0
+LXC_USER_NIC="@LIBEXECDIR@/lxc/lxc-user-nic"
+
+apt-get -y install openvswitch-switch
+
+run_cmd() {
+	u=$1
+	shift
+	sudo -i -u $u \
+	    env http_proxy=${http_proxy:-} https_proxy=${https_proxy:-} \
+	        XDG_RUNTIME_DIR=/run/user/$(id -u $u) ASAN_OPTIONS=${ASAN_OPTIONS:-} \
+		UBSAN_OPTIONS=${UBSAN_OPTIONS:-} $*
+}
+
+cleanup() {
+	set +e
+
+	(
+		run_cmd usernic-first "lxc-stop -n b1 -k"
+		run_cmd usernic-second "lxc-stop -n b1 -k"
+		sed -i '/usernic-first/d' /run/lxc/nics /etc/lxc/lxc-usernet
+		sed -i '/usernic-second/d' /run/lxc/nics /etc/lxc/lxc-usernet
+		ovs-vsctl del-br usernic-vs
+
+		pkill -u $(id -u usernic-first) -9
+		pkill -u $(id -u usernic-second) -9
+
+		rm -rf /tmp/usernic-test
+		rm -rf /home/usernic-first /run/user/$(id -u usernic-first)
+		rm -rf /home/usernic-second /run/user/$(id -u usernic-second)
+
+		deluser usernic-first
+		deluser usernic-second
+	) >/dev/null 2>&1
+
+	if [ "$DONE" = "1" ]; then
+		echo "PASS"
+		exit 0
+	fi
+
+	echo "FAIL"
+	exit 1
+}
+
+set -eux
+trap cleanup EXIT SIGHUP SIGINT SIGTERM
+
+# create a test user
+deluser usernic-first || true
+useradd usernic-first
+mkdir -p /home/usernic-first
+chown usernic-first: /home/usernic-first
+usermod -v 910000-919999 -w 910000-919999 usernic-first
+
+mkdir -p /home/usernic-first/.config/lxc/
+cat > /home/usernic-first/.config/lxc/default.conf << EOF
+lxc.net.0.type = veth
+lxc.net.0.link = usernic-vs
+lxc.net.0.flags = up
+lxc.idmap = u 0 910000 10000
+lxc.idmap = g 0 910000 10000
+EOF
+
+deluser usernic-second || true
+useradd usernic-second
+mkdir -p /home/usernic-second
+chown usernic-second: /home/usernic-second
+usermod -v 920000-929999 -w 920000-929999 usernic-second
+
+mkdir -p /home/usernic-second/.config/lxc/
+cat > /home/usernic-second/.config/lxc/default.conf << EOF
+lxc.net.0.type = veth
+lxc.net.0.link = usernic-vs
+lxc.net.0.flags = up
+lxc.idmap = u 0 920000 10000
+lxc.idmap = g 0 920000 10000
+lxc.apparmor.profile = lxc-container-default-with-nesting
+EOF
+
+mkdir -p /run/user/$(id -u usernic-first) /run/user/$(id -u usernic-second)
+chown -R usernic-first: /run/user/$(id -u usernic-first) /home/usernic-first
+chown -R usernic-second: /run/user/$(id -u usernic-second) /home/usernic-second
+
+ovs-vsctl add-br usernic-vs
+
+# Give each a quota of one nic on this bridge
+touch /etc/lxc/lxc-usernet
+sed -i '/^usernic-first/d' /etc/lxc/lxc-usernet
+sed -i '/^usernic-second/d' /etc/lxc/lxc-usernet
+echo "usernic-second veth usernic-vs 1" >> /etc/lxc/lxc-usernet
+echo "usernic-first veth usernic-vs 1" >> /etc/lxc/lxc-usernet
+
+run_cmd usernic-first "lxc-create -t busybox -n b1"
+run_cmd usernic-first "lxc-start -n b1 -d"
+run_cmd usernic-first "lxc-wait -n b1 -s RUNNING"
+p1=$(run_cmd usernic-first "lxc-info -n b1 -p -H")
+
+run_cmd usernic-second "lxc-create -t busybox -n b1"
+run_cmd usernic-second "lxc-start -n b1 -d"
+run_cmd usernic-second "lxc-wait -n b1 -s RUNNING"
+p2=$(run_cmd usernic-second "lxc-info -n b1 -p -H")
+
+ovs-vsctl list-ports usernic-vs
+n1=$(ovs-vsctl list-ports usernic-vs | wc -l)
+if [[ $n1 -ne 2 ]]; then
+	echo "wrong number of nics"
+	cleanup 1
+fi
+
+dev=$(grep usernic-first /run/lxc/nics | cut -f 4 -d\ )
+if run_cmd usernic-second \
+	"$LXC_USER_NIC delete xx xx /proc/$p2/ns/net veth usernic-vs $dev"; then
+	echo "FAIL: unpriv user could unlink another user's ovs port"
+	cleanup 1
+fi
+
+echo "All tests passed"
+DONE=1
