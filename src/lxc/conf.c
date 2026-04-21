@@ -3204,7 +3204,6 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.fd_path_pin = -EBADF;
 	new->rootfs.dfd_idmapped = -EBADF;
 	new->logfd = -1;
-	INIT_LIST_HEAD(&new->cgroup);
 	INIT_LIST_HEAD(&new->cgroup2);
 	/* Block ("allowlist") all devices by default. */
 	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
@@ -4114,11 +4113,6 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 		namespaced_token	= "lxc.cgroup2.";
 		namespaced_token_len	= STRLITERALLEN("lxc.cgroup2.");
 		list = &c->cgroup2;
-	} else if (version == CGROUP_SUPER_MAGIC) {
-		global_token		= "lxc.cgroup";
-		namespaced_token	= "lxc.cgroup.";
-		namespaced_token_len	= STRLITERALLEN("lxc.cgroup.");
-		list = &c->cgroup;
 	} else {
 		return ret_errno(EINVAL);
 	}
@@ -4366,7 +4360,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->lsm_se_keyring_context);
 	lxc_seccomp_free(&conf->seccomp);
 	lxc_clear_config_caps(conf);
-	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);
 	lxc_clear_cgroups(conf, "lxc.cgroup2", CGROUP2_SUPER_MAGIC);
 	lxc_clear_cgroups_devices(conf);
 	lxc_clear_hooks(conf, "lxc.hook");

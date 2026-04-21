@@ -417,7 +417,6 @@ struct lxc_conf {
 	struct utsname *utsname;
 
 	struct {
-		struct list_head cgroup;
 		struct list_head cgroup2;
 		struct bpf_devices bpf_devices;
 	};
