@@ -2560,18 +2560,6 @@ __cgfsng_ops static bool cgfsng_criu_get_hierarchies(struct cgroup_ops *ops,
 	return true;
 }
 
-static int cg_legacy_freeze(struct cgroup_ops *ops)
-{
-	struct hierarchy *h;
-
-	h = get_hierarchy(ops, "freezer");
-	if (!h)
-		return ret_set_errno(-1, ENOENT);
-
-	return lxc_write_openat(h->path_con, "freezer.state",
-				"FROZEN", STRLITERALLEN("FROZEN"));
-}
-
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_async_descr *descr)
 {
@@ -2664,22 +2652,10 @@ __cgfsng_ops static int cgfsng_freeze(struct cgroup_ops *ops, int timeout)
 	if (!ops->hierarchies)
 		return ret_set_errno(-1, ENOENT);
 
-	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
-		return cg_legacy_freeze(ops);
+	if (!pure_unified_layout(ops))
+		return ret_set_errno(-1, EOPNOTSUPP);
 
 	return cg_unified_freeze(ops, timeout);
-}
-
-static int cg_legacy_unfreeze(struct cgroup_ops *ops)
-{
-	struct hierarchy *h;
-
-	h = get_hierarchy(ops, "freezer");
-	if (!h)
-		return ret_set_errno(-1, ENOENT);
-
-	return lxc_write_openat(h->path_con, "freezer.state",
-				"THAWED", STRLITERALLEN("THAWED"));
 }
 
 static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
@@ -2694,8 +2670,8 @@ __cgfsng_ops static int cgfsng_unfreeze(struct cgroup_ops *ops, int timeout)
 	if (!ops->hierarchies)
 		return ret_set_errno(-1, ENOENT);
 
-	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
-		return cg_legacy_unfreeze(ops);
+	if (!pure_unified_layout(ops))
+		return ret_set_errno(-1, EOPNOTSUPP);
 
 	return cg_unified_unfreeze(ops, timeout);
 }
