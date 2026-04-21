@@ -622,22 +622,22 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = c->get_config_item(c, "lxc.cgroup", v3, 2047);
+	ret = c->get_config_item(c, "lxc.cgroup2", v3, 2047);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item(cgroup.devices) returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(cgroup2.devices) returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	printf("%d: get_config_item (cgroup.devices) returned %d %s\n", __LINE__, ret, v3);
+	printf("%d: get_config_item (cgroup2.devices) returned %d %s\n", __LINE__, ret, v3);
 
-	ret = c->get_config_item(c, "lxc.cgroup.devices.allow", v3, 2047);
+	ret = c->get_config_item(c, "lxc.cgroup2.devices.allow", v3, 2047);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item(cgroup.devices.devices.allow) returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(cgroup2.devices.devices.allow) returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	printf("%d: get_config_item (cgroup.devices.devices.allow) returned %d %s\n", __LINE__, ret, v3);
+	printf("%d: get_config_item (cgroup2.devices.devices.allow) returned %d %s\n", __LINE__, ret, v3);
 
-	if (!c->clear_config_item(c, "lxc.cgroup")) {
-		fprintf(stderr, "%d: failed clearing lxc.cgroup\n", __LINE__);
+	if (!c->clear_config_item(c, "lxc.cgroup2")) {
+		fprintf(stderr, "%d: failed clearing lxc.cgroup2\n", __LINE__);
 		goto out;
 	}
 

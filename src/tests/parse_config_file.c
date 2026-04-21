@@ -391,19 +391,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.cgroup.cpuset.cpus",
+	if (set_get_compare_clear_save_load(c, "lxc.cgroup2.cpuset.cpus",
 					    "1-100", tmpf, false) < 0) {
-		lxc_error("%s\n", "lxc.cgroup.cpuset.cpus");
+		lxc_error("%s\n", "lxc.cgroup2.cpuset.cpus");
 		goto non_test_error;
 	}
 
-	if (!c->set_config_item(c, "lxc.cgroup.cpuset.cpus", "1-100")) {
-		lxc_error("%s\n", "failed to set config item \"lxc.cgroup.cpuset.cpus\" to \"1-100\"");
+	if (!c->set_config_item(c, "lxc.cgroup2.cpuset.cpus", "1-100")) {
+		lxc_error("%s\n", "failed to set config item \"lxc.cgroup2.cpuset.cpus\" to \"1-100\"");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.cgroup.memory.limit_in_bytes", "123456789")) {
-		lxc_error("%s\n", "failed to set config item \"lxc.cgroup.memory.limit_in_bytes\" to \"123456789\"");
+	if (!c->set_config_item(c, "lxc.cgroup2.memory.max", "123456789")) {
+		lxc_error("%s\n", "failed to set config item \"lxc.cgroup2.memory.max\" to \"123456789\"");
 		return -1;
 	}
 
