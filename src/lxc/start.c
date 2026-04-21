@@ -2002,11 +2002,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, false)) {
-		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
-		goto out_delete_net;
-	}
-
 	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
 		ERROR("Failed to delegate controllers to payload cgroup");
 		goto out_delete_net;
@@ -2094,17 +2089,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (!lxc_sync_wait_child(handler, START_SYNC_CGROUP_LIMITS))
 		goto out_delete_net;
-
-	/*
-	 * With isolation the limiting devices cgroup was already setup, so
-	 * only setup devices here if we have no namespace directory.
-	 */
-	if (!handler->conf->cgroup_meta.namespace_dir &&
-	    !cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, true)) {
-		ERROR("Failed to setup legacy device cgroup controller limits");
-		goto out_delete_net;
-	}
-	TRACE("Set up legacy device cgroup controller limits");
 
 	if (!cgroup_ops->devices_activate(cgroup_ops, handler)) {
 		ERROR("Failed to setup cgroup2 device controller limits");

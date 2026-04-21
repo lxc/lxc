@@ -776,16 +776,6 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		      h->dfd_lim, h->dfd_base, cgroup_limit_dir);
 
 		/*
-		 * With isolation the devices legacy cgroup needs to be
-		 * iinitialized early, as it typically contains an 'a' (all)
-		 * line, which is not possible once a subdirectory has been
-		 * created.
-		 */
-		if (string_in_list(h->controllers, "devices") &&
-		    !ops->setup_limits_legacy(ops, conf, true))
-			return log_warn(false, "Failed to setup legacy device limits");
-
-		/*
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
 		 * cgroup the container actually resides in, is below fd_limit.
 		 */
@@ -3330,135 +3320,6 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 	return 0;
 }
 
-static int convert_devpath(const char *invalue, char *dest)
-{
-	struct device_item device = {};
-	int ret;
-
-	ret = device_cgroup_rule_parse_devpath(&device, invalue);
-	if (ret < 0)
-		return -1;
-
-	ret = strnprintf(dest, 50, "%c %d:%d %s", device.type, device.major,
-			 device.minor, device.access);
-	if (ret < 0)
-		return log_error_errno(ret, -ret,
-				       "Error on configuration value \"%c %d:%d %s\" (max 50 chars)",
-				       device.type, device.major, device.minor,
-				       device.access);
-
-	return 0;
-}
-
-/* Called from setup_limits - here we have the container's cgroup_data because
- * we created the cgroups.
- */
-static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
-			      const char *value, bool is_cpuset)
-{
-	__do_free char *controller = NULL;
-	char *p;
-	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
-	char converted_value[50];
-	struct hierarchy *h;
-
-	controller = strdup(filename);
-	if (!controller)
-		return ret_errno(ENOMEM);
-
-	p = strchr(controller, '.');
-	if (p)
-		*p = '\0';
-
-	if (strequal("devices.allow", filename) && value[0] == '/') {
-		int ret;
-
-		ret = convert_devpath(value, converted_value);
-		if (ret < 0)
-			return ret;
-		value = converted_value;
-	}
-
-	h = get_hierarchy(ops, controller);
-	if (!h)
-		return log_error_errno(-ENOENT, ENOENT, "Failed to setup limits for the \"%s\" controller. The controller seems to be unused by \"cgfsng\" cgroup driver or not enabled on the cgroup hierarchy", controller);
-
-	if (is_cpuset) {
-		int ret = lxc_write_openat(h->path_con, filename, value, strlen(value));
-		if (ret)
-			return ret;
-	}
-	return lxc_write_openat(h->path_lim, filename, value, strlen(value));
-}
-
-/*
- * Return the list of cgroup_settings sorted according to the following rules
- * 1. Put memory.limit_in_bytes before memory.memsw.limit_in_bytes
- */
-static void sort_cgroup_settings(struct lxc_conf *conf)
-{
-	LIST_HEAD(memsw_list);
-	struct lxc_cgroup *cgroup, *ncgroup;
-
-	/* Iterate over the cgroup settings and copy them to the output list. */
-	list_for_each_entry_safe(cgroup, ncgroup, &conf->cgroup, head) {
-		if (!strequal(cgroup->subsystem, "memory.memsw.limit_in_bytes"))
-			continue;
-
-		/* Move the memsw entry from the cgroup settings list. */
-		list_move_tail(&cgroup->head, &memsw_list);
-	}
-
-	/*
-	 * Append all the memsw entries to the end of the cgroup settings list
-	 * to make sure they are applied after all memory limit settings.
-	 */
-	list_splice_tail(&memsw_list, &conf->cgroup);
-
-}
-
-__cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
-						    struct lxc_conf *conf,
-						    bool do_devices)
-{
-	struct list_head *cgroup_settings;
-	struct lxc_cgroup *cgroup;
-
-	if (!ops)
-		return ret_set_errno(false, ENOENT);
-
-	if (!conf)
-		return ret_set_errno(false, EINVAL);
-
-	cgroup_settings = &conf->cgroup;
-	if (list_empty(cgroup_settings))
-		return true;
-
-	if (!ops->hierarchies)
-		return ret_set_errno(false, EINVAL);
-
-	if (pure_unified_layout(ops))
-		return log_warn_errno(true, EINVAL, "Ignoring legacy cgroup limits on pure cgroup2 system");
-
-	sort_cgroup_settings(conf);
-	list_for_each_entry(cgroup, cgroup_settings, head) {
-		if (do_devices == strnequal("devices", cgroup->subsystem, 7)) {
-			if (cg_legacy_set_data(ops, cgroup->subsystem, cgroup->value, strnequal("cpuset", cgroup->subsystem, 6))) {
-				if (do_devices && (errno == EACCES || errno == EPERM)) {
-					SYSWARN("Failed to set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
-					continue;
-				}
-				SYSERROR("Failed to set \"%s\" to \"%s\"", cgroup->subsystem, cgroup->value);
-				return false;
-			}
-			DEBUG("Set controller \"%s\" set to \"%s\"", cgroup->subsystem, cgroup->value);
-		}
-	}
-
-	INFO("Limits for the legacy cgroup hierarchies have been setup");
-	return true;
-}
-
 /*
  * Some of the parsing logic comes from the original cgroup device v1
  * implementation in the kernel.
@@ -4169,7 +4030,6 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->set 				= cgfsng_set;
 	cgfsng_ops->freeze				= cgfsng_freeze;
 	cgfsng_ops->unfreeze				= cgfsng_unfreeze;
-	cgfsng_ops->setup_limits_legacy			= cgfsng_setup_limits_legacy;
 	cgfsng_ops->setup_limits			= cgfsng_setup_limits;
 	cgfsng_ops->driver				= "cgfsng";
 	cgfsng_ops->version				= "1.0.0";
