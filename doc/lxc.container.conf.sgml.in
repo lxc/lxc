@@ -1558,7 +1558,8 @@
 	ignore <option>lxc.cgroup.</option> settings on systems that only use
 	the unified hierarchy. Conversely, it will ignore
 	<option>lxc.cgroup2.</option> options on systems that only use legacy
-	hierarchies.
+	hierarchies. <option>lxc.cgroup.</option> (legacy and hybrid hierarchy)
+	support is dropped.
       </para>
 
       <para>
