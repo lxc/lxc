@@ -40,14 +40,11 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
 
-	if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_LEGACY)
-		TRACE("Legacy cgroup layout");
-	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_HYBRID)
-		TRACE("Hybrid cgroup layout");
-	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+	if (pure_unified_layout(cgroup_ops)) {
 		TRACE("Unified cgroup layout");
-	else
-		WARN("Unsupported cgroup layout");
+	} else {
+		WARN("Unsupported cgroup layout (%s)", cgroup_layout_name(cgroup_ops->cgroup_layout));
+	}
 
 	return cgroup_ops;
 }
