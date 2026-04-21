@@ -184,138 +184,6 @@ int prepare_cgroup_fd(const struct cgroup_ops *ops, struct cgroup_fd *fd, bool l
 	return 0;
 }
 
-/* Create cpumask from cpulist aka turn:
- *
- *	0,2-3
- *
- * into bit array
- *
- *	1 0 1 1
- */
-static int lxc_cpumask(char *buf, __u32 **bitarr, __u32 *last_set_bit)
-{
-	__do_free __u32 *arr_u32 = NULL;
-	__u32 cur_last_set_bit = 0, nbits = 256;
-	__u32 nr_u32;
-	char *token;
-
-	nr_u32 = BITS_TO_LONGS(nbits);
-	arr_u32 = zalloc(nr_u32 * sizeof(__u32));
-	if (!arr_u32)
-		return ret_errno(ENOMEM);
-
-	lxc_iterate_parts(token, buf, ",") {
-		__u32 last_bit, first_bit;
-		char *range;
-
-		errno = 0;
-		first_bit = strtoul(token, NULL, 0);
-		last_bit = first_bit;
-		range = strchr(token, '-');
-		if (range)
-			last_bit = strtoul(range + 1, NULL, 0);
-
-		if (!(first_bit <= last_bit))
-			return ret_errno(EINVAL);
-
-		if (last_bit >= nbits) {
-			__u32 add_bits = last_bit - nbits + 32;
-			__u32 new_nr_u32;
-			__u32 *p;
-
-			new_nr_u32 = BITS_TO_LONGS(nbits + add_bits);
-			p = realloc(arr_u32, new_nr_u32 * sizeof(uint32_t));
-			if (!p)
-				return ret_errno(ENOMEM);
-			arr_u32 = move_ptr(p);
-
-			memset(arr_u32 + nr_u32, 0,
-			       (new_nr_u32 - nr_u32) * sizeof(uint32_t));
-			nbits += add_bits;
-		}
-
-		while (first_bit <= last_bit)
-			set_bit(first_bit++, arr_u32);
-
-		if (last_bit > cur_last_set_bit)
-			cur_last_set_bit = last_bit;
-	}
-
-	*last_set_bit = cur_last_set_bit;
-	*bitarr = move_ptr(arr_u32);
-	return 0;
-}
-
-static int lxc_cpumask_update(char *buf, __u32 *bitarr, __u32 last_set_bit,
-			      bool clear)
-{
-	bool flipped = false;
-	char *token;
-
-	lxc_iterate_parts(token, buf, ",") {
-		__u32 last_bit, first_bit;
-		char *range;
-
-		errno = 0;
-		first_bit = strtoul(token, NULL, 0);
-		last_bit = first_bit;
-		range = strchr(token, '-');
-		if (range)
-			last_bit = strtoul(range + 1, NULL, 0);
-
-		if (!(first_bit <= last_bit)) {
-			WARN("The cup range seems to be inverted: %u-%u", first_bit, last_bit);
-			continue;
-		}
-
-		if (last_bit > last_set_bit)
-			continue;
-
-		while (first_bit <= last_bit) {
-			if (clear && is_set(first_bit, bitarr)) {
-				flipped = true;
-				clear_bit(first_bit, bitarr);
-			} else if (!clear && !is_set(first_bit, bitarr)) {
-				flipped = true;
-				set_bit(first_bit, bitarr);
-			}
-
-			first_bit++;
-		}
-	}
-
-	if (flipped)
-		return 1;
-
-	return 0;
-}
-
-/* Turn cpumask into simple, comma-separated cpulist. */
-static char *lxc_cpumask_to_cpulist(__u32 *bitarr, __u32 last_set_bit)
-{
-	__do_free_string_list char **cpulist = NULL;
-	char numstr[INTTYPE_TO_STRLEN(__u32)] = {0};
-	int ret;
-
-	for (__u32 bit = 0; bit <= last_set_bit; bit++) {
-		if (!is_set(bit, bitarr))
-			continue;
-
-		ret = strnprintf(numstr, sizeof(numstr), "%u", bit);
-		if (ret < 0)
-			return NULL;
-
-		ret = lxc_append_string(&cpulist, numstr);
-		if (ret < 0)
-			return ret_set_errno(NULL, ENOMEM);
-	}
-
-	if (!cpulist)
-		return ret_set_errno(NULL, ENOMEM);
-
-	return lxc_string_join(",", (const char **)cpulist, false);
-}
-
 static inline bool is_unified_hierarchy(const struct hierarchy *h)
 {
 	return h->fs_type == UNIFIED_HIERARCHY;
@@ -580,115 +448,8 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		SYSWARN("Failed to destroy cgroups");
 }
 
-#define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
-#define __OFFLINE_CPUS "/sys/devices/system/cpu/offline"
-static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
-				    bool am_initialized)
-{
-	__do_free char *cpulist = NULL, *isolcpus = NULL,
-		       *offlinecpus = NULL, *posscpus = NULL;
-	__do_free __u32 *possmask = NULL;
-	int ret;
-	__u32 poss_last_set_bit = 0;
-
-	posscpus = read_file_at(dfd_parent, "cpuset.cpus", PROTECT_OPEN, 0);
-	if (!posscpus)
-		return log_error_errno(false, errno, "Failed to read file %d/cpuset.cpus", dfd_parent);
-
-	if (file_exists(__ISOL_CPUS)) {
-		isolcpus = read_file_at(-EBADF, __ISOL_CPUS, PROTECT_OPEN, 0);
-		if (!isolcpus)
-			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
-
-		if (!isdigit(isolcpus[0]))
-			free_disarm(isolcpus);
-	} else {
-		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
-	}
-
-	if (file_exists(__OFFLINE_CPUS)) {
-		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS, PROTECT_OPEN, 0);
-		if (!offlinecpus)
-			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
-
-		if (!isdigit(offlinecpus[0]))
-			free_disarm(offlinecpus);
-	} else {
-		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
-	}
-
-	if (!isolcpus && !offlinecpus) {
-		cpulist = move_ptr(posscpus);
-		goto copy_parent;
-	}
-
-	ret = lxc_cpumask(posscpus, &possmask, &poss_last_set_bit);
-	if (ret)
-		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
-
-	if (isolcpus)
-		ret = lxc_cpumask_update(isolcpus, possmask, poss_last_set_bit, true);
-
-	if (offlinecpus)
-		ret |= lxc_cpumask_update(offlinecpus, possmask, poss_last_set_bit, true);
-
-	if (!ret) {
-		cpulist = lxc_cpumask_to_cpulist(possmask, poss_last_set_bit);
-		TRACE("No isolated or offline cpus present in cpuset");
-	} else {
-		cpulist = move_ptr(posscpus);
-		TRACE("Removed isolated or offline cpus from cpuset");
-	}
-	if (!cpulist)
-		return log_error_errno(false, errno, "Failed to create cpu list");
-
-copy_parent:
-	if (!am_initialized) {
-		ret = lxc_writeat(dfd_child, "cpuset.cpus", cpulist, strlen(cpulist));
-		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to write cpu list to \"%d/cpuset.cpus\"", dfd_child);
-
-		TRACE("Copied cpu settings of parent cgroup");
-	}
-
-	return true;
-}
-
-static bool cpuset1_initialize(int dfd_base, int dfd_next)
-{
-	char mems[PATH_MAX];
-	ssize_t bytes;
-	char v;
-
-	/* Determine whether the base cgroup has cpuset inheritance turned on. */
-	bytes = lxc_readat(dfd_base, "cgroup.clone_children", &v, 1);
-	if (bytes < 0)
-		return syserror_ret(false, "Failed to read file %d(cgroup.clone_children)", dfd_base);
-
-	/* Initialize cpuset.cpus removing any isolated and offline cpus. */
-	if (!cpuset1_cpus_initialize(dfd_base, dfd_next, v == '1'))
-		return syserror_ret(false, "Failed to initialize cpuset.cpus");
-
-	/* Read cpuset.mems from parent... */
-	bytes = lxc_readat(dfd_base, "cpuset.mems", mems, sizeof(mems));
-	if (bytes < 0)
-		return syserror_ret(false, "Failed to read file %d(cpuset.mems)", dfd_base);
-
-	/* and copy to first cgroup in the tree... */
-	bytes = lxc_writeat(dfd_next, "cpuset.mems", mems, bytes);
-	if (bytes < 0)
-		return syserror_ret(false, "Failed to write %d(cpuset.mems)", dfd_next);
-
-	/* and finally turn on cpuset inheritance. */
-	bytes = lxc_writeat(dfd_next, "cgroup.clone_children", "1", 1);
-	if (bytes < 0)
-		return syserror_ret(false, "Failed to write %d(cgroup.clone_children)", dfd_next);
-
-	return log_trace(true, "Initialized cpuset in the legacy hierarchy");
-}
-
 static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
-				bool cpuset_v1, bool eexist_ignore)
+				bool eexist_ignore)
 {
 	__do_close int dfd_final = -EBADF;
 	int dfd_cur = dfd_base;
@@ -731,8 +492,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 					!ret ? " newly created" : "", dfd_base, cur);
 		if (dfd_cur != dfd_base)
 			close(dfd_cur);
-		else if (cpuset_v1 && !cpuset1_initialize(dfd_base, dfd_final))
-			return syserror_set(-EINVAL, "Failed to initialize cpuset controller in the legacy hierarchy");
+
 		/*
 		 * Leave dfd_final pointing to the last fd we opened so
 		 * it will be automatically zapped if we return early.
@@ -755,17 +515,10 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			       const char *cgroup_leaf, bool payload)
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
-	bool cpuset_v1 = false;
-
-	/*
-	 * The legacy cpuset controller needs massaging in case inheriting
-	 * settings from its immediate ancestor cgroup hasn't been turned on.
-	 */
-	cpuset_v1 = !is_unified_hierarchy(h) && string_in_list(h->controllers, "cpuset");
 
 	if (payload && cgroup_leaf) {
 		/* With isolation both parts need to not already exist. */
-		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
+		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, false);
 		if (fd_limit < 0)
 			return syswarn_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
@@ -779,7 +532,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
 		 * cgroup the container actually resides in, is below fd_limit.
 		 */
-		fd_final = __cgroup_tree_create(h->dfd_lim, cgroup_leaf, 0755, cpuset_v1, false);
+		fd_final = __cgroup_tree_create(h->dfd_lim, cgroup_leaf, 0755, false);
 		if (fd_final < 0) {
 			/* Ensure we don't leave any garbage behind. */
 			if (cgroup_tree_prune(h->dfd_base, cgroup_limit_dir))
@@ -792,7 +545,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		h->path_con = must_make_path(h->path_lim, cgroup_leaf, NULL);
 
 	} else {
-		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
+		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, false);
 		if (fd_final < 0)
 			return syswarn_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
@@ -879,7 +632,6 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		__do_close int fd_pivot = -EBADF;
 		__do_free char *pivot_path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
-		bool cpuset_v1 = false;
 		int ret;
 
 		/* Monitor might have died before we entered the cgroup. */
@@ -895,9 +647,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		else
 			pivot_path = must_make_path(CGROUP_PIVOT, NULL);
 
-		cpuset_v1 = !is_unified_hierarchy(h) && string_in_list(h->controllers, "cpuset");
-
-		fd_pivot = __cgroup_tree_create(h->dfd_base, pivot_path, 0755, cpuset_v1, true);
+		fd_pivot = __cgroup_tree_create(h->dfd_base, pivot_path, 0755, true);
 		if (fd_pivot < 0) {
 			SYSWARN("Failed to create pivot cgroup %d(%s)", h->dfd_base, pivot_path);
 			continue;
