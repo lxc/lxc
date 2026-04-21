@@ -371,19 +371,58 @@ static char *get_eow(char *s, char *e)
 	return s;
 }
 
+static bool same_word(const char *start, const char *end, const char *word)
+{
+	size_t wordlen = strlen(word);
+	size_t buflen = end - start;
+
+	if (wordlen != buflen)
+		return false;
+	if (strncmp(start, word, wordlen) == 0)
+		return true;
+	return false;
+}
+
+/*
+ * in:
+ * @buf_start and @buf_end point to the buffer to be read.
+ *
+ * @owner_name is the name of the user who should own the link.
+ *
+ * @net_type is type of connection, e.g. veth
+ *
+ * @net_link is the name of the bridge, e.g. lxcbr0, on which the
+ * device should live.
+ *
+ * @net_dev is the name of the device itself in the host netns.
+ *
+ * out:
+ * @is_owner is set to true if the current line is owned by @name.
+
+ * @nic_found is set to true if the line is specifically for the passed-in
+ * @net_dev, and it is on the right @net_link and of the right @net_type.
+ *
+ * @exists is set to false if the nic in this line no longer exists.  This is
+ * used by cull_entries(): if we set it to false, then this line will be
+ * removed from the LXC_USERNIC_DB (e.g. /var/run/lxc/nics).
+ */
 static char *find_line(char *buf_start, char *buf_end, char *name,
 		       char *net_type, char *net_link, char *net_dev,
-		       bool *owner, bool *found, bool *keep)
+		       bool *is_owner, bool *nic_found, bool *exists)
 {
 	char *end_of_line, *end_of_word, *line;
+	bool right_net_type, right_bridge, right_link_name;;
 
 	while (buf_start < buf_end) {
 		size_t len;
 		char netdev_name[IFNAMSIZ];
 
-		*found = false;
-		*keep = true;
-		*owner = false;
+		*nic_found = false;
+		*exists = true;
+		*is_owner = false;
+		right_net_type  = false;
+		right_bridge    = false;
+		right_link_name = false;
 
 		end_of_line = get_eol(buf_start, buf_end);
 		if (end_of_line >= buf_end)
@@ -402,11 +441,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, name, strlen(name)))
-			*found = false;
-		else
-			if (strlen(name) == (size_t)(end_of_word - buf_start))
-				*owner = true;
+		if (same_word(buf_start, end_of_word, name))
+			*is_owner = true;
 
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
@@ -418,8 +454,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, net_type, strlen(net_type)))
-			*found = false;
+		if (same_word(buf_start, end_of_word, net_type))
+			right_net_type = true;
 
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
@@ -431,8 +467,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, net_link, strlen(net_link)))
-			*found = false;
+		if (same_word(buf_start, end_of_word, net_link))
+			right_bridge = true;
 
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
@@ -451,10 +487,13 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 
 		memcpy(netdev_name, buf_start, len);
 		netdev_name[len] = '\0';
-		*keep = lxc_nic_exists(netdev_name);
+		*exists = lxc_nic_exists(netdev_name);
 
 		if (net_dev && !strcmp(netdev_name, net_dev))
-			*found = true;
+			right_link_name = true;
+
+		if (right_net_type && right_bridge && right_link_name)
+			*nic_found = true;
 
 		return line;
 
@@ -584,7 +623,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 	size_t length = 0;
 	int ret;
 	char *buf_end, *buf_start;
-	bool found, keep;
+	bool nic_found, is_owner, keep;
 
 	ret = fd_to_buf(fd, &buf, &length);
 	if (ret < 0) {
@@ -600,7 +639,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 	buf_start = buf;
 	buf_end = buf + length;
 	while ((buf_start = find_line(buf_start, buf_end, name, net_type,
-				      net_link, net_dev, &(bool){true}, &found,
+				      net_link, net_dev, &is_owner, &nic_found,
 				      &keep))) {
 		struct entry_line *newe;
 
@@ -608,7 +647,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 		if (!newe)
 			return false;
 
-		if (found)
+		if (nic_found && is_owner)
 			*found_nicname = true;
 
 		entry_lines = newe;
