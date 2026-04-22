@@ -1756,8 +1756,17 @@ static inline int do_share_ns(void *arg)
 	flags |= CLONE_PARENT;
 	handler->pid = lxc_raw_clone_cb(do_start, handler, CLONE_PIDFD | flags,
 					&handler->pidfd);
-	if (handler->pid < 0)
+	if (handler->pid < 0) {
+		ERROR("Failed to clone process");
 		return -1;
+	}
+
+	if (handler->pidfd < 0) {
+		kill(handler->pid, SIGKILL);
+		handler->pid = -1;
+		ERROR("CLONE_PIDFD isn't supported");
+		return -1;
+	}
 
 	return 0;
 }
@@ -1902,7 +1911,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		/* Try to spawn directly into target cgroup. */
 		handler->pid = lxc_clone3(&clone_args, CLONE_ARGS_SIZE_VER2);
 		if (handler->pid < 0) {
-			SYSTRACE("Failed to spawn container directly into target cgroup");
+			SYSWARN("Failed to spawn container directly into target cgroup");
 
 			/* Kernel might simply be too old for CLONE_INTO_CGROUP. */
 			resolve_cgroup_clone_flags(handler);
@@ -1911,31 +1920,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			handler->pid = lxc_clone3(&clone_args, CLONE_ARGS_SIZE_VER0);
 		} else if (cgroup_fd >= 0) {
 			TRACE("Spawned container directly into target cgroup via cgroup2 fd %d", cgroup_fd);
-		}
-
-		/* Kernel might be too old for clone3(). */
-		if (handler->pid < 0) {
-			SYSTRACE("Failed to spawn container via clone3()");
-
-		/*
-		 * In contrast to all other architectures arm64 verifies that
-		 * the argument we use to retrieve the pidfd with is
-		 * initialized to 0. But we need to be able to initialize it to
-		 * a negative value such as our customary -EBADF so we can
-		 * detect whether this kernel supports pidfds. If the syscall
-		 * returns and the pidfd variable is set to something >= 0 then
-		 * we know this is a kernel supporting pidfds. But if we can't
-		 * set it to -EBADF then this won't work since 0 is a valid
-		 * file descriptor too. And since legacy clone silently ignores
-		 * unknown flags we are left without any way to detect support
-		 * for pidfds. So let's special-case arm64 to not fail starting
-		 * containers.
-		 */
-		#if defined(__aarch64__)
-			handler->pid = lxc_raw_legacy_clone(handler->clone_flags & ~CLONE_PIDFD, NULL);
-		#else
-			handler->pid = lxc_raw_legacy_clone(handler->clone_flags, &handler->pidfd);
-		#endif
 		}
 
 		if (handler->pid < 0) {
@@ -1957,8 +1941,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	/* Verify that we can actually make use of pidfds. */
-	if (!lxc_can_use_pidfd(handler->pidfd))
+	if (!lxc_can_use_pidfd(handler->pidfd)) {
 		close_prot_errno_disarm(handler->pidfd);
+		goto out_delete_net;
+	}
 
 	ret = strnprintf(pidstr, 20, "%d", handler->pid);
 	if (ret < 0)

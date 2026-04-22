@@ -1844,44 +1844,24 @@ static int __cgroupfs_mount(int cgroup_automount_type, struct hierarchy *h,
 	if (!is_unified_hierarchy(h))
 		return ret_errno(EOPNOTSUPP);
 
-	if (can_use_mount_api()) {
-		fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
-		if (fd_fs < 0)
-			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for %s", fstype);
+	fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
+	if (fd_fs < 0)
+		return log_error_errno(-errno, errno, "Failed to prepare filesystem context for %s", fstype);
 
-		if (!is_unified_hierarchy(h)) {
-			for (const char **it = (const char **)h->controllers; it && *it; it++) {
-				if (strnequal(*it, "name=", STRLITERALLEN("name=")))
-					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
-				else
-					ret = fs_set_property(fd_fs, *it, "");
-				if (ret < 0)
-					return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
-			}
+	if (!is_unified_hierarchy(h)) {
+		for (const char **it = (const char **)h->controllers; it && *it; it++) {
+			if (strnequal(*it, "name=", STRLITERALLEN("name=")))
+				ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
+			else
+				ret = fs_set_property(fd_fs, *it, "");
+			if (ret < 0)
+				return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
 		}
-
-		ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
-				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
-				flags);
-	} else {
-		__do_free char *controllers = NULL, *target = NULL;
-		unsigned int old_flags = 0;
-		const char *rootfs_mnt;
-
-		if (!is_unified_hierarchy(h)) {
-			controllers = lxc_string_join(",", (const char **)h->controllers, false);
-			if (!controllers)
-				return ret_errno(ENOMEM);
-		}
-
-		rootfs_mnt = get_rootfs_mnt(rootfs);
-		ret = mnt_attributes_old(flags, &old_flags);
-		if (ret)
-			return log_error_errno(-EINVAL, EINVAL, "Unsupported mount properties specified");
-
-		target = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, hierarchy_mnt, NULL);
-		ret = safe_mount(NULL, target, fstype, old_flags, controllers, rootfs_mnt);
 	}
+
+	ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
+			PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
+			flags);
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %s filesystem onto %d(%s)",
 				       fstype, dfd_mnt_cgroupfs, maybe_empty(hierarchy_mnt));

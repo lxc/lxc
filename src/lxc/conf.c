@@ -804,19 +804,16 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to unlink %d(%s)",
 						       rootfs->dfd_dev, tty_name);
 
-			if (can_use_mount_api())
-				ret = fd_bind_mount(tty->pty, "",
-						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH_XDEV,
-						    fd_to, "",
-						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH_XDEV,
-						    0,
-						    0,
-						    0,
-						    false);
-			else
-				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
+			ret = fd_bind_mount(tty->pty, "",
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH_XDEV,
+					    fd_to, "",
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH_XDEV,
+					    0,
+					    0,
+					    0,
+					    false);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
@@ -841,19 +838,16 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to create tty mount target %d(%s)",
 						       rootfs->dfd_dev, rootfs->buf);
 
-			if (can_use_mount_api())
-				ret = fd_bind_mount(tty->pty, "",
-						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH_XDEV,
-						    fd_to, "",
-						    PROTECT_OPATH_FILE,
-						    PROTECT_LOOKUP_BENEATH,
-						    0,
-						    0,
-						    0,
-						    false);
-			else
-				ret = mount_fd(tty->pty, fd_to, "none", MS_BIND, 0);
+			ret = fd_bind_mount(tty->pty, "",
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH_XDEV,
+					    fd_to, "",
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH,
+					    0,
+					    0,
+					    0,
+					    false);
 			if (ret < 0)
 				return log_error_errno(-errno, errno,
 						       "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1013,37 +1007,23 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	if (can_use_mount_api()) {
-		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
-		if (fd_fs < 0)
-			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for tmpfs");
+	fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+	if (fd_fs < 0)
+		return log_error_errno(-errno, errno, "Failed to prepare filesystem context for tmpfs");
 
-		sprintf(mount_options, "%zu", tmpfs_size);
+	sprintf(mount_options, "%zu", tmpfs_size);
 
-		ret = fs_set_property(fd_fs, "mode", "0755");
-		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+	ret = fs_set_property(fd_fs, "mode", "0755");
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
-		ret = fs_set_property(fd_fs, "size", mount_options);
-		if (ret < 0)
-			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+	ret = fs_set_property(fd_fs, "size", mount_options);
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
-		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev",
-				PROTECT_OPATH_DIRECTORY,
-				PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	} else {
-		__do_free char *fallback_path = NULL;
-
-		sprintf(mount_options, "size=%zu,mode=755", tmpfs_size);
-		DEBUG("Using mount options: %s", mount_options);
-
-		if (path) {
-			fallback_path = must_make_path(path, "/dev", NULL);
-			ret = safe_mount("none", fallback_path, "tmpfs", 0, mount_options, path);
-		} else {
-			ret = safe_mount("none", "dev", "tmpfs", 0, mount_options, NULL);
-		}
-	}
+	ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev",
+			PROTECT_OPATH_DIRECTORY,
+			PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
 		goto reset_umask;
@@ -1156,35 +1136,16 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 		if (ret < 0)
 			return ret_errno(EIO);
 
-		if (can_use_mount_api()) {
-			ret = fd_bind_mount(rootfs->dfd_host, rootfs->buf,
-					    PROTECT_OPATH_FILE,
-					    PROTECT_LOOKUP_BENEATH_XDEV,
-					    rootfs->dfd_dev, device->name,
-					    PROTECT_OPATH_FILE,
-					    PROTECT_LOOKUP_BENEATH,
-					    0,
-					    0,
-					    0,
-					    false);
-		} else {
-			char path[PATH_MAX];
-
-			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/%s", device->name);
-			if (ret < 0)
-				return ret_errno(EIO);
-
-			ret = strnprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
-			if (ret < 0)
-				return log_error(-1, "Failed to create device path for %s", device->name);
-
-			ret = safe_mount(rootfs->buf, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
-			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", rootfs->buf, path);
-
-			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", rootfs->buf, path);
-			continue;
-		}
+		ret = fd_bind_mount(rootfs->dfd_host, rootfs->buf,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH_XDEV,
+				    rootfs->dfd_dev, device->name,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH,
+				    0,
+				    0,
+				    0,
+				    false);
 		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, rootfs->buf, rootfs->dfd_dev, device->name);
 	}
 	(void)umask(cmask);
@@ -1492,104 +1453,48 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
 
-	if (can_use_mount_api()) {
-		fd_fs = fs_prepare("devpts", -EBADF, "", 0, 0);
-		if (fd_fs < 0)
-			return syserror("Failed to prepare filesystem context for devpts");
+	fd_fs = fs_prepare("devpts", -EBADF, "", 0, 0);
+	if (fd_fs < 0)
+		return syserror("Failed to prepare filesystem context for devpts");
 
-		ret = fs_set_property(fd_fs, "source", "devpts");
-		if (ret < 0)
-			SYSTRACE("Failed to set \"source=devpts\" on devpts filesystem context %d", fd_fs);
+	ret = fs_set_property(fd_fs, "source", "devpts");
+	if (ret < 0)
+		SYSTRACE("Failed to set \"source=devpts\" on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_property(fd_fs, "gid", "5");
-		if (ret < 0)
-			SYSTRACE("Failed to set \"gid=5\" on devpts filesystem context %d", fd_fs);
+	ret = fs_set_property(fd_fs, "gid", "5");
+	if (ret < 0)
+		SYSTRACE("Failed to set \"gid=5\" on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_flag(fd_fs, "newinstance");
-		if (ret < 0)
-			return syserror("Failed to set \"newinstance\" property on devpts filesystem context %d", fd_fs);
+	ret = fs_set_flag(fd_fs, "newinstance");
+	if (ret < 0)
+		return syserror("Failed to set \"newinstance\" property on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_property(fd_fs, "ptmxmode", "0666");
-		if (ret < 0)
-			return syserror("Failed to set \"ptmxmode=0666\" property on devpts filesystem context %d", fd_fs);
+	ret = fs_set_property(fd_fs, "ptmxmode", "0666");
+	if (ret < 0)
+		return syserror("Failed to set \"ptmxmode=0666\" property on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_property(fd_fs, "mode", "0620");
-		if (ret < 0)
-			return syserror("Failed to set \"mode=0620\" property on devpts filesystem context %d", fd_fs);
+	ret = fs_set_property(fd_fs, "mode", "0620");
+	if (ret < 0)
+		return syserror("Failed to set \"mode=0620\" property on devpts filesystem context %d", fd_fs);
 
-		ret = fs_set_property(fd_fs, "max", fdstr(pty_max));
-		if (ret < 0)
-			return syserror("Failed to set \"max=%zu\" property on devpts filesystem context %d", conf->pty_max, fd_fs);
+	ret = fs_set_property(fd_fs, "max", fdstr(pty_max));
+	if (ret < 0)
+		return syserror("Failed to set \"max=%zu\" property on devpts filesystem context %d", conf->pty_max, fd_fs);
 
-		ret = fsconfig(fd_fs, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
-		if (ret < 0)
-			return syserror("Failed to finalize filesystem context %d", fd_fs);
+	ret = fsconfig(fd_fs, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
+	if (ret < 0)
+		return syserror("Failed to finalize filesystem context %d", fd_fs);
 
-		devpts_fd = fsmount(fd_fs, FSMOUNT_CLOEXEC, MOUNT_ATTR_NOSUID | MOUNT_ATTR_NOEXEC);
-		if (devpts_fd < 0)
-			return syserror("Failed to create new mount for filesystem context %d", fd_fs);
-		TRACE("Created detached devpts mount %d", devpts_fd);
+	devpts_fd = fsmount(fd_fs, FSMOUNT_CLOEXEC, MOUNT_ATTR_NOSUID | MOUNT_ATTR_NOEXEC);
+	if (devpts_fd < 0)
+		return syserror("Failed to create new mount for filesystem context %d", fd_fs);
+	TRACE("Created detached devpts mount %d", devpts_fd);
 
-		ret = move_mount(devpts_fd, "", rootfs->dfd_dev, "pts", MOVE_MOUNT_F_EMPTY_PATH);
-		if (ret)
-			return syserror("Failed to attach devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
+	ret = move_mount(devpts_fd, "", rootfs->dfd_dev, "pts", MOVE_MOUNT_F_EMPTY_PATH);
+	if (ret)
+		return syserror("Failed to attach devpts mount %d to %d/pts", conf->devpts_fd, rootfs->dfd_dev);
 
-		DEBUG("Attached detached devpts mount %d to %d/pts", devpts_fd, rootfs->dfd_dev);
-	} else {
-		char **opts;
-		char devpts_mntopts[256];
-		char *mntopt_sets[5];
-		char default_devpts_mntopts[256] = "gid=5,newinstance,ptmxmode=0666,mode=0620";
-
-		/*
-		 * Fallback codepath in case the new mount API can't be used to
-		 * create detached mounts.
-		 */
-
-		ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
-				default_devpts_mntopts, pty_max);
-		if (ret < 0)
-			return -1;
-
-		/* Create mountpoint for devpts instance. */
-		ret = mkdirat(rootfs->dfd_dev, "pts", 0755);
-		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
-
-		/* gid=5 && max= */
-		mntopt_sets[0] = devpts_mntopts;
-
-		/* !gid=5 && max= */
-		mntopt_sets[1] = devpts_mntopts + STRLITERALLEN("gid=5") + 1;
-
-		/* gid=5 && !max= */
-		mntopt_sets[2] = default_devpts_mntopts;
-
-		/* !gid=5 && !max= */
-		mntopt_sets[3] = default_devpts_mntopts + STRLITERALLEN("gid=5") + 1;
-
-		/* end */
-		mntopt_sets[4] = NULL;
-
-		for (ret = -1, opts = mntopt_sets; opts && *opts; opts++) {
-			/* mount new devpts instance */
-			ret = mount_at(rootfs->dfd_dev, "", 0,
-				       rootfs->dfd_dev, "pts", PROTECT_LOOKUP_BENEATH,
-				       "devpts", MS_NOSUID | MS_NOEXEC, *opts);
-			if (ret == 0)
-				break;
-		}
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to mount new devpts instance");
-
-		devpts_fd = open_at(rootfs->dfd_dev, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
-		if (devpts_fd < 0) {
-			devpts_fd = -EBADF;
-			TRACE("Failed to create detached devpts mount");
-		}
-
-		DEBUG("Mounted new devpts instance with options \"%s\"", *opts);
-	}
+	DEBUG("Attached detached devpts mount %d to %d/pts", devpts_fd, rootfs->dfd_dev);
 
 	handler->conf->devpts_fd = move_fd(devpts_fd);
 
@@ -1735,10 +1640,7 @@ static int bind_mount_console(int fd_devpts, struct lxc_rootfs *rootfs,
 	 * Note, there are intentionally no open or lookup restrictions since
 	 * we're operating directly on the fd.
 	 */
-	if (can_use_mount_api())
-		return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, 0, 0, false);
-
-	return mount_fd(fd_pty, fd_to, "none", MS_BIND, 0);
+	return fd_bind_mount(fd_pty, "", 0, 0, fd_to, "", 0, 0, 0, 0, 0, false);
 }
 
 static int lxc_setup_dev_console(int fd_devpts, struct lxc_rootfs *rootfs,
@@ -1867,21 +1769,18 @@ static int lxc_setup_ttydir_console(int fd_devpts, struct lxc_rootfs *rootfs,
 		return syserror("Failed to open \"%d/console\"", fd_ttydir);
 
 	/* bind mount '/dev/<ttydir>/console' to '/dev/console' */
-	if (can_use_mount_api())
-		ret = fd_bind_mount(fd_dev_console,
-				    "",
-				    PROTECT_OPATH_FILE,
-				    PROTECT_LOOKUP_BENEATH_XDEV,
-				    fd_reg_console,
-				    "",
-				    PROTECT_OPATH_FILE,
-				    PROTECT_LOOKUP_BENEATH,
-				    0,
-				    0,
-				    0,
-				    false);
-	else
-		ret = mount_fd(fd_dev_console, fd_reg_console, "none", MS_BIND, 0);
+	ret = fd_bind_mount(fd_dev_console,
+			    "",
+			    PROTECT_OPATH_FILE,
+			    PROTECT_LOOKUP_BENEATH_XDEV,
+			    fd_reg_console,
+			    "",
+			    PROTECT_OPATH_FILE,
+			    PROTECT_LOOKUP_BENEATH,
+			    0,
+			    0,
+			    0,
+			    false);
 	if (ret < 0)
 		return syserror("Failed to mount \"%d\" on \"%d\"",
 				fd_dev_console, fd_reg_console);
