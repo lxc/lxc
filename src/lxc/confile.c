@@ -65,7 +65,6 @@ lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_raw);
 lxc_config_define(cap_drop);
 lxc_config_define(cap_keep);
-lxc_config_define(cgroup_controller);
 lxc_config_define(cgroup2_controller);
 lxc_config_define(cgroup_dir);
 lxc_config_define(cgroup_monitor_dir);
@@ -206,7 +205,6 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.cgroup.dir.container",       true,  set_config_cgroup_container_dir,       get_config_cgroup_container_dir,       clr_config_cgroup_container_dir,       },
 	{ "lxc.cgroup.dir",                 true,  set_config_cgroup_dir,                 get_config_cgroup_dir,                 clr_config_cgroup_dir,                 },
 	{ "lxc.cgroup.relative",            true,  set_config_cgroup_relative,            get_config_cgroup_relative,            clr_config_cgroup_relative,            },
-	{ "lxc.cgroup",                     false, set_config_cgroup_controller,          get_config_cgroup_controller,          clr_config_cgroup_controller,          },
 	{ "lxc.console.buffer.size",        true,  set_config_console_buffer_size,        get_config_console_buffer_size,        clr_config_console_buffer_size,        },
 	{ "lxc.console.logfile",            true,  set_config_console_logfile,            get_config_console_logfile,            clr_config_console_logfile,            },
 	{ "lxc.console.path",               true,  set_config_console_path,               get_config_console_path,               clr_config_console_path,               },
@@ -1934,9 +1932,6 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 	if (version == CGROUP2_SUPER_MAGIC) {
 		token = "lxc.cgroup2.";
 		token_len = 12;
-	} else if (version == CGROUP_SUPER_MAGIC) {
-		token = "lxc.cgroup.";
-		token_len = 11;
 	} else {
 		return ret_errno(EINVAL);
 	}
@@ -1962,20 +1957,10 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 
 	new_cgroup->version = version;
 
-	if (version == CGROUP2_SUPER_MAGIC)
-		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup2);
-	else
-		list_add_tail(&new_cgroup->head, &lxc_conf->cgroup);
+	list_add_tail(&new_cgroup->head, &lxc_conf->cgroup2);
 	move_ptr(new_cgroup);
 
 	return 0;
-}
-
-static int set_config_cgroup_controller(const char *key, const char *value,
-					struct lxc_conf *lxc_conf, void *data)
-{
-	return __set_config_cgroup_controller(key, value, lxc_conf,
-					      CGROUP_SUPER_MAGIC);
 }
 
 static int set_config_cgroup2_controller(const char *key, const char *value,
@@ -3903,11 +3888,6 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 		namespaced_token = "lxc.cgroup2.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
 		list = &c->cgroup2;
-	} else if (version == CGROUP_SUPER_MAGIC) {
-		global_token = "lxc.cgroup";
-		namespaced_token = "lxc.cgroup.";
-		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
-		list = &c->cgroup;
 	} else {
 		return ret_errno(EINVAL);
 	}
@@ -3932,13 +3912,6 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	}
 
 	return fulllen;
-}
-
-static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
-					struct lxc_conf *c, void *data)
-{
-	return __get_config_cgroup_controller(key, retv, inlen, c,
-					      CGROUP_SUPER_MAGIC);
 }
 
 static int get_config_cgroup2_controller(const char *key, char *retv, int inlen,
@@ -4929,12 +4902,6 @@ static inline int clr_config_keyring_session(const char *key,
 {
 	c->keyring_disable_session = false;
 	return 0;
-}
-
-static inline int clr_config_cgroup_controller(const char *key,
-					       struct lxc_conf *c, void *data)
-{
-	return lxc_clear_cgroups(c, key, CGROUP_SUPER_MAGIC);
 }
 
 static inline int clr_config_cgroup2_controller(const char *key,

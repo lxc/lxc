@@ -262,8 +262,6 @@ struct cgroup_ops {
 		   size_t len, const char *name, const char *lxcpath);
 	int (*freeze)(struct cgroup_ops *ops, int timeout);
 	int (*unfreeze)(struct cgroup_ops *ops, int timeout);
-	bool (*setup_limits_legacy)(struct cgroup_ops *ops,
-				    struct lxc_conf *conf, bool with_devices);
 	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
 	bool (*attach)(struct cgroup_ops *ops, const struct lxc_conf *conf,

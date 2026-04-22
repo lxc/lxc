@@ -42,7 +42,7 @@ cat >> "$(lxc-config lxc.lxcpath)/$name/config" <<EOF
 # hax for criu
 lxc.console.path = none
 lxc.tty.max = 0
-lxc.cgroup.devices.deny = c 5:1 rwm
+lxc.cgroup2.devices.deny = c 5:1 rwm
 EOF
 
 lxc-start -n $name -d || FAIL "starting container"
