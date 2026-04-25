@@ -221,7 +221,7 @@ busybox tee --help >/dev/null 2>&1 || FAIL "missing busybox's tee applet"
 
 out=$(mktemp /tmp/out_XXXX)
 BS=1000000
-( sleep 3; echo "echo DATASTART ; dd if=/dev/urandom bs=$BS count=1 status=none | hexdump | tee /root/large-data.txt ; echo DATAEND" ; sleep 1 ) | \
+( sleep 3; echo "echo DATASTART ; dd if=/dev/urandom bs=$BS count=1 status=none | hexdump | tee /root/large-data.txt ; echo DATAEND" ; sleep 3 ) | \
 	script -q -e -c "lxc-attach -n busy -l trace -o \"${ATTACH_LOG}\"" | \
 	sed -n '/DATASTART/,/DATAEND/{/DATASTART/d;/DATAEND/d;s/[\r\n]*$//;p}' > $out
 
