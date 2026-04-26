@@ -137,6 +137,7 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 			return log_error(-EINVAL, "Failed to detect whether \"%s\" is a thinpool", tp);
 		} else if (!ret) {
 			TRACE("Detected that \"%s\" is not a thinpool", tp);
+			free(tp);
 			tp = NULL;
 		} else {
 			TRACE("Detected \"%s\" is a thinpool", tp);
