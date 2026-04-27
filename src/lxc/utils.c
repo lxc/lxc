@@ -1960,18 +1960,20 @@ int fix_stdio_permissions(uid_t uid)
 		if (st.st_rdev == st_null.st_rdev)
 			continue;
 
-		ret = fchown(std_fds[i], uid, st.st_gid);
-		if (ret) {
-			SYSTRACE("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
-			         std_fds[i], uid, st.st_gid);
-			fret = -1;
-			continue;
-		}
+		if (isatty(std_fds[i])) {
+			ret = fchown(std_fds[i], uid, st.st_gid);
+			if (ret) {
+				SYSTRACE("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
+				         std_fds[i], uid, st.st_gid);
+				fret = -1;
+				continue;
+			}
 
-		ret = fchmod(std_fds[i], 0600);
-		if (ret) {
-			SYSTRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
-			fret = -1;
+			ret = fchmod(std_fds[i], 0600);
+			if (ret) {
+				SYSTRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
+				fret = -1;
+			}
 		}
 	}
 
