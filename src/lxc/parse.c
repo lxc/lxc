@@ -91,7 +91,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 		goto on_error;
 	}
 
-	if (st.st_size > INT_MAX) {
+	if (st.st_size > SSIZE_MAX - 1) {
 		SYSERROR("Excessively large config file \"%s\"", file);
 		goto on_error;
 	}
