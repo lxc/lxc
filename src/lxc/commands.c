@@ -1030,6 +1030,21 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp;
 
 	memset(&rsp, 0, sizeof(rsp));
+
+	/*
+	 * The config key is used as a C string. Validate that the request data
+	 * is a proper null-terminated string before passing it to string-based
+	 * config lookup functions, preventing OOB reads from unterminated keys.
+	 */
+	if (req->datalen <= 0)
+		goto err1;
+
+	{
+		int vret = validate_string_request(fd, req);
+		if (vret != 0)
+			return vret;
+	}
+
 	item = lxc_get_config(req->data);
 	cilen = item->get(req->data, NULL, 0, handler->conf, NULL);
 	if (cilen <= 0)
@@ -1548,12 +1563,20 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 {
 	struct lxc_cmd_rsp rsp;
 	uint64_t buffer_size = handler->conf->console.buffer_size;
-	const struct lxc_cmd_console_log *log = req->data;
+	const struct lxc_cmd_console_log *log;
 	struct lxc_ringbuf *buf = &handler->conf->console.ringbuf;
 
 	rsp.ret = -EFAULT;
 	rsp.datalen = 0;
 	rsp.data = NULL;
+
+	/* Require the client to supply a complete request struct. */
+	if (!req->data || (size_t)req->datalen < sizeof(struct lxc_cmd_console_log)) {
+		rsp.ret = -EINVAL;
+		goto out;
+	}
+	log = req->data;
+
 	if (buffer_size <= 0)
 		goto out;
 
@@ -2056,7 +2079,26 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		goto out;
 	}
 
-	if ((req.datalen > LXC_CMD_DATA_MAX) && (req.cmd != LXC_CMD_CONSOLE_LOG)) {
+	if (req.datalen < 0) {
+		ERROR("Received negative command data length %d for command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
+		goto out;
+	}
+
+	/*
+	 * For LXC_CMD_CONSOLE_LOG the server-side *request* is always a small
+	 * struct lxc_cmd_console_log.  The unlimited-size exemption only makes
+	 * sense for the client-side *response* (large ring-buffer data).  Bind
+	 * the request to a tight upper limit so a same-UID attacker cannot
+	 * pass a huge datalen and spin must_realloc forever.
+	 */
+	if (req.cmd == LXC_CMD_CONSOLE_LOG) {
+		if ((size_t)req.datalen > sizeof(struct lxc_cmd_console_log)) {
+			ERROR("Received oversized console log request (%d > %zu) for command \"%s\"",
+			      req.datalen, sizeof(struct lxc_cmd_console_log),
+			      lxc_cmd_str(req.cmd));
+			goto out;
+		}
+	} else if (req.datalen > LXC_CMD_DATA_MAX) {
 		ERROR("Received command data length %d is too large for command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
 		goto out;
 	}
