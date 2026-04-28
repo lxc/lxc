@@ -516,6 +516,8 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	}
 
 on_success:
+	/* The only caller, copy_storage, doesn't ever close this. */
+	close_prot_errno_disarm(new_rootfs.dfd_idmapped);
 	lxc_storage_put(c->lxc_conf);
 
 	return new;
@@ -524,6 +526,7 @@ on_error_put_new:
 	storage_put(new);
 
 on_error_put_orig:
+	close_prot_errno_disarm(new_rootfs.dfd_idmapped);
 	lxc_storage_put(c->lxc_conf);
 
 	return NULL;
