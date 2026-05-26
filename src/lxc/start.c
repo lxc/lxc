@@ -23,6 +23,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "lxc.h"
 
@@ -1832,6 +1833,13 @@ static int lxc_spawn(struct lxc_handler *handler)
 	const char *name = handler->name;
 	struct lxc_conf *conf = handler->conf;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
+	char real_lxcpath[PATH_MAX];
+	
+	if (!realpath(handler->lxcpath, real_lxcpath)) {
+		SYSERROR("Failed to resolve realpath for lxcpath");
+		return -1;
+	}
+	handler->lxcpath = real_lxcpath;
 
 	id_map = &conf->id_map;
 	wants_to_map_ids = !list_empty(id_map);
