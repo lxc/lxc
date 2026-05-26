@@ -1850,7 +1850,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		ret = lxc_find_gateway_addresses(handler);
 		if (ret) {
 			ERROR("Failed to find gateway addresses");
-			goto out_sync_fini;
+			goto out_close_sock;
 		}
 	}
 
@@ -2189,6 +2189,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 	lxc_sync_fini(handler);
 
 	return 0;
+
+out_close_sock:
+	close_prot_errno_disarm(data_sock0);
+	close_prot_errno_disarm(data_sock1);
 
 out_delete_net:
 	if (container_uses_namespace(handler, CLONE_NEWNET))
