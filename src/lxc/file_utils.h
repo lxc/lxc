@@ -42,6 +42,9 @@ __hidden extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count) 
 __hidden extern ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count, off_t offset)
     __access_r(2, 3);
 
+__hidden extern ssize_t lxc_pread_nointr(int fd, void *buf, size_t count, off_t offset)
+    __access_w(2, 3);
+
 __hidden extern ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
     __access_r(2, 3);
 
