@@ -30,6 +30,7 @@
 #include "memory_utils.h"
 #include "monitor.h"
 #include "start.h"
+#include "string_utils.h"
 #include "terminal.h"
 #include "utils.h"
 
@@ -509,12 +510,17 @@ static ssize_t lxc_cmd_timeout(const char *name, struct lxc_cmd_rr *cmd, bool *s
 	*stopped = 0;
 
 	/*
-	 * We don't want to change anything for the case when the client
-	 * socket fd lifetime is longer than the lxc_cmd_timeout() execution.
-	 * So it's better not to set SO_RCVTIMEO for client_fd,
-	 * because it'll have an affect on the entire socket lifetime.
+	 * Never bound the receive with SO_RCVTIMEO for:
+	 * - long-lived streaming sockets (stay_connected): the timeout would
+	 *   affect the entire socket lifetime, not just this exchange; and
+	 * - commands whose monitor-side handler legitimately blocks for a
+	 *   caller-supplied duration carried in the request data (FREEZE,
+	 *   UNFREEZE): a shorter socket timeout would abort them before the
+	 *   monitor replies.
 	 */
-	if (stay_connected)
+	if (stay_connected ||
+	    cmd->req.cmd == LXC_CMD_FREEZE ||
+	    cmd->req.cmd == LXC_CMD_UNFREEZE)
 		rcv_timeout = 0;
 
 	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name, rcv_timeout);
@@ -538,10 +544,38 @@ static ssize_t lxc_cmd_timeout(const char *name, struct lxc_cmd_rr *cmd, bool *s
 	return ret;
 }
 
+/*
+ * lxc_cmd_default_rcv_timeout: SO_RCVTIMEO (seconds) applied to one-shot command
+ * sockets. A running but unresponsive monitor (e.g. one wedged under memory
+ * pressure) must not be able to block lxc_cmd_rsp_recv() forever: a liblxc
+ * embedder that holds a lock across the call is then wedged daemon-wide by a
+ * single bad container. The value is read from the LXC_CMD_RCV_TIMEOUT
+ * environment variable and defaults to 0 (unbounded — the historical
+ * behaviour), so nothing changes unless an embedder opts in. Commands that must
+ * keep an unbounded receive are exempted in lxc_cmd_timeout().
+ */
+#define LXC_CMD_RCV_TIMEOUT_ENV "LXC_CMD_RCV_TIMEOUT"
+
+static int lxc_cmd_default_rcv_timeout(void)
+{
+	const char *env;
+	int timeout;
+
+	env = getenv(LXC_CMD_RCV_TIMEOUT_ENV);
+	if (!env || env[0] == '\0')
+		return 0;
+
+	if (lxc_safe_int(env, &timeout) < 0 || timeout < 0)
+		return 0;
+
+	return timeout;
+}
+
 static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 		       const char *lxcpath, const char *hashed_sock_name)
 {
-	return lxc_cmd_timeout(name, cmd, stopped, lxcpath, hashed_sock_name, 0);
+	return lxc_cmd_timeout(name, cmd, stopped, lxcpath, hashed_sock_name,
+			       lxc_cmd_default_rcv_timeout());
 }
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
