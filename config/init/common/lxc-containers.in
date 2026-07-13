@@ -87,7 +87,9 @@ case "$1" in
 
         # Start autoboot containers first then the NULL group "onboot,".
         "$bindir"/lxc-autostart $OPTIONS $BOOTGROUPS
+        res=$?
         rm -f "$lockdir"/lxc
+        exit $res
     ;;
 
     stop)
