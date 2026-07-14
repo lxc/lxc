@@ -3584,6 +3584,52 @@ struct clone_update_data {
 	char **hookargs;
 };
 
+static int do_update_hostname(struct lxc_container *c, int flags)
+{
+	char *path;
+	__do_close int dir = -EBADF;
+	__do_close int hfd = -EBADF;
+	__do_fclose FILE *fout = NULL;
+	struct open_how how = {
+		.flags = O_RDWR,
+		.resolve = RESOLVE_IN_ROOT
+	};
+
+	path = c->lxc_conf->rootfs.storage->dest;
+	if (!file_exists(path))
+		return 0;
+
+	dir = open(path, O_RDONLY | O_DIRECTORY | O_PATH | O_CLOEXEC);
+	if (dir < 0)
+		return 0;
+
+	hfd = openat2(dir, "/etc/hostname", &how, sizeof(how));
+	if (hfd < 0)
+		return 0;
+
+	fout = fdopen(hfd, "w");
+	if (!fout)
+		return 0;
+	hfd = -EBADF; // fclose(fout) will close hfd
+
+	if (fprintf(fout, "%s", c->name) < 0)
+		return -1;
+
+	return 0;
+}
+
+static int maybe_update_hostname(struct lxc_container *c, int flags)
+{
+	int ret = 0;
+	struct lxc_conf *conf = c->lxc_conf;
+
+	if (!(flags & LXC_CLONE_KEEPNAME))
+		ret = do_update_hostname(c, flags);
+
+	lxc_storage_put(conf);
+	return ret;
+}
+
 static int clone_update_rootfs(struct clone_update_data *data)
 {
 	struct lxc_container *c0 = data->c0;
@@ -3591,9 +3637,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	int flags = data->flags;
 	char **hookargs = data->hookargs;
 	int ret = -1;
-	char path[PATH_MAX];
 	struct lxc_storage *bdev;
-	FILE *fout;
 	struct lxc_conf *conf = c->lxc_conf;
 
 	/* update hostname in rootfs */
@@ -3662,33 +3706,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		}
 	}
 
-	if (!(flags & LXC_CLONE_KEEPNAME)) {
-		ret = strnprintf(path, sizeof(path), "%s/etc/hostname", bdev->dest);
-		lxc_storage_put(conf);
-
-		if (ret < 0)
-			return -1;
-
-		if (!file_exists(path))
-			return 0;
-
-		if (!(fout = fopen(path, "we"))) {
-			SYSERROR("unable to open %s: ignoring", path);
-			return 0;
-		}
-
-		if (fprintf(fout, "%s", c->name) < 0) {
-			fclose(fout);
-			return -1;
-		}
-
-		if (fclose(fout) < 0)
-			return -1;
-	} else {
-		lxc_storage_put(conf);
-	}
-
-	return 0;
+	return maybe_update_hostname(c, flags);
 }
 
 static int clone_update_rootfs_wrapper(void *data)
