@@ -362,7 +362,7 @@ static char *copy_to_eol(char *s)
 /* Check if given entry under /proc/<pid>/mountinfo is a fuse.lxcfs mount. */
 static bool is_lxcfs(const char *line)
 {
-	char *p = strstr(line, " - ");
+	const char *p = strstr(line, " - ");
 	if (!p)
 		return false;
 
@@ -1914,7 +1914,7 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 
 	if (*cgroup == '/')
 		cgroup++;
-	slash = strchr(cgroup, '/');
+	slash = (char *)strchr(cgroup, '/');
 	if (slash)
 		*slash = '\0';
 
