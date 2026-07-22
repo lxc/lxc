@@ -1088,6 +1088,15 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 					ERROR("error setting running state after restore");
 					goto out_fini_handler;
 				}
+
+				/*
+				 * Normal startup finalizes cgroup discovery after the
+				 * payload cgroup exists. Do the same after CRIU restore
+				 * so utility controllers such as cgroup v2 freezer are
+				 * available to a later checkpoint of this container.
+				 */
+				cgroup_ops->finalize(cgroup_ops);
+				TRACE("Finished setting up restored cgroups");
 			}
 		} else {
 			ERROR("CRIU was killed with signal %d", WTERMSIG(status));
