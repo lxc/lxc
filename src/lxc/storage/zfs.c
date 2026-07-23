@@ -461,7 +461,7 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			orig_src = cmd_output;
 		}
 
-		tmp = strrchr(orig_src, '/');
+		tmp = (char *)strrchr(orig_src, '/');
 		if (!tmp) {
 			ERROR("Failed to detect \"/\" in \"%s\"", orig_src);
 			return -1;

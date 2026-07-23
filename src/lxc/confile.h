@@ -75,7 +75,7 @@ __hidden extern int lxc_list_net(struct lxc_conf *c, const char *key, char *retv
 
 __hidden extern int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include);
 
-__hidden extern int append_unexp_config_line(const char *line, struct lxc_conf *conf);
+__hidden extern int append_unexp_config_line(char *line, struct lxc_conf *conf);
 
 extern int lxc_config_define_add(struct lxc_list *defines, char *arg);
 

@@ -291,7 +291,7 @@ static void nbd_detach(const char *path)
  */
 static int nbd_get_partition(const char *src)
 {
-	char *p = strchr(src, ':');
+	const char *p = strchr(src, ':');
 	if (!p)
 		return 0;
 

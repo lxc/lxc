@@ -2675,7 +2675,7 @@ static int set_config_console_size(const char *key, const char *value,
  * lxc.include.
  * 'x' and 'X' are substituted in-place.
  */
-static void update_hwaddr(const char *line)
+static void update_hwaddr(char *line)
 {
 	char *p;
 
@@ -2701,7 +2701,7 @@ static void update_hwaddr(const char *line)
 	rand_complete_hwaddr(p);
 }
 
-int append_unexp_config_line(const char *line, struct lxc_conf *conf)
+int append_unexp_config_line(char *line, struct lxc_conf *conf)
 {
 	size_t linelen;
 	size_t len = conf->unexpanded_len;
@@ -4213,7 +4213,7 @@ static int get_config_uts_name(const char *key, char *retv, int inlen,
 static int get_config_hooks(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
-	char *subkey;
+	const char *subkey;
 	int len, fulllen = 0, found = -1;
 	struct string_entry *entry;
 	int i;

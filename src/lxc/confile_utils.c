@@ -903,7 +903,7 @@ int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 {
 	__do_free char *dup = NULL;
 	int fd, pid;
-	char *lastslash;
+	const char *lastslash;
 
 	if (nsfd_path[0] == '/') {
 		return open(nsfd_path, O_RDONLY | O_CLOEXEC);
