@@ -46,21 +46,22 @@ int lxc_rsync_exec(const char *src, const char *dest)
 	char *s;
 
 	l = strlen(src) + 2;
-	s = malloc(l);
-	if (!s)
-		return -1;
+	/* small temporary buffer used only to append a trailing '/'.
+	 * Allocate it on the stack (VLA) to avoid heap allocation here.
+	 * The size is controlled by strlen(src) and should be reasonable for
+	 * filesystem paths. If necessary, this can be reverted to malloc.
+	 */
+	char buf[l];
 
-	ret = snprintf(s, l, "%s", src);
+	ret = snprintf(buf, l, "%s", src);
 	if (ret < 0 || (size_t)ret >= l) {
-		free(s);
 		return -1;
 	}
 
-	s[l - 2] = '/';
-	s[l - 1] = '\0';
+	buf[l - 2] = '/';
+	buf[l - 1] = '\0';
 
-	execlp("rsync", "rsync", "-aHXS", "--delete", s, dest, (char *)NULL);
-	free(s);
+	execlp("rsync", "rsync", "-aHXS", "--delete", buf, dest, (char *)NULL);
 	return -1;
 }
 
