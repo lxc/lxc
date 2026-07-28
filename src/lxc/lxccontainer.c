@@ -3591,7 +3591,7 @@ static int do_update_hostname(struct lxc_container *c, int flags)
 	__do_close int hfd = -EBADF;
 	__do_fclose FILE *fout = NULL;
 	struct open_how how = {
-		.flags = O_RDWR,
+		.flags = O_RDWR | O_TRUNC,
 		.resolve = RESOLVE_IN_ROOT
 	};
 
