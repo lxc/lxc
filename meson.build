@@ -939,6 +939,12 @@ if want_install_init
     if 'openrc' in init_script
         subdir('config/init/openrc')
     endif
+    if 'runit' in init_script
+        subdir('config/init/runit')
+    endif
+    if 'dinit' in init_script
+        subdir('config/init/dinit')
+    endif
     subdir('config/sysconfig')
 endif
 if want_selinux
