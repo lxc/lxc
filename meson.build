@@ -141,7 +141,12 @@ want_commands = get_option('commands')
 want_capabilities = get_option('capabilities')
 want_apparmor = get_option('apparmor')
 want_openssl = get_option('openssl')
+want_wolfssl = get_option('wolfssl')
 want_selinux = get_option('selinux')
+
+if want_openssl and want_wolfssl
+    error('Cannot enable both OpenSSL and WolfSSL. Please choose one: -Dopenssl=true -Dwolfssl=false or -Dopenssl=false -Dwolfssl=true')
+endif
 want_oss_fuzz = get_option('oss-fuzz')
 want_seccomp = get_option('seccomp')
 want_spec = get_option('specfile')
@@ -426,6 +431,15 @@ if want_openssl
     liblxc_dependencies += libopenssl
 else
     srcconf.set10('HAVE_OPENSSL', false)
+endif
+
+if want_wolfssl
+    libwolfssl = dependency('wolfssl', required: false)
+    srcconf.set10('HAVE_WOLFSSL', libwolfssl.found())
+    pkgconfig_libs += libwolfssl
+    liblxc_dependencies += libwolfssl
+else
+    srcconf.set10('HAVE_WOLFSSL', false)
 endif
 
 ## Libcap..
@@ -850,6 +864,7 @@ foreach tuple: [
     ['static libcap'],
     ['pam'],
     ['openssl'],
+    ['wolfssl'],
     ['liburing'],
 ]
 

@@ -80,7 +80,7 @@ __hidden extern int lxc_wait_for_pid_status(pid_t pid);
 __hidden extern int wait_for_pidfd(int pidfd);
 __hidden extern bool wait_exited(pid_t pid);
 
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL || HAVE_WOLFSSL
 __hidden extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
 #endif
 

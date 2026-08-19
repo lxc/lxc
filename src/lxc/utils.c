@@ -372,7 +372,37 @@ static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value,
 
 	return 0;
 }
+#elif HAVE_WOLFSSL
+#include <wolfssl/options.h>
+#include <wolfssl/wolfcrypt/sha.h>
 
+static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value,
+			unsigned int *md_len)
+{
+	wc_Sha sha;
+	int ret;
+
+	ret = wc_InitSha(&sha);
+	if (ret != 0)
+		return log_error(-1, "Failed to initialize wolfssl sha context: %d\n", ret);
+
+	ret = wc_ShaUpdate(&sha, (const byte *)buf, (word32)buflen);
+	if (ret != 0) {
+		wc_ShaFree(&sha);
+		return log_error(-1, "Failed to update wolfssl sha digest: %d\n", ret);
+	}
+
+	ret = wc_ShaFinal(&sha, (byte *)md_value);
+	wc_ShaFree(&sha);
+	if (ret != 0)
+		return log_error(-1, "Failed to finalize wolfssl sha digest: %d\n", ret);
+
+	*md_len = WC_SHA_DIGEST_SIZE;
+	return 0;
+}
+#endif
+
+#if HAVE_OPENSSL || HAVE_WOLFSSL
 int sha1sum_file(char *fnam, unsigned char *digest, unsigned int *md_len)
 {
 	__do_free char *buf = NULL;

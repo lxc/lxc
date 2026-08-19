@@ -66,6 +66,9 @@ option('apparmor', type: 'boolean', value: true,
 option('openssl', type: 'boolean', value: true,
        description: 'use openssl')
 
+option('wolfssl', type: 'boolean', value: false,
+       description: 'use wolfssl')
+
 # was --{disable,enable}-selinux in autotools
 option('selinux', type: 'boolean', value: true,
        description: 'use selinux')

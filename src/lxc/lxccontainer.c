@@ -1612,9 +1612,9 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	FILE *f;
 	int ret = -1;
 	ssize_t nbytes;
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL || HAVE_WOLFSSL
 	unsigned int md_len = 0;
-	unsigned char md_value[EVP_MAX_MD_SIZE];
+	unsigned char md_value[64];
 	char *tpath;
 #endif
 
@@ -1655,7 +1655,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	if (ret < 0)
 		goto out_free_contents;
 
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL || HAVE_WOLFSSL
 	tpath = get_template_path(t);
 	if (!tpath) {
 		ERROR("Invalid template \"%s\" specified", t);
@@ -1688,7 +1688,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fprintf(f, "\n");
 	}
 
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL || HAVE_WOLFSSL
 	fprintf(f, "# Template script checksum (SHA-1): ");
 	for (size_t i = 0; i < md_len; i++)
 		fprintf(f, "%02x", md_value[i]);

@@ -586,6 +586,49 @@ void test_is_in_comm(void)
 #endif /* FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
 }
 
+#if HAVE_OPENSSL || HAVE_WOLFSSL
+void test_sha1sum_file(void)
+{
+	char tmpl[] = "lxc-test-sha1-XXXXXX";
+	int fd;
+	FILE *f;
+	unsigned char md_value[64];
+	unsigned int md_len = 0;
+	int ret;
+	char md_hex[41];
+
+	fd = mkstemp(tmpl);
+	if (fd < 0)
+		exit(EXIT_FAILURE);
+
+	f = fdopen(fd, "w");
+	if (!f) {
+		close(fd);
+		unlink(tmpl);
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(f, "hello world\n");
+	fclose(f);
+
+	ret = sha1sum_file(tmpl, md_value, &md_len);
+	unlink(tmpl);
+
+	if (ret != 0)
+		exit(EXIT_FAILURE);
+
+	if (md_len != 20)
+		exit(EXIT_FAILURE);
+
+	for (unsigned int i = 0; i < md_len; i++)
+		sprintf(&md_hex[i * 2], "%02x", md_value[i]);
+	md_hex[40] = '\0';
+
+	/* SHA-1 of "hello world\n" is 22596363b3de40b06f981fb85d82312e8c0ed511 */
+	lxc_test_assert_abort(strcmp(md_hex, "22596363b3de40b06f981fb85d82312e8c0ed511") == 0);
+}
+#endif
+
 int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
@@ -599,6 +642,9 @@ int main(int argc, char *argv[])
 	test_lxc_config_net_is_hwaddr();
 	test_task_blocks_signal();
 	test_is_in_comm();
+#if HAVE_OPENSSL || HAVE_WOLFSSL
+	test_sha1sum_file();
+#endif
 
 	exit(EXIT_SUCCESS);
 }
