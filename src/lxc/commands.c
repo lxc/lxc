@@ -1554,6 +1554,12 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = -EFAULT;
 	rsp.datalen = 0;
 	rsp.data = NULL;
+
+	if (req->datalen != sizeof(struct lxc_cmd_console_log) || !req->data) {
+		rsp.ret = -EINVAL;
+		goto out;
+	}
+
 	if (buffer_size <= 0)
 		goto out;
 
