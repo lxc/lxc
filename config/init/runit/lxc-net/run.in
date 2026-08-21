@@ -1,0 +1,4 @@
+#!/bin/sh
+exec 2>&1
+@LIBEXECDIR@/lxc/lxc-net start
+exec pause 2>/dev/null || exec sleep infinity
