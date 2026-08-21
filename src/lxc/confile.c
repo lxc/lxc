@@ -151,6 +151,7 @@ lxc_config_define(selinux_context_keyring);
 lxc_config_define(signal_halt);
 lxc_config_define(signal_reboot);
 lxc_config_define(signal_stop);
+lxc_config_define(stop_drain_timeout);
 lxc_config_define(start);
 lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
@@ -268,6 +269,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.signal.halt",                true,  set_config_signal_halt,                get_config_signal_halt,                clr_config_signal_halt,                },
 	{ "lxc.signal.reboot",              true,  set_config_signal_reboot,              get_config_signal_reboot,              clr_config_signal_reboot,              },
 	{ "lxc.signal.stop",                true,  set_config_signal_stop,                get_config_signal_stop,                clr_config_signal_stop,                },
+	{ "lxc.stop.drain_timeout",         true,  set_config_stop_drain_timeout,         get_config_stop_drain_timeout,         clr_config_stop_drain_timeout,         },
 	{ "lxc.start.auto",                 true,  set_config_start,                      get_config_start,                      clr_config_start,                      },
 	{ "lxc.start.delay",                true,  set_config_start,                      get_config_start,                      clr_config_start,                      },
 	{ "lxc.start.order",                true,  set_config_start,                      get_config_start,                      clr_config_start,                      },
@@ -1915,6 +1917,24 @@ static int set_config_signal_stop(const char *key, const char *value,
 		return ret_errno(EINVAL);
 
 	lxc_conf->stopsignal = sig_n;
+
+	return 0;
+}
+
+static int set_config_stop_drain_timeout(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf, void *data)
+{
+	int timeout;
+
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->drain_timeout = 3;
+		return 0;
+	}
+
+	if (lxc_safe_int(value, &timeout) < 0)
+		return ret_errno(EINVAL);
+
+	lxc_conf->drain_timeout = timeout;
 
 	return 0;
 }
@@ -4424,6 +4444,12 @@ static int get_config_signal_stop(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
 }
 
+static int get_config_stop_drain_timeout(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->drain_timeout);
+}
+
 static int get_config_start(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
@@ -5179,6 +5205,13 @@ static inline int clr_config_signal_stop(const char *key, struct lxc_conf *c,
 					void *data)
 {
 	c->stopsignal = 0;
+	return 0;
+}
+
+static int clr_config_stop_drain_timeout(const char *key, struct lxc_conf *c,
+				    void *data)
+{
+	c->drain_timeout = 3;
 	return 0;
 }
 
