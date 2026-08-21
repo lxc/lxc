@@ -1506,7 +1506,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 					_exit(EXIT_FAILURE);
 				}
 
-				ret = strnprintf(n2[n2args - 1], 200, "u:%d:%d:1",
+				ret = strnprintf(n2[n2args - 1], 200, "u:%d:%u:1",
 					       hostuid_mapped, geteuid());
 				if (ret < 0)
 					_exit(EXIT_FAILURE);
@@ -1533,7 +1533,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 					_exit(EXIT_FAILURE);
 				}
 
-				ret = strnprintf(n2[n2args - 1], 200, "g:%d:%d:1",
+				ret = strnprintf(n2[n2args - 1], 200, "g:%d:%u:1",
 					       hostgid_mapped, getegid());
 				if (ret < 0)
 					_exit(EXIT_FAILURE);
@@ -4599,9 +4599,9 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 
 	/* continue if path is character device or block device */
 	if (S_ISCHR(st.st_mode))
-		ret = strnprintf(value, sizeof(value), "c %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+		ret = strnprintf(value, sizeof(value), "c %u:%u rwm", major(st.st_rdev), minor(st.st_rdev));
 	else if (S_ISBLK(st.st_mode))
-		ret = strnprintf(value, sizeof(value), "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+		ret = strnprintf(value, sizeof(value), "b %u:%u rwm", major(st.st_rdev), minor(st.st_rdev));
 	else
 		return false;
 	if (ret < 0)
