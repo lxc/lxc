@@ -1,0 +1,3 @@
+type = process
+command = @LIBEXECDIR@/lxc/lxc-monitord --daemon
+smooth-recovery = true

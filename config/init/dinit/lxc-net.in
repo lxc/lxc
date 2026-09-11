@@ -1,0 +1,5 @@
+type = scripted
+command = @LIBEXECDIR@/lxc/lxc-net start
+stop-command = @LIBEXECDIR@/lxc/lxc-net stop
+waits-for = network
+smooth-recovery = true
