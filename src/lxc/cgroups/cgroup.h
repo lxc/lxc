@@ -247,6 +247,7 @@ struct cgroup_ops {
 
 	int (*data_init)(struct cgroup_ops *ops);
 	void (*payload_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	int (*payload_drain)(struct cgroup_ops *ops, struct lxc_handler *handler, int timeout);
 	void (*monitor_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);

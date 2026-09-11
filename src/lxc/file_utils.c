@@ -255,6 +255,17 @@ ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count, off_t offset)
 	return ret;
 }
 
+ssize_t lxc_pread_nointr(int fd, void *buf, size_t count, off_t offset)
+{
+	ssize_t ret;
+
+	do {
+		ret = pread(fd, buf, count, offset);
+	} while (ret < 0 && errno == EINTR);
+
+	return ret;
+}
+
 ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
 {
 	ssize_t ret;
