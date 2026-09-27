@@ -1,0 +1,5 @@
+type = scripted
+command = @LIBEXECDIR@/lxc/lxc-containers start
+stop-command = @LIBEXECDIR@/lxc/lxc-containers stop
+waits-for = lxc-net
+smooth-recovery = true
