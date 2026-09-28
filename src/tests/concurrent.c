@@ -243,7 +243,9 @@ int main(int argc, char *argv[]) {
 						exit(EXIT_FAILURE);
 					}
 				}
+			}
 
+			for (j = 0; j < nthreads; j++) {
 				if (args[j].return_code) {
 					fprintf(stderr, "thread returned error %d\n", args[j].return_code);
 					exit(EXIT_FAILURE);
