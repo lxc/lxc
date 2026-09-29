@@ -67,7 +67,7 @@ static inline bool lxc_file_cap_is_set(const char *path, cap_value_t cap,
 	return false;
 }
 
-static inline int lxc_bounding_as_ambiant_caps(void)
+static inline int lxc_bounding_as_ambient_caps(void)
 {
 	return 0;
 }
