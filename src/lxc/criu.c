@@ -288,7 +288,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	DECLARE_ARG(log);
 
 	for (int i = 0; i < cgroup_ops->criu_num_hierarchies(cgroup_ops); i++) {
-		__do_free char *cgroup_base_path = NULL, *controllers;
+		__do_free char *cgroup_base_path = NULL, *controllers = NULL;
 		char **controllers_list = NULL;
 		char *tmp;
 
