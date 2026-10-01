@@ -1103,11 +1103,14 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				handler->pidfd = syscall(__NR_pidfd_open, handler->pid, 0);
 				if (handler->pidfd < 0) {
 					SYSERROR("Failed to open pidfd for restored init process");
+					lxc_abort(handler);
 					goto out_fini_handler;
 				}
 
-				if (!lxc_can_use_pidfd(handler->pidfd))
+				if (!lxc_can_use_pidfd(handler->pidfd)) {
+					lxc_abort(handler);
 					goto out_fini_handler;
+				}
 
 				if (lxc_set_state(c->name, handler, RUNNING)) {
 					ERROR("error setting running state after restore");
