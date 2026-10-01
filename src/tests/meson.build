@@ -4,6 +4,14 @@ tests_common_sources = liblxc_ext_sources + include_sources + netns_ifaddrs_sour
 
 if want_tests
     test_programs += executable(
+        'lxc-test-init-pidfd',
+        files('init_pidfd.c'),
+        include_directories: liblxc_includes,
+        dependencies: liblxc_dep,
+        link_with: [liblxc_static],
+        install: true)
+
+    test_programs += executable(
         'lxc-test-arch-parse',
         files('arch_parse.c') + tests_common_sources,
         include_directories: liblxc_includes,
