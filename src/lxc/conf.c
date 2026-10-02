@@ -2565,11 +2565,10 @@ static int setup_mount_entries(const struct lxc_conf *conf,
 	return mount_file_entries(rootfs, f, lxc_name, lxc_path);
 }
 
-static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
+static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f, int *mnt_seq)
 {
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
-	int mnt_seq = 0;
 	int ret;
 	char buf[PATH_MAX];
 	struct mntent mntent;
@@ -2675,10 +2674,10 @@ static int __lxc_idmapped_mounts_child(struct lxc_handler *handler, FILE *f)
 					dfd_from, source_relative, fd_userns);
 		}
 
-		if (mnt_seq != cur_mnt_seq)
+		if (*mnt_seq != cur_mnt_seq)
 			return syserror("Expected mount sequence number and mount sequence number from parent mismatch: %d != %d",
-					mnt_seq, cur_mnt_seq);
-		mnt_seq++;
+					*mnt_seq, cur_mnt_seq);
+		(*mnt_seq)++;
 
 		/* Set regular mount options. */
 		attr = opts.attr;
@@ -2779,6 +2778,7 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 	int fret = -1;
 	struct lxc_conf *conf = handler->conf;
 	const char *fstab = conf->fstab;
+	int mnt_seq = 0;
 	int ret;
 
 	f_entries = make_anonymous_mount_file(&conf->mount_entries,
@@ -2788,7 +2788,7 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 		goto out;
 	}
 
-	ret = __lxc_idmapped_mounts_child(handler, f_entries);
+	ret = __lxc_idmapped_mounts_child(handler, f_entries, &mnt_seq);
 	if (ret) {
 		SYSERROR("Failed to setup idmapped mount entries");
 		goto out;
@@ -2805,7 +2805,7 @@ static int lxc_idmapped_mounts_child(struct lxc_handler *handler)
 			goto out;
 		}
 
-		ret = __lxc_idmapped_mounts_child(handler, f_fstab);
+		ret = __lxc_idmapped_mounts_child(handler, f_fstab, &mnt_seq);
 		if (ret) {
 			SYSERROR("Failed to setup idmapped mount entries specified in fstab");
 			goto out;
