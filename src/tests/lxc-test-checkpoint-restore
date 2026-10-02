@@ -56,3 +56,19 @@ sleep 5s
 lxc-checkpoint -n $name -v -s -D /tmp/checkpoint || FAIL "failed checkpointing"
 lxc-wait -n $name -s STOPPED
 lxc-checkpoint -n $name -v -r -D /tmp/checkpoint || FAIL "failed restoring"
+
+lxc-wait -n $name -s RUNNING -t 10 || FAIL "waiting after restore"
+sleep 2s
+lxc-test-init-pidfd "$name" || FAIL "restored init pidfd"
+lxc-info -n $name -s -H | grep -qx RUNNING || FAIL "restored monitor exited"
+
+# Exercise the restored monitor again before testing normal exit cleanup.
+lxc-checkpoint -n $name -v -s -D /tmp/checkpoint-second || FAIL "second checkpoint"
+lxc-wait -n $name -s STOPPED -t 10 || FAIL "waiting after second checkpoint"
+lxc-checkpoint -n $name -v -r -D /tmp/checkpoint-second || FAIL "second restore"
+lxc-wait -n $name -s RUNNING -t 10 || FAIL "waiting after second restore"
+sleep 2s
+lxc-test-init-pidfd "$name" || FAIL "restored init pidfd"
+lxc-info -n $name -s -H | grep -qx RUNNING || FAIL "second restored monitor exited"
+lxc-stop -n $name -k || FAIL "stopping restored container"
+lxc-wait -n $name -s STOPPED -t 10 || FAIL "restored exit cleanup"
