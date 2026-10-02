@@ -541,8 +541,9 @@ bool can_use_mount_api(void)
 
 	if (supported == -1) {
 		__do_close int fd = -EBADF;
+		struct open_how how = { 0 };
 
-		fd = openat2(-EBADF, "", NULL, 0);
+		fd = openat2(-EBADF, "", &how, sizeof(how));
 		if (fd > 0 || errno == ENOSYS) {
 			supported = 0;
 			return false;
