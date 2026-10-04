@@ -3,6 +3,15 @@
 tests_common_sources = liblxc_ext_sources + include_sources + netns_ifaddrs_sources
 
 if want_tests
+    # Called with a container name by the checkpoint/restore test.
+    executable(
+        'lxc-init-pidfd-helper',
+        files('init_pidfd.c'),
+        include_directories: liblxc_includes,
+        dependencies: liblxc_dep,
+        link_with: [liblxc_static],
+        install: true)
+
     test_programs += executable(
         'lxc-test-arch-parse',
         files('arch_parse.c') + tests_common_sources,
