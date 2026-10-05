@@ -1303,7 +1303,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 	if (pid == 0) { /* child */
 		int i, len;
 		char *namearg, *patharg, *rootfsarg;
-		char **newargv;
+		char **newargv, **new_newargv;
 		int nargs = 0;
 		struct lxc_storage *bdev = NULL;
 		struct lxc_conf *conf = c->lxc_conf;
@@ -1442,9 +1442,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 
 		/* add trailing NULL */
 		nargs++;
-		newargv = realloc(newargv, nargs * sizeof(*newargv));
-		if (!newargv)
+		new_newargv = realloc(newargv, nargs * sizeof(*newargv));
+		if (!new_newargv) {
+			free(newargv);
 			_exit(EXIT_FAILURE);
+		}
+		newargv = new_newargv;
 		newargv[nargs - 1] = NULL;
 
 		/* If we're running the template in a mapped userns, then we
@@ -1454,14 +1457,16 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		 */
 		if (!list_empty(&conf->id_map)) {
 			int extraargs, hostuid_mapped, hostgid_mapped;
-			char **n2;
+			char **n2, **new_n2;
 			char *txtuid = NULL, *txtgid = NULL;
 			struct id_map *map;
 			int n2args = 1;
 
 			n2 = malloc(n2args * sizeof(*n2));
-			if (!n2)
+			if (!n2) {
+				free(newargv);
 				_exit(EXIT_FAILURE);
+			}
 
 			newargv[0] = tpath;
 			tpath = "lxc-usernsexec";
@@ -1469,74 +1474,106 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 
 			list_for_each_entry(map, &conf->id_map, head) {
 				n2args += 2;
-				n2 = realloc(n2, n2args * sizeof(char *));
-				if (!n2)
+				new_n2 = realloc(n2, n2args * sizeof(char *));
+				if (!new_n2) {
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
+				}
+				n2 = new_n2;
 
 				n2[n2args - 2] = "-m";
 				n2[n2args - 1] = malloc(200);
-				if (!n2[n2args - 1])
+				if (!n2[n2args - 1]) {
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
+				}
 
 				ret = strnprintf(n2[n2args - 1], 200, "%c:%lu:%lu:%lu",
 					       map->idtype == ID_TYPE_UID ? 'u' : 'g',
 					       map->nsid, map->hostid, map->range);
-				if (ret < 0)
+				if (ret < 0) {
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
+				}
 			}
 
 			hostuid_mapped = mapped_hostid(geteuid(), conf, ID_TYPE_UID);
 			extraargs = hostuid_mapped >= 0 ? 1 : 3;
 
-			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
-			if (!n2)
+			new_n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
+			if (!new_n2) {
+				free(newargv);
+				free(n2);
 				_exit(EXIT_FAILURE);
+			}
+			n2 = new_n2;
 
 			if (hostuid_mapped < 0) {
 				hostuid_mapped = find_unmapped_nsid(conf, ID_TYPE_UID);
 				n2[n2args++] = "-m";
 				if (hostuid_mapped < 0) {
 					ERROR("Failed to find free uid to map");
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
 				}
 
 				n2[n2args++] = malloc(200);
 				if (!n2[n2args - 1]) {
 					SYSERROR("out of memory");
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
 				}
 
 				ret = strnprintf(n2[n2args - 1], 200, "u:%d:%d:1",
 					       hostuid_mapped, geteuid());
-				if (ret < 0)
+				if (ret < 0) {
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
+				}
 			}
 
 			hostgid_mapped = mapped_hostid(getegid(), conf, ID_TYPE_GID);
 			extraargs = hostgid_mapped >= 0 ? 1 : 3;
 
-			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
-			if (!n2)
+			new_n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
+			if (!new_n2) {
+				free(newargv);
+				free(n2);
 				_exit(EXIT_FAILURE);
+			}
+			n2 = new_n2;
 
 			if (hostgid_mapped < 0) {
 				hostgid_mapped = find_unmapped_nsid(conf, ID_TYPE_GID);
 				n2[n2args++] = "-m";
 				if (hostgid_mapped < 0) {
 					ERROR("Failed to find free gid to map");
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
 				}
 
 				n2[n2args++] = malloc(200);
 				if (!n2[n2args - 1]) {
 					SYSERROR("out of memory");
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
 				}
 
 				ret = strnprintf(n2[n2args - 1], 200, "g:%d:%d:1",
 					       hostgid_mapped, getegid());
-				if (ret < 0)
+				if (ret < 0) {
+					free(newargv);
+					free(n2);
 					_exit(EXIT_FAILURE);
+				}
 			}
 
 			n2[n2args++] = "--";
@@ -1549,9 +1586,13 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			 * to chown cached images to.
 			 */
 			n2args += 4;
-			n2 = realloc(n2, n2args * sizeof(char *));
-			if (!n2)
+			new_n2 = realloc(n2, n2args * sizeof(char *));
+			if (!new_n2) {
+				free(newargv);
+				free(n2);
 				_exit(EXIT_FAILURE);
+			}
+			n2 = new_n2;
 
 			/* note n2[n2args-1] is NULL */
 			n2[n2args - 5] = "--mapped-uid";
