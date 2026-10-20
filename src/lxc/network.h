@@ -82,6 +82,12 @@ struct ifla_veth {
 	short vlan_id;
 	bool vlan_id_set;
 	struct lxc_list vlan_tagged_ids;
+	/* lxc.net.[i].veth.vlan_rx_offload / lxc.net.[i].veth.vlan_tx_offload: whether the
+	 * container-side veth keeps 802.1Q CTAG RX/TX hardware acceleration.
+	 * "off" keeps the tag inline, which AF_XDP needs.
+	 */
+	bool vlan_rx_offload;
+	bool vlan_tx_offload;
 };
 
 struct ifla_vlan {

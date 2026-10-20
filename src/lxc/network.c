@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/ethtool.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
@@ -613,6 +614,8 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 	return 0;
 }
 
+static int lxc_netdev_set_vlan_offload(const char *name, bool rx, bool tx);
+
 static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
@@ -667,6 +670,19 @@ static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_
 			      netdev->priv.veth_attr.n_rxqueues, netdev->priv.veth_attr.n_txqueues);
 	if (err)
 		return log_error_errno(-1, -err, "Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
+
+	/* Apply the VLAN offload setting to the host-side veth as well. Each
+	 * end of the pair has its own feature flags; the child applies the
+	 * same setting to the container-side end.
+	 */
+	err = lxc_netdev_set_vlan_offload(veth1,
+					  netdev->priv.veth_attr.vlan_rx_offload,
+					  netdev->priv.veth_attr.vlan_tx_offload);
+	if (err) {
+		errno = -err;
+		SYSERROR("Failed to configure VLAN offload on \"%s\"", veth1);
+		goto out_delete;
+	}
 
 	/*
 	 * Veth devices are directly created in the container's network
@@ -4173,6 +4189,51 @@ static int setup_ipv6_addr(struct lxc_netdev *netdev)
 	return 0;
 }
 
+/* NETIF_F_*_BIT values from the kernel's netdev_features.h. The positions
+ * are part of the ethtool feature-string ABI: "tx-vlan-offload" and
+ * "rx-vlan-offload" map to bit 7 and bit 8 in the first features block.
+ */
+#define NETIF_F_HW_VLAN_CTAG_TX_BIT 7
+#define NETIF_F_HW_VLAN_CTAG_RX_BIT 8
+/* netdev_features_t is a u64, i.e. two 32-bit feature words. The ioctl
+ * rejects anything else (cmd.size != ETHTOOL_DEV_FEATURE_WORDS). */
+#define ETHTOOL_DEV_FEATURE_WORDS 2
+
+static int lxc_netdev_set_vlan_offload(const char *name, bool rx, bool tx)
+{
+	struct {
+		struct ethtool_sfeatures hdr;
+		struct ethtool_set_features_block block[ETHTOOL_DEV_FEATURE_WORDS];
+	} req = {
+		.hdr = {
+			.cmd = ETHTOOL_SFEATURES,
+			.size = ETHTOOL_DEV_FEATURE_WORDS,
+		},
+		.block = {
+			{
+				.valid = (1U << NETIF_F_HW_VLAN_CTAG_TX_BIT) |
+					 (1U << NETIF_F_HW_VLAN_CTAG_RX_BIT),
+				.requested = (rx ? 1U << NETIF_F_HW_VLAN_CTAG_RX_BIT : 0) |
+					     (tx ? 1U << NETIF_F_HW_VLAN_CTAG_TX_BIT : 0),
+			},
+		},
+	};
+	struct ifreq ifr = { 0 };
+	__do_close int fd = -EBADF;
+
+	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return -errno;
+
+	(void)snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", name);
+	ifr.ifr_data = (void *)&req;
+
+	if (ioctl(fd, SIOCETHTOOL, &ifr) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netdev)
 {
 	int err;
@@ -4200,6 +4261,21 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 		err = lxc_netdev_up("lo");
 		if (err)
 			return log_error_errno(-1, -err, "Failed to set the loopback network device up");
+	}
+
+	/*
+	 * With RX VLAN offload enabled the kernel moves the 802.1Q tag into
+	 * skb metadata. AF_XDP (e.g. the OVS userspace datapath) only sees
+	 * the untagged frame, so keep the tag inline when requested. Apply
+	 * both bits unconditionally so the configuration is authoritative:
+	 * 0 clears the feature and 1 explicitly restores it.
+	 */
+	if (netdev->type == LXC_NET_VETH) {
+		err = lxc_netdev_set_vlan_offload(netdev->name,
+						  netdev->priv.veth_attr.vlan_rx_offload,
+						  netdev->priv.veth_attr.vlan_tx_offload);
+		if (err)
+			return log_error_errno(-1, -err, "Failed to configure VLAN offload on network device \"%s\"", netdev->name);
 	}
 
 	/* setup ipv4 gateway on the interface */
