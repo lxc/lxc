@@ -747,44 +747,9 @@ on_succes:
 	return ret;
 }
 
-int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal)
-{
-	char *r_addr;
-	ssize_t ret;
-	uint64_t used;
-	struct lxc_ringbuf *buf = &terminal->ringbuf;
-
-	/* There's not log file where we can dump the ringbuffer to. */
-	if (terminal->log_fd < 0)
-		return 0;
-
-	used = lxc_ringbuf_used(buf);
-	if (used == 0)
-		return 0;
-
-	ret = lxc_terminal_truncate_log_file(terminal);
-	if (ret < 0)
-		return ret;
-
-	/* Write as much as we can without exceeding the limit. */
-	if (terminal->log_size < used)
-		used = terminal->log_size;
-
-	r_addr = lxc_ringbuf_get_read_addr(buf);
-	ret = lxc_write_nointr(terminal->log_fd, r_addr, used);
-	if (ret < 0)
-		return -EIO;
-
-	return 0;
-}
-
 void lxc_terminal_delete(struct lxc_terminal *terminal)
 {
 	int ret;
-
-	ret = lxc_terminal_write_ringbuffer(terminal);
-	if (ret < 0)
-		WARN("Failed to write terminal log to disk");
 
 	if (terminal->tios && terminal->peer >= 0) {
 		ret = tcsetattr(terminal->peer, TCSAFLUSH, terminal->tios);

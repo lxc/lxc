@@ -246,7 +246,6 @@ __hidden extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, i
 __hidden extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 					     struct lxc_async_descr *descr);
 
-__hidden extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
 __hidden extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);
 
 __hidden extern int lxc_make_controlling_terminal(int fd);

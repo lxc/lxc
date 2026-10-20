@@ -936,9 +936,9 @@
             Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
             'Kb' are treated equally.)
 
-            If users want to mirror the console ringbuffer on disk they should set
-            <option>lxc.console.size</option> equal to
-            <option>lxc.console.buffer.size</option>.
+            This limit is independent of the in-memory ringbuffer size. Setting
+            <option>lxc.console.buffer.size</option> alone does not limit the
+            size of the log file.
             </para>
           </listitem>
         </varlistentry>
@@ -949,11 +949,12 @@
           </term>
           <listitem>
             <para>
-              Specify a path to a file where the console output will be written.
-              Note that in contrast to the on-disk ringbuffer logfile this file
-              will keep growing potentially filling up the users disks if not
-              rotated and deleted. This problem can also be avoided by using the
-              in-memory ringbuffer option <option>lxc.console.buffer.size</option>.
+              Specify a path to a file where the console output will be written
+              as it is produced. The file is separate from the in-memory
+              ringbuffer and its contents are preserved when the container
+              stops. Without a size limit or rotation, the file can keep growing
+              and fill the user's disk; <option>lxc.console.buffer.size</option>
+              does not limit the file size.
             </para>
           </listitem>
         </varlistentry>
@@ -970,9 +971,8 @@
               the same name as the original with the suffix ".1" appended.
 
               Users wishing to prevent the console log file from filling the
-              disk should rotate the logfile and delete it if unneeded. This
-              problem can also be avoided by using the in-memory ringbuffer
-              option <option>lxc.console.buffer.size</option>.
+              disk should configure a size limit or rotate the logfile and
+              delete old log files when they are no longer needed.
             </para>
           </listitem>
         </varlistentry>
