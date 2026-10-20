@@ -1303,6 +1303,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 	if (pid == 0) { /* child */
 		int i, len;
 		char *namearg, *patharg, *rootfsarg;
+		const char *rootfs_path;
 		char **newargv;
 		int nargs = 0;
 		struct lxc_storage *bdev = NULL;
@@ -1321,6 +1322,9 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			_exit(EXIT_FAILURE);
 		}
 		bdev = conf->rootfs.storage;
+		rootfs_path = bdev->dest;
+		if (strequal(bdev->type, "dir"))
+			rootfs_path = lxc_storage_get_path(bdev->src, bdev->type);
 
 		euid = geteuid();
 		if (euid == 0) {
@@ -1425,12 +1429,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		newargv[2] = namearg;
 
 		/* --rootfs */
-		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
+		len = strlen("--rootfs=") + 1 + strlen(rootfs_path);
 		rootfsarg = malloc(len);
 		if (!rootfsarg)
 			_exit(EXIT_FAILURE);
 
-		ret = strnprintf(rootfsarg, len, "--rootfs=%s", bdev->dest);
+		ret = strnprintf(rootfsarg, len, "--rootfs=%s", rootfs_path);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 		newargv[3] = rootfsarg;
