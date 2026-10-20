@@ -53,6 +53,7 @@ static char *api_extensions[] = {
 	"core_scheduling",
 	"cgroup2_auto_mounting",
 	"environment_runtime_hooks",
+	"network_veth_vlan_offload",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

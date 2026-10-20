@@ -477,6 +477,25 @@
             </para>
 
             <para>
+              <option>lxc.net.[i].veth.vlan_rx_offload</option> controls the
+              802.1Q CTAG receive hardware acceleration on the container's
+              veth. It defaults to <option>1</option>. Set it to
+              <option>0</option> to keep the VLAN tag inline in the received
+              frame, which is required for AF_XDP, for example the OVS
+              userspace datapath: with RX VLAN acceleration enabled the kernel
+              moves the tag into skb metadata and the XDP program does not see
+              it.
+            </para>
+
+            <para>
+              <option>lxc.net.[i].veth.vlan_tx_offload</option> controls the
+              transmit side. It defaults to <option>1</option> as well. Set it
+              to <option>0</option> together with
+              <option>vlan_rx_offload</option> when the veth carries
+              VLAN-tagged traffic through AF_XDP.
+            </para>
+
+            <para>
               <option>vlan:</option> a vlan interface is linked with
               the interface specified by
               the <option>lxc.net.[i].link</option> and assigned to

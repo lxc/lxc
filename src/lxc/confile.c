@@ -134,6 +134,8 @@ lxc_config_define(net_veth_ipv4_route);
 lxc_config_define(net_veth_ipv6_route);
 lxc_config_define(net_veth_vlan_id);
 lxc_config_define(net_veth_vlan_tagged_id);
+lxc_config_define(net_veth_vlan_rx_offload);
+lxc_config_define(net_veth_vlan_tx_offload);
 lxc_config_define(net_vlan_id);
 lxc_config_define(no_new_privs);
 lxc_config_define(personality);
@@ -320,6 +322,8 @@ static struct lxc_config_net_t config_jump_table_net[] = {
 	{ "veth.ipv6.route",        true,  set_config_net_veth_ipv6_route,        get_config_net_veth_ipv6_route,        clr_config_net_veth_ipv6_route,        },
 	{ "veth.vlan.id",           true,  set_config_net_veth_vlan_id,           get_config_net_veth_vlan_id,           clr_config_net_veth_vlan_id,           },
 	{ "veth.vlan.tagged.id",    true,  set_config_net_veth_vlan_tagged_id,    get_config_net_veth_vlan_tagged_id,    clr_config_net_veth_vlan_tagged_id,    },
+	{ "veth.vlan_rx_offload",            true,  set_config_net_veth_vlan_rx_offload,            get_config_net_veth_vlan_rx_offload,            clr_config_net_veth_vlan_rx_offload,            },
+	{ "veth.vlan_tx_offload",            true,  set_config_net_veth_vlan_tx_offload,            get_config_net_veth_vlan_tx_offload,            clr_config_net_veth_vlan_tx_offload,            },
 };
 
 static struct lxc_config_net_t unsupported_config_net_key = {
@@ -425,6 +429,8 @@ static int set_config_net_type(const char *key, const char *value,
 		INIT_LIST_HEAD(&netdev->priv.veth_attr.ipv4_routes);
 		INIT_LIST_HEAD(&netdev->priv.veth_attr.ipv6_routes);
 		lxc_list_init(&netdev->priv.veth_attr.vlan_tagged_ids);
+		netdev->priv.veth_attr.vlan_rx_offload = true;
+		netdev->priv.veth_attr.vlan_tx_offload = true;
 		if (!lxc_veth_flag_to_mode(netdev->priv.veth_attr.mode))
 			lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, "bridge");
 	} else if (strequal(value, "macvlan")) {
@@ -729,6 +735,62 @@ static int set_config_net_veth_vlan_tagged_id(const char *key, const char *value
 	list->elem = UINT_TO_PTR(vlan_id);
 
 	lxc_list_add_tail(&netdev->priv.veth_attr.vlan_tagged_ids, move_ptr(list));
+
+	return 0;
+}
+
+static int set_config_net_veth_vlan_rx_offload(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+	unsigned int val = 0;
+	int ret;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_veth_vlan_rx_offload(key, lxc_conf, data);
+
+	ret = lxc_safe_uint(value, &val);
+	if (ret < 0)
+		return ret_errno(ret);
+
+	if (val > 1)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.vlan_rx_offload = val;
+
+	return 0;
+}
+
+static int set_config_net_veth_vlan_tx_offload(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+	unsigned int val = 0;
+	int ret;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_veth_vlan_tx_offload(key, lxc_conf, data);
+
+	ret = lxc_safe_uint(value, &val);
+	if (ret < 0)
+		return ret_errno(ret);
+
+	if (val > 1)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.vlan_tx_offload = val;
 
 	return 0;
 }
@@ -5728,6 +5790,38 @@ static int clr_config_net_veth_vlan_tagged_id(const char *key,
 	return 0;
 }
 
+static int clr_config_net_veth_vlan_rx_offload(const char *key,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.vlan_rx_offload = true;
+
+	return 0;
+}
+
+static int clr_config_net_veth_vlan_tx_offload(const char *key,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	netdev->priv.veth_attr.vlan_tx_offload = true;
+
+	return 0;
+}
+
 
 static int clr_config_net_script_up(const char *key, struct lxc_conf *lxc_conf,
 				    void *data)
@@ -6292,6 +6386,36 @@ static int get_config_net_veth_vlan_tagged_id(const char *key, char *retv,
 	}
 
 	return fulllen;
+}
+
+static int get_config_net_veth_vlan_rx_offload(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	return lxc_get_conf_bool(c, retv, inlen,
+				 netdev->priv.veth_attr.vlan_rx_offload);
+}
+
+static int get_config_net_veth_vlan_tx_offload(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return ret_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_VETH)
+		return ret_errno(EINVAL);
+
+	return lxc_get_conf_bool(c, retv, inlen,
+				 netdev->priv.veth_attr.vlan_tx_offload);
 }
 
 static int get_config_net_script_up(const char *key, char *retv, int inlen,
