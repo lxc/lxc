@@ -1,0 +1,2 @@
+lxc.uts.name = container1
+lxc.arch = linux64

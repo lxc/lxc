@@ -1,0 +1,25 @@
+lxc.uts.name = FUZZ
+lxc.arch = x86_64
+lxc.tty.max = 4
+lxc.pty.max = 1024
+lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed
+lxc.rootfs.path = dir:/var/lib/lxc/FUZZ/rootfs
+lxc.cap.drop = sys_admin net_admin mac_admin
+lxc.cap.keep = net_bind_service
+lxc.signal.halt = SIGRTMIN+3
+lxc.signal.reboot = SIGRTMIN+4
+lxc.signal.stop = SIGRTMIN+5
+lxc.start.auto = 1
+lxc.start.order = 0
+lxc.start.delay = 0
+lxc.log.level = INFO
+lxc.console.logfile = /var/log/lxc/FUZZ.log
+lxc.environment = TERM=linux
+lxc.environment = PATH=/usr/bin:/bin
+lxc.hook.pre-start = /bin/true
+lxc.hook.post-stop = /bin/false
+lxc.hook.version = 1
+lxc.apparmor.profile = unconfined
+lxc.no_new_privs = 1
+lxc.sysctl.kernel.kptr_restrict = 2
+lxc.proc.sys.net.core.somaxconn = 1024

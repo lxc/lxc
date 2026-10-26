@@ -1,0 +1,8 @@
+lxc.mount.entry = proc proc proc nosuid,nodev,noexec 0 0
+lxc.mount.entry = sys sys sysfs ro 0 0
+lxc.mount.entry = tmp run tmpfs defaults,ro 0 0
+lxc.mount.entry = dev dev tmpfs nosuid 0 0
+lxc.mount.entry = /data /data none bind,ro,optional 0 0
+lxc.mount.entry = /big /big none bind,rw 0 0
+lxc.mount.entry = shm dev/shm tmpfs create=dir 0 0
+lxc.mount.entry = mqueue dev/mqueue mqueue 0 0

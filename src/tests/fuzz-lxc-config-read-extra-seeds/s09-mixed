@@ -1,0 +1,3 @@
+lxc.arch = x86_64
+bogus.key = nonsense
+lxc.uts.name = FUZZ

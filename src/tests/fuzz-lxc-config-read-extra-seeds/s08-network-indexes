@@ -1,0 +1,9 @@
+lxc.net.0.type = empty
+lxc.net.1.type = veth
+lxc.net.1.veth.pair = fuzzpair
+lxc.net.1.veth.n_rxqueues = 4
+lxc.net.1.veth.n_txqueues = 4
+lxc.net.2.type = vlan
+lxc.net.2.link = eth0.100
+lxc.net.2.vlan.id = 100
+lxc.net.9.type = none

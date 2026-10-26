@@ -1,0 +1,5 @@
+lxc.idmap = u 0 100000 65536
+lxc.idmap = g 0 100000 65536
+lxc.rootfs.path = dir:/var/lib/lxc/FUZZ/rootfs
+lxc.rootfs.options = bind
+lxc.rootfs.mount = /var/lib/lxc/FUZZ/rootfs/mnt
