@@ -74,3 +74,8 @@ zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip san_build/doc/examples
 mkdir fuzz-lxc-define-load_seed_corpus
 perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' san_build/doc/examples/{keys,lxc-net-keys}.conf | bash
 zip -r $OUT/fuzz-lxc-define-load_seed_corpus.zip fuzz-lxc-define-load_seed_corpus
+
+# Coverage-pipeline pair af-unix-fd-recv-fuzzer: install the committed
+# dictionary and seed corpus for fuzz-lxc-af-unix-fd-recv.
+cp src/tests/fuzz-lxc-af-unix-fd-recv.dict $OUT/
+zip -j $OUT/fuzz-lxc-af-unix-fd-recv_seed_corpus.zip src/tests/fuzz-lxc-af-unix-fd-recv_seed_corpus/*
