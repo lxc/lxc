@@ -1,0 +1,5 @@
+devices.deny a
+devices.allow b 1:3 rwm
+devices.allow b 1:3 rwm
+devices.deny b 1:3 rwm
+devices.allow c 10:200 r

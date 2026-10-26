@@ -2872,6 +2872,25 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 	return 0;
 }
 
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+/*
+ * Fuzzing-only exposure of the static device rule parsers to
+ * src/tests/fuzz-lxc-cgroup2-devices.c (see that file for the threat
+ * model). Regular builds never see these wrappers.
+ */
+int fuzz_lxc_device_cgroup_rule_parse(struct device_item *device,
+				      const char *key, const char *val)
+{
+	return device_cgroup_rule_parse(device, key, val);
+}
+
+int fuzz_lxc_device_cgroup_rule_parse_devpath(struct device_item *device,
+					      const char *devpath)
+{
+	return device_cgroup_rule_parse_devpath(device, devpath);
+}
+#endif
+
 /*
  * Some of the parsing logic comes from the original cgroup device v1
  * implementation in the kernel.
