@@ -1463,6 +1463,52 @@
           directories can be specified. <filename>loop:/file</filename> tells lxc to attach
           <filename>/file</filename> to a loop device and mount the loop device.
             </para>
+            <para>
+          A storage driver can also be selected explicitly by prefixing the
+          path with the driver name and a colon. The supported prefixes are:
+            </para>
+            <itemizedlist>
+              <listitem>
+                <para><filename>dir:/path</filename>: a directory. This is
+                also the default when an existing directory is given without
+                a prefix.</para>
+              </listitem>
+              <listitem>
+                <para><filename>btrfs:/path</filename>: a btrfs
+                subvolume.</para>
+              </listitem>
+              <listitem>
+                <para><filename>lvm:/dev/vg/lv</filename>: an LVM logical
+                volume.</para>
+              </listitem>
+              <listitem>
+                <para><filename>zfs:dataset</filename>: a ZFS dataset. A
+                path can also be given for a legacy ZFS layout.</para>
+              </listitem>
+              <listitem>
+                <para><filename>rbd:/dev/rbd/pool/image</filename>: a mapped
+                RBD block device.</para>
+              </listitem>
+              <listitem>
+                <para><filename>loop:/file</filename>: <filename>/file</filename>
+                is attached to a loop device, and the loop device is
+                mounted.</para>
+              </listitem>
+              <listitem>
+                <para><filename>nbd:file</filename>: <filename>file</filename>
+                is attached to an NBD device, and the NBD device is mounted.
+                <filename>nbd:file:1</filename> mounts partition 1 of that
+                device instead.</para>
+              </listitem>
+              <listitem>
+                <para><filename>overlay:/lower:/upper</filename> or
+                <filename>overlayfs:/lower:/upper</filename>: an overlay with
+                <filename>/upper</filename> mounted read-write over a
+                read-only mount of <filename>/lower</filename>. Multiple
+                lower directories can be specified, for example
+                <filename>overlayfs:/lower1:/lower2:/upper</filename>.</para>
+              </listitem>
+            </itemizedlist>
           </listitem>
         </varlistentry>
 
