@@ -5,9 +5,17 @@
 lxc.cgroup2.devices.deny =
 lxc.cgroup2.devices.allow =
 
-# Start with a full set of capabilities in user namespaces.
+# Start with a full set of capabilities in user namespaces, except for the
+# capabilities which the kernel only checks against the initial user
+# namespace. Dropping them lets systemd skip units conditioned on
+# CAP_SYS_RAWIO (sys-kernel-debug.mount, sys-kernel-config.mount) instead of
+# trying them and failing.
+#
+# Both empty assignments below clear the single capability list shared by
+# lxc.cap.drop and lxc.cap.keep, so the drop has to be set after them.
 lxc.cap.drop =
 lxc.cap.keep =
+lxc.cap.drop = sys_rawio sys_module
 
 # We can't move bind-mounts, so don't use /dev/lxc/
 lxc.tty.dir =
