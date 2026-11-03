@@ -286,6 +286,11 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 	/* Calculate how many bytes we still need to write. */
 	bytes_read -= space_left;
 
+	/* The first space_left bytes were written to the old log file above, so
+	 * the remaining bytes start at that offset in buf.
+	 */
+	buf += space_left;
+
 	/* There'd be more to write but we aren't instructed to rotate the log
 	 * file so simply return. There's no error on our side here.
 	 */
