@@ -484,6 +484,7 @@ struct lxc_conf {
 	int haltsignal; /* signal used to halt container */
 	int rebootsignal; /* signal used to reboot container */
 	int stopsignal; /* signal used to hard stop container */
+	int drain_timeout; /* seconds to wait for cgroup to drain after stop; -1 = infinite */
 	char *rcfile;	/* Copy of the top level rcfile we read */
 
 	/* Logfile and loglevel can be set in a container config file. Those

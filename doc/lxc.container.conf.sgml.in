@@ -229,6 +229,29 @@
     </refsect2>
 
     <refsect2>
+      <title>Drain timeout</title>
+      <para>
+        Configures gor how long to wait after the container exits for
+        termination of remaining processes. The container init usually doesn't
+        wait for termination of processes started by lxc-attach although it
+        signals them. The default is 3 seconds.
+          </para>
+          <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.stop.drain_timeout</option>
+          </term>
+          <listitem>
+            <para>
+              how many seconds to wait for container processes to exit (use -1
+              for infinite)
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Init command</title>
       <para>
         Sets the command to use as the init system for the containers.

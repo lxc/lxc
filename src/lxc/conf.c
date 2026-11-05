@@ -3090,6 +3090,7 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;
 	new->monitor_signal_pdeath = SIGKILL;
+	new->drain_timeout = 3;
 	new->nbd_idx = -1;
 	new->rootfs.mount = strdup(default_rootfs_mount);
 	if (!new->rootfs.mount) {

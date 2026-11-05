@@ -1139,6 +1139,8 @@ void lxc_end(struct lxc_handler *handler)
 	handler->lsm_ops->cleanup(handler->lsm_ops, handler->conf, handler->lxcpath);
 
 	if (cgroup_ops) {
+		cgroup_ops->payload_drain(cgroup_ops, handler,
+					  handler->conf->drain_timeout);
 		cgroup_ops->payload_destroy(cgroup_ops, handler);
 		cgroup_ops->monitor_destroy(cgroup_ops, handler);
 	}

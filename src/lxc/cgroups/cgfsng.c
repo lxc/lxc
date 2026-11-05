@@ -448,6 +448,80 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		SYSWARN("Failed to destroy cgroups");
 }
 
+static int populated_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
+				      struct lxc_async_descr *descr)
+{
+	char buf[512];
+	ssize_t len;
+
+	len = lxc_pread_nointr(fd, buf, sizeof(buf), 0);
+	if (len < 0 || len == sizeof(buf))
+		return LXC_MAINLOOP_ERROR;
+	buf[len] = 0;
+
+	if (strstr(buf, "populated 0\n"))
+		return LXC_MAINLOOP_CLOSE;
+	return LXC_MAINLOOP_CONTINUE;
+}
+
+__cgfsng_ops static int cgfsng_payload_drain(struct cgroup_ops *ops,
+					     struct lxc_handler *handler,
+					     int timeout)
+{
+	__do_close int events_fd = -EBADF;
+	struct lxc_async_descr descr = {};
+	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
+	int ret;
+	struct hierarchy *h;
+
+	/* timeout == 0: caller requested no wait */
+	if (timeout == 0)
+		return 0;
+
+	if (!ops || !ops->unified)
+		return 0;
+
+	h = ops->unified;
+	if (h->dfd_con < 0)
+		return 0;
+
+	events_fd = open_at(h->dfd_con, "cgroup.events",
+			    PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
+	if (events_fd < 0) {
+		TRACE("cgroup.events not available, skipping drain");
+		return 0;
+	}
+
+	ret = lxc_mainloop_open(&descr);
+	if (ret)
+		return log_error_errno(-1, errno,
+				       "Failed to create epoll instance for cgroup drain");
+	descr_ptr = &descr;
+
+	ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI,
+					      populated_cgroup_events_cb,
+					      default_cleanup_handler,
+					      NULL,
+					      "populated_cgroup_events_cb");
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to add cgroup.events fd to mainloop");
+
+	/*
+	 * Check the current state after registering with epoll to avoid missing
+	 * a transition that happened before epoll_ctl returned.
+	 */
+	ret = populated_cgroup_events_cb(events_fd, EPOLLPRI, NULL, &descr);
+	if (ret == LXC_MAINLOOP_CLOSE)
+		return 0;
+
+	ret = lxc_mainloop(&descr, timeout < 0 ? timeout : timeout * 1000);
+	if (ret)
+		WARN("Timed out waiting for container cgroup to drain");
+
+	return ret;
+}
+
 static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 				bool eexist_ignore)
 {
@@ -3569,6 +3643,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 
 	cgfsng_ops->data_init				= cgfsng_data_init;
 	cgfsng_ops->payload_destroy			= cgfsng_payload_destroy;
+	cgfsng_ops->payload_drain			= cgfsng_payload_drain;
 	cgfsng_ops->monitor_destroy			= cgfsng_monitor_destroy;
 	cgfsng_ops->monitor_create			= cgfsng_monitor_create;
 	cgfsng_ops->monitor_enter			= cgfsng_monitor_enter;
