@@ -326,13 +326,13 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			if (!controllers)
 				return log_error_errno(-ENOMEM, ENOMEM, "Failed to join controllers");
 
-			ret = sprintf(buf, "%s:%s", controllers, cgroup_base_path);
+			ret = strnprintf(buf, sizeof(buf), "%s:%s", controllers, cgroup_base_path);
 		} else {
 			WARN("No cgroup controllers configured in container's cgroup %s", cgroup_base_path);
-			ret = sprintf(buf, "%s", cgroup_base_path);
+			ret = strnprintf(buf, sizeof(buf), "%s", cgroup_base_path);
 		}
-		if (ret < 0 || (size_t)ret >= sizeof(buf))
-			return log_error_errno(-EIO, EIO, "sprintf of cgroup root arg failed");
+		if (ret < 0)
+			return log_error_errno(-EIO, EIO, "Failed to build cgroup root arg");
 
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(buf);
