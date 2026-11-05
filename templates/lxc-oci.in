@@ -156,6 +156,16 @@ getenv() {
   return
 }
 
+# reject image values that would start a new line in the LXC config.
+checkconfigvalue() {
+  case "$2" in
+    *$'\n'*|*$'\r'*)
+      echo "ERROR: Invalid $1 in OCI image" 1>&2
+      exit 1
+      ;;
+  esac
+}
+
 # check var is decimal.
 isdecimal() {
   var="$1"
@@ -458,6 +468,7 @@ esac
 environment=$(getenv "${OCI_CONF_FILE}")
 # shellcheck disable=SC2039
 while read -r line; do
+  checkconfigvalue "environment" "${line}"
   echo "lxc.environment = ${line}" >> "${LXC_CONF_FILE}"
 done <<< "${environment}"
 
@@ -498,11 +509,16 @@ EOF
 # shellcheck disable=SC2039
 uidgid=($(getuidgid "${OCI_CONF_FILE}" "${LXC_ROOTFS}" ))
 # shellcheck disable=SC2039
+checkconfigvalue "user" "${uidgid[0]}"
+# shellcheck disable=SC2039
+checkconfigvalue "group" "${uidgid[1]}"
+# shellcheck disable=SC2039
 echo "lxc.init.uid = ${uidgid[0]}" >> "${LXC_CONF_FILE}"
 # shellcheck disable=SC2039
 echo "lxc.init.gid = ${uidgid[1]}" >> "${LXC_CONF_FILE}"
 
 cwd=$(getcwd "${OCI_CONF_FILE}")
+checkconfigvalue "working directory" "${cwd}"
 echo "lxc.init.cwd = ${cwd}" >> "${LXC_CONF_FILE}"
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
