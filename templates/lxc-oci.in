@@ -166,6 +166,23 @@ checkconfigvalue() {
   esac
 }
 
+# write stdin to a file in the rootfs' /etc, replacing whatever the image put there.
+writeetcfile() {
+  local etc root
+  etc=$(realpath -e "${LXC_ROOTFS}/etc")
+  root=$(realpath -e "${LXC_ROOTFS}")
+  case "${etc}/" in
+    "${root}"/*) ;;
+    *)
+      echo "ERROR: /etc in OCI image points outside of the rootfs" 1>&2
+      exit 1
+      ;;
+  esac
+
+  rm -f "${etc}/$1"
+  cat > "${etc}/$1"
+}
+
 # check var is decimal.
 isdecimal() {
   var="$1"
@@ -491,12 +508,12 @@ fi
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
-cat <<EOF > "${LXC_ROOTFS}/etc/hostname"
+writeetcfile hostname <<EOF
 ${LXC_NAME}
 EOF
 
 # set minimal hosts
-cat <<EOF > "${LXC_ROOTFS}/etc/hosts"
+writeetcfile hosts <<EOF
 127.0.0.1   localhost
 127.0.1.1   ${LXC_NAME}
 ::1     localhost ip6-localhost ip6-loopback
