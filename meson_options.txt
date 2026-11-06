@@ -15,13 +15,19 @@ option('examples', type: 'boolean', value: true,
 
 # was --init-script in autotools
 option('init-script', type: 'array',
-       choices: ['systemd', 'sysvinit', 'openrc'], value: ['systemd'],
+       choices: ['systemd', 'sysvinit', 'openrc', 'runit', 'dinit'], value: ['systemd'],
        description: 'init script')
 
 # was --systemd-unidir in autotools
 # If set to "", the value is taken from the running systemd instance.
 option('systemd-unitdir', type: 'string', value: '',
        description: 'systemd system unit directory')
+
+option('runit-servicedir', type: 'string', value: '',
+       description: 'runit service directory')
+
+option('dinit-servicedir', type: 'string', value: '',
+       description: 'dinit service directory')
 
 # was --{disable,enable}-liburing in autotools
 option('io-uring-event-loop', type: 'boolean', value: false,

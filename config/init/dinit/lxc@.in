@@ -1,0 +1,5 @@
+type = process
+command = @BINDIR@/lxc-start -F -n $1
+stop-command = @BINDIR@/lxc-stop -n $1
+waits-for = lxc-net
+smooth-recovery = true
