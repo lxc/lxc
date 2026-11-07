@@ -29,6 +29,35 @@ lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
 lxc-attach -n busy -- sh -c 'exit 1' && FAIL "should be failing" || true
 lxc-attach -n busy -- sh -c 'exit 0' || FAIL "should be succeeding"
 
+# LXC_INIT_EXIT env vars tests
+
+lxc-stop -n busy
+
+# First create a minimal post-stop hook script
+tmp=$(mktemp -d)
+cat > "$tmp/post-stop" <<'EOF'
+#!/bin/sh
+env | grep LXC_INIT > "$(dirname "$0")/stop-init-exit-env"
+EOF
+chmod +x "$tmp/post-stop"
+
+# First start the container and test exit 0
+lxc-start -n busy -s "lxc.hook.post-stop=$tmp/post-stop" -F -- /bin/sh -c 'exit 0'
+grep -qx "LXC_INIT_EXIT_STATUS=0" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_STATUS not set to 0"
+grep -qx "LXC_INIT_EXIT_CODE=exited" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_CODE not detected as exited"
+
+# Now test exit 7
+lxc-start -n busy -s "lxc.hook.post-stop=$tmp/post-stop" -F -- /bin/sh -c 'exit 7'
+grep -qx "LXC_INIT_EXIT_STATUS=7" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_STATUS not set to 0"
+grep -qx "LXC_INIT_EXIT_CODE=exited" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_CODE not detected as exited"
+
+# Now test killing the container
+lxc-start -n busy -s "lxc.hook.post-stop=$tmp/post-stop" -- /bin/sleep 60
+lxc-stop -k busy
+grep -qx "LXC_INIT_EXIT_STATUS=9" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_STATUS not set to 9"
+grep -qx "LXC_INIT_EXIT_CODE=killed" "$tmp/stop-init-exit-env" || FAIL "LXC_INIT_EXIT_CODE not detected as killed"
+
+
 lxc-destroy -n busy -f
 
 exit 0
