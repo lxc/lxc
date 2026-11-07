@@ -2136,9 +2136,9 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 				const char *wait_error)
 {
 	__do_close int fd = -EBADF;
+	struct lxc_async_descr descr;
 	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_async_descr descr;
 	struct hierarchy *h;
 
 	h = ops->unified;
@@ -3811,9 +3811,9 @@ static int do_cgroup_freeze(int unified_fd,
 			    const char *wait_error)
 {
 	__do_close int events_fd = -EBADF;
+	struct lxc_async_descr descr = {};
 	call_cleaner(lxc_mainloop_close) struct lxc_async_descr *descr_ptr = NULL;
 	int ret;
-	struct lxc_async_descr descr = {};
 
 	if (timeout != 0) {
 		ret = lxc_mainloop_open(&descr);
