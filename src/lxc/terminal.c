@@ -514,8 +514,16 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 #ifdef IEXTEN
 	newtios.c_lflag &= ~IEXTEN;
 #endif
-	newtios.c_oflag |= ONLCR;
-	newtios.c_oflag |= OPOST;
+	/* When stdout is a terminal, all output comes from the container's
+	 * pty, which already did its own output processing. Otherwise other
+	 * processes write to the terminal and need newline translation.
+	 */
+	if (isatty(STDOUT_FILENO)) {
+		newtios.c_oflag &= ~OPOST;
+	} else {
+		newtios.c_oflag |= ONLCR;
+		newtios.c_oflag |= OPOST;
+	}
 	newtios.c_cc[VMIN] = 1;
 	newtios.c_cc[VTIME] = 0;
 
