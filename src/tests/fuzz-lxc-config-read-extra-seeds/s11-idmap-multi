@@ -1,0 +1,4 @@
+lxc.idmap = u 0 100000 65536
+lxc.idmap = g 0 100000 65536
+lxc.idmap = u 65536 200000 65536
+lxc.idmap = g 65536 200000 65536

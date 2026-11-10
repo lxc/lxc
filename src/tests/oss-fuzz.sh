@@ -74,3 +74,10 @@ zip -r $OUT/fuzz-lxc-config-read_seed_corpus.zip san_build/doc/examples
 mkdir fuzz-lxc-define-load_seed_corpus
 perl -lne '/([^=]+)/ && print "printf $1= >fuzz-lxc-define-load_seed_corpus/$1"' san_build/doc/examples/{keys,lxc-net-keys}.conf | bash
 zip -r $OUT/fuzz-lxc-define-load_seed_corpus.zip fuzz-lxc-define-load_seed_corpus
+
+# Coverage-pipeline pair corpus-dict-options: install the committed
+# dictionaries for the config fuzzers and merge the extra structured
+# seeds into the generated fuzz-lxc-config-read corpus.
+cp src/tests/fuzz-lxc-config-read.dict $OUT/
+cp src/tests/fuzz-lxc-define-load.dict $OUT/
+zip -j $OUT/fuzz-lxc-config-read_seed_corpus.zip src/tests/fuzz-lxc-config-read-extra-seeds/*

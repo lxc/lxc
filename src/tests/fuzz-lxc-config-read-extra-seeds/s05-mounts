@@ -1,0 +1,6 @@
+lxc.mount.entry = proc proc proc nosuid,nodev,noexec 0 0
+lxc.mount.entry = sysfs sys sysfs nosuid,nodev,noexec,ro 0 0
+lxc.mount.entry = tmpfs tmp tmpfs defaults,ro 0 0
+lxc.mount.entry = /dev/sda1 /mnt/data ext4 defaults 0 0
+lxc.mount.entry = shm dev/shm tmpfs nosuid,nodev,noexec,ro,create=dir 0 0
+lxc.mount.fstab = /var/lib/lxc/FUZZ/fstab

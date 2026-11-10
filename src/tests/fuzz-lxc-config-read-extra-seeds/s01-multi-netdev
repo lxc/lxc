@@ -1,0 +1,16 @@
+lxc.net.0.type = veth
+lxc.net.0.link = lxcbr0
+lxc.net.0.flags = up
+lxc.net.0.hwaddr = 00:16:3e:aa:bb:cc
+lxc.net.0.name = eth0
+lxc.net.0.veth.pair = v-fuzz0
+lxc.net.0.ipv4.address = 10.0.3.10/24
+lxc.net.0.ipv4.gateway = auto
+lxc.net.0.ipv6.address = 2003:db8::10/64
+lxc.net.0.veth.vlan.id = 42
+lxc.net.1.type = macvlan
+lxc.net.1.link = eth0
+lxc.net.1.macvlan.mode = bridge
+lxc.net.1.flags = up
+lxc.net.2.type = phys
+lxc.net.2.link = eth1

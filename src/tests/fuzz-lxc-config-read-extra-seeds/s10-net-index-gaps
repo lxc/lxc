@@ -1,0 +1,5 @@
+lxc.net.0.type = veth
+lxc.net.2.type = macvlan
+lxc.net.2.link = eth9
+lxc.net.9.type = none
+lxc.net.flags = up

@@ -1,0 +1,2 @@
+lxc.include = /dev/null
+lxc.uts.name = inc

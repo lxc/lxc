@@ -1,0 +1,5 @@
+lxc.arch =
+lxc.uts.name =
+lxc.net.0.type =
+lxc.rootfs.path =
+lxc.cap.drop =
