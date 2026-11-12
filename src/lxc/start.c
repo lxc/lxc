@@ -970,6 +970,10 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	handler->lsm_ops = lsm_init_static();
 	TRACE("Initialized LSM");
 
+	/* Before start state reset any EXIT state environ */
+	unsetenv("LXC_INIT_EXIT_CODE");
+	unsetenv("LXC_INIT_EXIT_STATUS");
+
 	/* Begin by setting the state to STARTING. */
 	ret = lxc_set_state(name, handler, STARTING);
 	if (ret < 0)
@@ -1099,6 +1103,36 @@ void lxc_expose_namespace_environment(const struct lxc_handler *handler)
 			TRACE("Set environment variable %s=%s",
 			      ns_info[i].env_name, fd_path);
 	}
+}
+
+static void lxc_expose_init_pid_exit(int status)
+{
+	int ret;
+	const char *exit_code = "exited";
+	char exit_status[INTTYPE_TO_STRLEN(int)];
+
+	if (WIFEXITED(status)) {
+		ret = WEXITSTATUS(status);
+	} else {
+		exit_code = WCOREDUMP(status) ? "dumped" : "killed";
+		ret = WTERMSIG(status);
+	}
+
+	if (strnprintf(exit_status, sizeof(exit_status), "%d", ret) < 0)
+		goto error;
+
+	if (setenv("LXC_INIT_EXIT_CODE", exit_code, 1) < 0)
+		goto error;
+
+	if (setenv("LXC_INIT_EXIT_STATUS", exit_status, 1) < 0)
+		goto error;
+
+	return;
+
+	error:
+		SYSERROR("Failed to set for exposure init process exit code and status");
+		unsetenv("LXC_INIT_EXIT_CODE");
+		unsetenv("LXC_INIT_EXIT_STATUS");
 }
 
 void lxc_end(struct lxc_handler *handler)
@@ -2322,6 +2356,8 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	status = lxc_wait_for_pid_status(handler->pid);
 	if (status < 0)
 		SYSERROR("Failed to retrieve status for %d", handler->pid);
+	else
+		lxc_expose_init_pid_exit(status);
 
 	/* If the child process exited but was not signaled, it didn't call
 	 * reboot. This should mean it was an lxc-execute which simply exited.
