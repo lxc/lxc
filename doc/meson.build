@@ -67,7 +67,7 @@ if want_mans
         configure_file(
             input: sgml,
             output: page[0] + '.' + page[1],
-            command: [sgml2man, '--encoding=UTF-8', page[0] + '.sgml'],
+            command: [sgml2man, page[0] + '.sgml'],
             install: true,
             install_dir: join_paths(mandir, 'man' + page[1]))
     endforeach
