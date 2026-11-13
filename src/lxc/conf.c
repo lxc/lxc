@@ -1230,9 +1230,20 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to mount \"%s\" onto \"/\" as MS_REC | MS_BIND", nroot);
 
-	ret = mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
+	/*
+	 * Keep the propagation the new root got from the rootfs and the mount
+	 * entries, as pivot_root() does. Only make the old root and the old
+	 * rootfs dependent, so unmounting them below reaches neither the host
+	 * nor the new root. "/" is still the old root here; MS_REC on it would
+	 * also reach the new root, hence the separate calls.
+	 */
+	ret = mount(NULL, "/", NULL, MS_SLAVE, NULL);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to remount \"/\"");
+		return log_error_errno(-1, errno, "Failed to turn old root into dependent mount");
+
+	ret = mount(NULL, nroot, NULL, MS_SLAVE | MS_REC, NULL);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to recursively turn \"%s\" into dependent mount", nroot);
 
 	/* The following code cleans up inherited mounts which are not required
 	 * for CT.
@@ -1275,6 +1286,7 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
 			if (strequal(slider1 + 1, "/proc"))
 				continue;
 
+			(void)mount(NULL, slider1, NULL, MS_SLAVE | MS_REC, NULL);
 			ret = umount2(slider1, MNT_DETACH);
 			if (ret == 0)
 				progress++;
@@ -1285,6 +1297,7 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
 	}
 
 	/* This also can be skipped if a container uses userns. */
+	(void)mount(NULL, "./proc", NULL, MS_SLAVE | MS_REC, NULL);
 	(void)umount2("./proc", MNT_DETACH);
 
 	/* It is weird, but chdir("..") moves us in a new root */
@@ -1295,6 +1308,11 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
 	ret = chroot(".");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to chroot(\".\")");
+
+	/* Same as lxc_pivot_root(): the rootfs becomes its own peer group. */
+	ret = mount("", "/", "", MS_SHARED | MS_REC, NULL);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to turn new root mount tree into shared mount tree");
 
 	return 0;
 }
