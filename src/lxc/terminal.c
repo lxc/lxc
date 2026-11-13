@@ -283,8 +283,9 @@ static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 	if (ret < 0)
 		return -1;
 
-	/* Calculate how many bytes we still need to write. */
-	bytes_read -= space_left;
+	/* Continue with the data that was not written to the old log file. */
+	buf += ret;
+	bytes_read -= ret;
 
 	/* There'd be more to write but we aren't instructed to rotate the log
 	 * file so simply return. There's no error on our side here.
