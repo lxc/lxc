@@ -196,4 +196,3 @@ You can find us in [#lxc](https://kiwiirc.com/client/irc.libera.chat/#lxc) on ir
 You can check out one of the two LXC mailing list archives and register if
 interested:
 
-- http://lists.linuxcontainers.org/listinfo/lxc-users
